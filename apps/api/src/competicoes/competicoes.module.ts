@@ -7,5 +7,6 @@ import { JogosService } from './jogos.service';
 @Module({
   controllers: [CompeticoesController],
   providers: [CompeticoesService, ClassificacaoService, JogosService],
+  exports: [CompeticoesService],
 })
 export class CompeticoesModule {}

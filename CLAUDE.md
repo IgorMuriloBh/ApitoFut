@@ -24,6 +24,7 @@ ele é a especificação executável.
 - `db/04-classificacao.sql` — v_classificacao alinhada ao protótipo
 - `db/05-coluna-extra.sql` — ajuste manual do organizador por equipe
 - `db/06-rls.sql` — Row Level Security multi-tenant, **ativo**
+- `db/07-realtime.sql` — NOTIFY de lances/jogo para a súmula ao vivo (RF020)
 
 ## Banco de dados
 
@@ -119,7 +120,9 @@ expressa nada disso** no `schema.prisma`. Portanto:
   `fn_recalcula_placar`, que roda depois; o objeto devolvido pelo Prisma traz o valor
   antigo. Sempre reler o jogo após inserir/editar/remover um evento.
 - **Tempo real (RF020) não passa pelo Prisma.** `LISTEN/NOTIFY` exige uma conexão `pg`
-  dedicada, separada do pool do Prisma.
+  dedicada, separada do pool — implementado em `src/realtime/realtime.service.ts`,
+  que escuta o canal `apitofut_jogo` e repassa por SSE. O payload do NOTIFY não
+  carrega dado de atleta por desenho (ver `db/07-realtime.sql`).
 - **O RLS está ativo** (migration 06). A aplicação conecta como `apitofut_app`, que
   não é superuser — `apitofut` é o dono e ignora RLS, use só em migrations. Sem
   `app.current_org` definido o banco entrega apenas competições públicas; para o

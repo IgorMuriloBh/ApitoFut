@@ -250,6 +250,44 @@ describe('regras da classificação', () => {
   });
 });
 
+describe('tempo real (RF020) — recurso de nível 2', () => {
+  const caminho = `/competicoes/${SLUG}/categorias/${CATEGORIA}/jogos/${JOGO}/ao-vivo`;
+
+  test('em publicada o feed responde 403 — a competição existe, o recurso não', async () => {
+    await definirStatus('publicada');
+    const r = await fetch(base + caminho);
+    assert.equal(r.status, 403);
+    await r.body?.cancel();
+  });
+
+  test('em em_criacao responde 404 — nem a competição existe para o público', async () => {
+    await definirStatus('em_criacao');
+    const r = await fetch(base + caminho);
+    assert.equal(r.status, 404);
+    await r.body?.cancel();
+  });
+
+  test('em em_andamento conecta e entrega a foto inicial sem dado de atleta', async () => {
+    await definirStatus('em_andamento');
+    const r = await fetch(base + caminho);
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get('content-type') ?? '', /text\/event-stream/);
+
+    // lê só o primeiro chunk (a foto inicial) e encerra
+    const reader = r.body!.getReader();
+    const { value } = await reader.read();
+    const chunk = new TextDecoder().decode(value);
+    await reader.cancel();
+
+    assert.match(chunk, /event: estado/);
+    assert.match(chunk, /"placar":\{"mandante":2,"visitante":1\}/);
+    for (const nome of ATLETAS_DO_SEED) {
+      assert.ok(!chunk.includes(nome), `"${nome}" vazou no feed`);
+    }
+    assert.ok(!chunk.includes(PREFIXO_UUID_ATLETA), 'id de atleta vazou no feed');
+  });
+});
+
 describe('isolamento entre competições', () => {
   before(() => definirStatus('em_andamento'));
 

@@ -45,3 +45,11 @@ export const MOTIVO_ATLETAS_OCULTOS =
 export function placarDivulgavel(status: status_jogo): boolean {
   return status === 'encerrado' || status === 'ao_vivo' || status === 'wo';
 }
+
+/**
+ * Tempo real é recurso do mesmo nível que os nomes (CLAUDE.md: em
+ * `em_andamento`/`encerrada` o portal mostra "tudo, inclusive escalações e
+ * tempo real"). O feed em si não carrega dado de atleta, mas a regra de
+ * produto é essa — e mantê-la colada à dos nomes evita divergência futura.
+ */
+export const tempoRealDisponivel = podeExibirNomesDeAtletas;
