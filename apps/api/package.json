@@ -8,7 +8,7 @@
     "start": "node dist/main.js",
     "start:dev": "tsc -p tsconfig.json --watch --preserveWatchOutput & node --watch dist/main.js",
     "start:prod": "node dist/main.js",
-    "test": "tsc -p tsconfig.spec.json && node --test \"dist/**/*.spec.js\"",
+    "test": "tsc -p tsconfig.spec.json && node --test --test-concurrency=1 \"dist/**/*.spec.js\"",
     "db:pull": "prisma db pull && prisma generate",
     "db:generate": "prisma generate"
   },

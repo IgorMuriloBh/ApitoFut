@@ -11,14 +11,15 @@ INSERT INTO organizacoes (id, nome, documento, email_contato) VALUES
   ('11111111-1111-1111-1111-111111111111', '55 Global Sports', '12345678000199', 'contato@55globalsports.com'),
   ('22222222-2222-2222-2222-222222222222', 'Liga Mineira de Base', '98765432000188', 'contato@ligamineira.com');
 
--- senha_hash abaixo é apenas placeholder de desenvolvimento — trocar por bcrypt real
+-- Hash scrypt real da senha de desenvolvimento "demo" (a mesma do protótipo).
+-- Formato: scrypt$N$r$p$salt$hash — ver apps/api/src/auth/senha.ts.
 INSERT INTO usuarios (id, organizacao_id, nome, email, senha_hash, perfil, situacao) VALUES
   ('aaaaaaaa-0000-0000-0000-000000000001','11111111-1111-1111-1111-111111111111',
-   'Igor Alcantara','demo@apitofut.com','$2b$12$DEV_PLACEHOLDER_TROCAR','superadmin','ativo'),
+   'Igor Alcantara','demo@apitofut.com','scrypt$16384$8$1$1GfhNcyJrgK6d8Uzs4w4mg==$gLggPOMNxQmyBtmJ09GXLmwP5PNWvVFtk2kXSPkYLrrg+mBpIhQB9mQg87iDuOQmayWngNzChPZMeCFTfKVvIg==','superadmin','ativo'),
   ('aaaaaaaa-0000-0000-0000-000000000002','22222222-2222-2222-2222-222222222222',
-   'Marina Duarte','marina@apitofut.com','$2b$12$DEV_PLACEHOLDER_TROCAR','organizador','ativo'),
+   'Marina Duarte','marina@apitofut.com','scrypt$16384$8$1$1GfhNcyJrgK6d8Uzs4w4mg==$gLggPOMNxQmyBtmJ09GXLmwP5PNWvVFtk2kXSPkYLrrg+mBpIhQB9mQg87iDuOQmayWngNzChPZMeCFTfKVvIg==','organizador','ativo'),
   ('aaaaaaaa-0000-0000-0000-000000000003','11111111-1111-1111-1111-111111111111',
-   'Rafael Torres','rafael@apitofut.com','$2b$12$DEV_PLACEHOLDER_TROCAR','organizador','pendente');
+   'Rafael Torres','rafael@apitofut.com','scrypt$16384$8$1$1GfhNcyJrgK6d8Uzs4w4mg==$gLggPOMNxQmyBtmJ09GXLmwP5PNWvVFtk2kXSPkYLrrg+mBpIhQB9mQg87iDuOQmayWngNzChPZMeCFTfKVvIg==','organizador','pendente');
 
 -- ---------- Competição ----------
 INSERT INTO competicoes (id, organizacao_id, criado_por, nome, slug, temporada,

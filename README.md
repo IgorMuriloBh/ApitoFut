@@ -168,7 +168,8 @@ apitofut/
 │   ├── 04-classificacao.sql     v_classificacao alinhada ao protótipo
 │   ├── 05-coluna-extra.sql      ajuste manual do organizador por equipe
 │   ├── 06-rls.sql               Row Level Security multi-tenant
-│   └── 07-realtime.sql          NOTIFY da súmula ao vivo (RF020)
+│   ├── 07-realtime.sql          NOTIFY da súmula ao vivo (RF020)
+│   └── 08-auth.sql              frestas SECURITY DEFINER para o login
 ├── docs/
 │   ├── especificacao-completa.docx
 │   ├── modelo-dados-apitofut.docx

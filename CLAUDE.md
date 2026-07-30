@@ -25,6 +25,7 @@ ele é a especificação executável.
 - `db/05-coluna-extra.sql` — ajuste manual do organizador por equipe
 - `db/06-rls.sql` — Row Level Security multi-tenant, **ativo**
 - `db/07-realtime.sql` — NOTIFY de lances/jogo para a súmula ao vivo (RF020)
+- `db/08-auth.sql` — frestas SECURITY DEFINER para o login atravessar o RLS
 
 ## Banco de dados
 
@@ -83,7 +84,12 @@ Ao mexer no portal, verifique as três camadas de proteção que existem no prot
 - PKs `uuid` com `gen_random_uuid()`
 - Timestamps `timestamptz`, colunas `criado_em` / `atualizado_em`
 - Imagens vão para storage de objetos; o banco guarda só `*_url`
-- Senhas com bcrypt/argon2 — o seed usa placeholder, trocar antes de qualquer deploy
+- Senhas com **scrypt** do `node:crypto` (`apps/api/src/auth/senha.ts`) — cumpre o
+  papel de bcrypt/argon2 (KDF memory-hard, baseline OWASP) sem dependência nativa;
+  o formato `scrypt$N$r$p$salt$hash` carrega os parâmetros junto. O seed traz o hash
+  real da senha `demo`
+- Token de sessão: HMAC-SHA256 via `node:crypto` (`auth/token.ts`), segredo em
+  `AUTH_SEGREDO` — trocar por valor forte fora de desenvolvimento
 
 ## Stack definida (30/07/2026)
 
@@ -126,8 +132,13 @@ expressa nada disso** no `schema.prisma`. Portanto:
 - **O RLS está ativo** (migration 06). A aplicação conecta como `apitofut_app`, que
   não é superuser — `apitofut` é o dono e ignora RLS, use só em migrations. Sem
   `app.current_org` definido o banco entrega apenas competições públicas; para o
-  painel, `SET LOCAL app.current_org` **dentro** da transação, porque um `SET`
-  solto vaza para o próximo request do pool.
+  painel, use `PrismaService.comOrganizacao(orgId, fn)` — ele aplica o
+  `SET LOCAL` na transação e **todas as consultas devem usar o `tx` recebido**;
+  qualquer consulta fora dele sai por outra conexão, sem contexto. Um `SET`
+  solto vazaria para o próximo request do pool.
+- **Login atravessa o RLS por fresta controlada**: `fn_busca_usuario_login` é
+  SECURITY DEFINER (migration 08) porque o login acontece antes de existir
+  contexto. Nunca abra a tabela `usuarios` ao papel da aplicação.
 - **Views precisam de `security_invoker`.** Sem isso rodam com os privilégios do
   dono e devolvem linhas que o RLS deveria esconder. As três já estão marcadas.
 - Views (`v_classificacao`, `v_estatisticas_atleta`, `v_atletas_fora_faixa`) são
