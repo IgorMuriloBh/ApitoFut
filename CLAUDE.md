@@ -26,6 +26,7 @@ ele é a especificação executável.
 - `db/06-rls.sql` — Row Level Security multi-tenant, **ativo**
 - `db/07-realtime.sql` — NOTIFY de lances/jogo para a súmula ao vivo (RF020)
 - `db/08-auth.sql` — frestas SECURITY DEFINER para o login atravessar o RLS
+- `db/09-categoria-defaults.sql` — categoria nova nasce com colunas, critérios e súmula default
 
 ## Banco de dados
 

@@ -169,7 +169,8 @@ apitofut/
 │   ├── 05-coluna-extra.sql      ajuste manual do organizador por equipe
 │   ├── 06-rls.sql               Row Level Security multi-tenant
 │   ├── 07-realtime.sql          NOTIFY da súmula ao vivo (RF020)
-│   └── 08-auth.sql              frestas SECURITY DEFINER para o login
+│   ├── 08-auth.sql              frestas SECURITY DEFINER para o login
+│   └── 09-categoria-defaults.sql  defaults completos por categoria
 ├── docs/
 │   ├── especificacao-completa.docx
 │   ├── modelo-dados-apitofut.docx

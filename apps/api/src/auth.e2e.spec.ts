@@ -143,6 +143,101 @@ describe('painel — o outro lado do RLS', () => {
   });
 });
 
+describe('wizard de criação — escrita sob RLS', () => {
+  let token: string;
+  let criadaId: string | null = null;
+
+  before(async () => {
+    token = (await login('demo@apitofut.com', 'demo')).corpo.token;
+  });
+
+  after(async () => {
+    if (criadaId) {
+      await admin.competicoes.delete({ where: { id: criadaId } });
+    }
+  });
+
+  test('cria pelo wizard: nasce em_criacao, slug do trigger, defaults completos', async () => {
+    const r = await fetch(`${base}/painel/competicoes`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        nome: 'Copa E2E Wizard',
+        estado: 'MG',
+        cidade: 'Contagem',
+        dataInicio: '2027-08-01',
+        categorias: [{ nome: 'Sub-11 E2E' }],
+      }),
+    });
+    assert.equal(r.status, 201);
+    const corpo = (await r.json()) as any;
+    criadaId = corpo.id;
+
+    assert.equal(corpo.status, 'em_criacao');
+    assert.equal(corpo.slug, 'copa-e2e-wizard');
+
+    // defaults nascidos do trigger do banco, não de código de aplicação
+    const criterios = await admin.categoria_criterio_desempate.count({
+      where: { categoria_id: corpo.categorias[0].id },
+    });
+    assert.equal(criterios, 9);
+
+    // em_criacao: portal não vê
+    const publico = await fetch(`${base}/competicoes/copa-e2e-wizard`);
+    assert.equal(publico.status, 404);
+    await publico.body?.cancel();
+  });
+
+  test('outra organização não muda o status da competição alheia', async () => {
+    const tokenOrg2 = (await login('marina@apitofut.com', 'demo')).corpo.token;
+    const r = await fetch(`${base}/painel/competicoes/${criadaId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenOrg2}`,
+      },
+      body: JSON.stringify({ status: 'publicada' }),
+    });
+    assert.equal(r.status, 404); // sob RLS, a competição nem existe para ela
+    await r.body?.cancel();
+  });
+
+  test('o dono publica e o portal passa a ver — sem nomes de atleta', async () => {
+    const r = await fetch(`${base}/painel/competicoes/${criadaId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status: 'publicada' }),
+    });
+    assert.equal(r.status, 200);
+    await r.body?.cancel();
+
+    const publico = await fetch(`${base}/competicoes/copa-e2e-wizard`);
+    assert.equal(publico.status, 200);
+    const d = (await publico.json()) as any;
+    assert.equal(d.exibeNomesDeAtletas, false);
+  });
+
+  test('validação do wizard responde 400 com a mensagem do protótipo', async () => {
+    const r = await fetch(`${base}/painel/competicoes`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ estado: 'MG', cidade: 'BH', dataInicio: '2027-01-01' }),
+    });
+    assert.equal(r.status, 400);
+    const corpo = (await r.json()) as any;
+    assert.match(corpo.message, /nome do campeonato/);
+  });
+});
+
 describe('fresta mínima no RLS de usuarios', () => {
   test('o papel da aplicação não lê usuarios diretamente sem contexto', async () => {
     const appDb = new PrismaClient({
