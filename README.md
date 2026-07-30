@@ -8,7 +8,7 @@ Passo a passo do zero até o Claude Code trabalhando com o banco rodando.
 
 | Ferramenta | Verificar | Se faltar |
 |---|---|---|
-| Node 18+ | `node -v` | https://nodejs.org ou `nvm install --lts` |
+| Node 24 LTS | `node -v` | `nvm install 24 && nvm use 24` |
 | Docker | `docker -v` | https://docs.docker.com/get-docker/ |
 | Git | `git -v` | https://git-scm.com |
 
@@ -39,7 +39,7 @@ docker compose up -d
 
 Isso levanta dois contêineres:
 
-- **Postgres 16** em `localhost:5432` — aplica `db/01-schema.sql`, `db/02-seed.sql`
+- **PostgreSQL 18** em `localhost:5432` — aplica `db/01-schema.sql`, `db/02-seed.sql`
   e `db/03-hardening.sql` automaticamente na primeira subida
 - **Adminer** em http://localhost:8080 — cliente web para navegar nas tabelas
 

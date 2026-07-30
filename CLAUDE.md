@@ -27,7 +27,7 @@ ele é a especificação executável.
 ## Banco de dados
 
 ```bash
-docker compose up -d          # sobe Postgres 16 + Adminer
+docker compose up -d          # sobe PostgreSQL 18 + Adminer
 docker compose down -v        # zera tudo e reaplica schema + seed na próxima subida
 psql postgresql://apitofut:apitofut_dev@localhost:5432/apitofut
 ```
@@ -74,14 +74,46 @@ Ao mexer no portal, verifique as três camadas de proteção que existem no prot
 - Imagens vão para storage de objetos; o banco guarda só `*_url`
 - Senhas com bcrypt/argon2 — o seed usa placeholder, trocar antes de qualquer deploy
 
-## Stack sugerida (a confirmar)
+## Stack definida (30/07/2026)
 
-Nada foi implementado ainda. A decisão de stack está em aberto; o schema é agnóstico.
-Requisitos que influenciam a escolha:
+| Camada | Escolha |
+|---|---|
+| Runtime | **Node 24 LTS** (suporte até abr/2028) |
+| Backend | **NestJS 11** + TypeScript, **Prisma 7** sobre **PostgreSQL 18** |
+| Painel administrativo | **React 19 + Vite 8 + Tailwind 4** (SPA — fica atrás de login, SEO irrelevante) |
+| Portal público | **Next.js 16 (App Router)** — SSR, para SEO por competição e domínio próprio |
 
-- Tempo real na súmula (RF020) — WebSocket ou LISTEN/NOTIFY
-- Multi-tenant com isolamento por organização — avaliar Row Level Security
-- Portal público com bom SEO por competição (white-label, domínio próprio)
+O portal resolve a competição por **host** (`competicoes.dominio_personalizado`) ou por
+**slug** (`apitofut.com/{slug}`); esse mapeamento vive no middleware do Next. É o motivo
+da escolha do Next para essa camada — o painel não precisa disso.
+
+Versões travadas no estável atual: o projeto é greenfield, então começar majors atrás
+seria débito técnico de partida. Decisões que foram descartadas e por quê:
+
+- **Node 20** — fora de suporte desde 30/04/2026, sem patches de segurança.
+- **Prisma 5** — anterior ao PostgreSQL 17/18; não suporta o banco escolhido.
+- **SPA puro para tudo** — conflita com o requisito de SEO do portal público.
+
+### Regra crítica: o SQL é a fonte da verdade, o Prisma apenas lê
+
+O schema é *database-first*: triggers, views, checks, `citext` e RLS. O Prisma **não
+expressa nada disso** no `schema.prisma`. Portanto:
+
+- Mudança de schema = nova migration SQL em `db/`; **nunca** `prisma migrate dev`.
+- Depois de alterar o SQL, rode `prisma db pull` para regenerar os tipos do client.
+- O `schema.prisma` é artefato **gerado** — não editar à mão.
+
+### Armadilhas do Prisma neste modelo (já conhecidas)
+
+- **Placar volta desatualizado após gravar um lance.** Quem recalcula é o trigger
+  `fn_recalcula_placar`, que roda depois; o objeto devolvido pelo Prisma traz o valor
+  antigo. Sempre reler o jogo após inserir/editar/remover um evento.
+- **Tempo real (RF020) não passa pelo Prisma.** `LISTEN/NOTIFY` exige uma conexão `pg`
+  dedicada, separada do pool do Prisma.
+- **RLS exige `SET LOCAL app.current_org` dentro da transação.** Com pool de conexões,
+  um `SET` solto vaza para o próximo request. Ver `db/optional/rls.sql`.
+- Views (`v_classificacao`, `v_estatisticas_atleta`, `v_atletas_fora_faixa`) são
+  somente leitura no Prisma.
 
 ## Ao trabalhar neste projeto
 
