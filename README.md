@@ -39,8 +39,8 @@ docker compose up -d
 
 Isso levanta dois contêineres:
 
-- **Postgres 16** em `localhost:5432` — aplica `db/01-schema.sql` e `db/02-seed.sql`
-  automaticamente na primeira subida
+- **Postgres 16** em `localhost:5432` — aplica `db/01-schema.sql`, `db/02-seed.sql`
+  e `db/03-hardening.sql` automaticamente na primeira subida
 - **Adminer** em http://localhost:8080 — cliente web para navegar nas tabelas
 
 Credenciais de desenvolvimento:
@@ -157,7 +157,9 @@ apitofut/
 ├── docker-compose.yml           Postgres + Adminer
 ├── db/
 │   ├── 01-schema.sql            DDL — 27 tabelas, 16 enums, 3 views, 6 triggers
-│   └── 02-seed.sql              carga de desenvolvimento
+│   ├── 02-seed.sql              carga de desenvolvimento
+│   ├── 03-hardening.sql         migration de correções do modelo
+│   └── optional/rls.sql         RLS multi-tenant (aplicar manualmente)
 ├── docs/
 │   ├── especificacao-completa.docx
 │   ├── modelo-dados-apitofut.docx

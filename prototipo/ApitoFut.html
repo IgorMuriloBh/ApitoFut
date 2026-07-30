@@ -3674,7 +3674,7 @@ function seedDemo(){
   ['semi','final'].forEach((f,fi)=>{
     const n=f==='semi'?2:1;
     for(let i=0;i<n;i++){
-      const d=new Date('2026-09-0'+(5+fi*7)+'T12:00:00');
+      const d=new Date('2026-09-05T12:00:00'); d.setDate(d.getDate()+fi*7);
       c.jogos.push({id:uid('j'),catId:k.id,fase:f,grupo:null,rodada:null,mandanteId:null,visitanteId:null,
         mandanteLbl:f==='semi'?paresPrimeiraFase(2,4)[i][0]:'Vencedor Semifinal 1',
         visitanteLbl:f==='semi'?paresPrimeiraFase(2,4)[i][1]:'Vencedor Semifinal 2',

@@ -19,6 +19,10 @@ ele é a especificação executável.
 - `docs/especificacao-completa.docx` — requisitos funcionais RF001 a RF034
 - `docs/modelo-dados-apitofut.docx` — dicionário de dados e decisões de modelagem
 - `db/01-schema.sql` — DDL PostgreSQL, fonte da verdade do banco
+- `db/03-hardening.sql` — migration de correções (locks, defaults de categoria,
+  pênalti perdido, faixa etária por temporada, slug, checks de hex)
+- `db/optional/rls.sql` — políticas de Row Level Security, **não** aplicadas
+  automaticamente; ativar quando a role de conexão da aplicação existir
 
 ## Banco de dados
 
