@@ -39,6 +39,23 @@ export class CompeticoesService {
   }
 
   /**
+   * Resolve o slug respeitando a visibilidade, sem montar a resposta.
+   * Usado por endpoints aninhados (classificação, jogos) que precisam
+   * validar o acesso antes de consultar dados da categoria.
+   */
+  async exigirCompeticaoVisivel(slug: string) {
+    const competicao = await this.prisma.competicoes.findFirst({
+      where: { slug, status: { in: STATUS_VISIVEIS_NO_PORTAL } },
+    });
+
+    if (!competicao) {
+      throw new NotFoundException(`Competição "${slug}" não encontrada.`);
+    }
+
+    return competicao;
+  }
+
+  /**
    * Monta a resposta com uma lista explícita de campos. Não devolvemos a
    * entidade do Prisma direto: `organizacao_id`, `criado_por` e afins são
    * internos e não podem vazar num endpoint público.

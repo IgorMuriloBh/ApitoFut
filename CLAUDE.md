@@ -21,6 +21,7 @@ ele é a especificação executável.
 - `db/01-schema.sql` — DDL PostgreSQL, fonte da verdade do banco
 - `db/03-hardening.sql` — migration de correções (locks, defaults de categoria,
   pênalti perdido, faixa etária por temporada, slug, checks de hex)
+- `db/04-classificacao.sql` — v_classificacao alinhada ao protótipo
 - `db/optional/rls.sql` — políticas de Row Level Security, **não** aplicadas
   automaticamente; ativar quando a role de conexão da aplicação existir
 
@@ -57,6 +58,10 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
 - **Limite de atletas por equipe** vem de `categoria_inscricao_config.max_atletas`
 - **Configurações são por categoria**, replicáveis mas editáveis individualmente
 - **Faixa etária Sub-N é aviso, não bloqueio** — tabela `faixas_etarias`
+- **Classificação conta só fase de grupos e jogo encerrado** — inclusive os
+  cartões. Toda equipe inscrita aparece na tabela, mesmo sem ter jogado
+- **Só desempata por coluna visível**: esconder uma coluna da classificação
+  também a remove dos critérios de desempate (`calcClassificacao` no protótipo)
 
 ## Visibilidade do portal público
 

@@ -159,6 +159,7 @@ apitofut/
 │   ├── 01-schema.sql            DDL — 27 tabelas, 16 enums, 3 views, 6 triggers
 │   ├── 02-seed.sql              carga de desenvolvimento
 │   ├── 03-hardening.sql         migration de correções do modelo
+│   ├── 04-classificacao.sql     v_classificacao alinhada ao protótipo
 │   └── optional/rls.sql         RLS multi-tenant (aplicar manualmente)
 ├── docs/
 │   ├── especificacao-completa.docx
