@@ -153,17 +153,19 @@ model categoria_regras {
   pontos_empate          Int        @default(1)
   pontos_derrota         Int        @default(0)
   modelo_sumula          String     @default("modelo1")
+  coluna_extra_rotulo    String     @default("Coluna Extra")
   categorias             categorias @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model categoria_times {
-  categoria_id String     @db.Uuid
-  time_id      String     @db.Uuid
-  grupo_id     String?    @db.Uuid
-  vinculado_em DateTime   @default(now()) @db.Timestamptz(6)
-  categorias   categorias @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  grupos       grupos?    @relation(fields: [grupo_id], references: [id], onUpdate: NoAction)
-  times        times      @relation(fields: [time_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categoria_id           String                  @db.Uuid
+  time_id                String                  @db.Uuid
+  grupo_id               String?                 @db.Uuid
+  vinculado_em           DateTime                @default(now()) @db.Timestamptz(6)
+  categoria_coluna_extra categoria_coluna_extra?
+  categorias             categorias              @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  grupos                 grupos?                 @relation(fields: [grupo_id], references: [id], onUpdate: NoAction)
+  times                  times                   @relation(fields: [time_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([categoria_id, time_id])
   @@index([grupo_id], map: "idx_cat_times_grupo")
@@ -487,6 +489,19 @@ model usuarios {
 
   @@index([organizacao_id], map: "idx_usuarios_organizacao")
   @@index([situacao], map: "idx_usuarios_situacao", where: raw("(situacao = 'pendente'::situacao_usuario)"))
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model categoria_coluna_extra {
+  categoria_id    String          @db.Uuid
+  time_id         String          @db.Uuid
+  valor           Int             @default(0)
+  motivo          String?
+  criado_em       DateTime        @default(now()) @db.Timestamptz(6)
+  atualizado_em   DateTime        @default(now()) @db.Timestamptz(6)
+  categoria_times categoria_times @relation(fields: [categoria_id, time_id], references: [categoria_id, time_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_coluna_extra_vinculo")
+
+  @@id([categoria_id, time_id])
 }
 
 enum campo_atleta {

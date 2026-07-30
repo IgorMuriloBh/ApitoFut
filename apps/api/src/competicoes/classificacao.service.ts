@@ -23,15 +23,16 @@ interface LinhaCrua {
   saldo_gols: number;
   pontos: number;
   porcentagem: number;
+  coluna_extra: number;
   cartao_amarelo: number;
   cartao_vermelho: number;
   cartao_azul: number;
 }
 
 /**
- * Critério de desempate → coluna da view. `coluna_extra` é ajuste manual do
- * organizador; ainda não existe onde guardar (ver rodapé de 04-classificacao.sql),
- * então vale 0 para todo mundo e nunca desempata.
+ * Critério de desempate → coluna da view. Todos têm origem de dados desde a
+ * migration 05, que deu armazenamento à coluna_extra (ajuste manual do
+ * organizador, em categoria_coluna_extra).
  */
 const COLUNA_DA_VIEW: Record<coluna_classificacao, keyof LinhaCrua | null> = {
   pontos: 'pontos',
@@ -46,7 +47,7 @@ const COLUNA_DA_VIEW: Record<coluna_classificacao, keyof LinhaCrua | null> = {
   cartao_amarelo: 'cartao_amarelo',
   cartao_vermelho: 'cartao_vermelho',
   cartao_azul: 'cartao_azul',
-  coluna_extra: null,
+  coluna_extra: 'coluna_extra',
 };
 
 @Injectable()
@@ -62,7 +63,7 @@ export class ClassificacaoService {
       categoriaId,
     );
 
-    const [linhas, colunas, criterios] = await Promise.all([
+    const [linhas, colunas, criterios, regras] = await Promise.all([
       this.lerLinhas(categoriaId),
       this.prisma.categoria_coluna_classificacao.findMany({
         where: { categoria_id: categoriaId, visivel: true },
@@ -70,6 +71,9 @@ export class ClassificacaoService {
       this.prisma.categoria_criterio_desempate.findMany({
         where: { categoria_id: categoriaId },
         orderBy: { ordem: 'asc' },
+      }),
+      this.prisma.categoria_regras.findUnique({
+        where: { categoria_id: categoriaId },
       }),
     ]);
 
@@ -87,6 +91,9 @@ export class ClassificacaoService {
       competicao: { slug: competicao.slug, nome: competicao.nome },
       categoria: { id: categoria.id, nome: categoria.nome },
       colunasVisiveis: [...visiveis],
+      // Rótulo que o organizador deu à coluna de ajuste manual — o portal
+      // precisa dele no cabeçalho; "Coluna Extra" não diz nada ao torcedor.
+      colunaExtraRotulo: regras?.coluna_extra_rotulo ?? 'Coluna Extra',
       criteriosDesempate: criteriosAtivos.map((c) => ({
         ordem: c.ordem,
         criterio: c.criterio,
@@ -113,6 +120,7 @@ export class ClassificacaoService {
         vc.saldo_gols::int        AS saldo_gols,
         vc.pontos::int            AS pontos,
         vc.porcentagem::float8    AS porcentagem,
+        vc.coluna_extra::int      AS coluna_extra,
         vc.cartao_amarelo::int    AS cartao_amarelo,
         vc.cartao_vermelho::int   AS cartao_vermelho,
         vc.cartao_azul::int       AS cartao_azul
@@ -166,6 +174,7 @@ export class ClassificacaoService {
           saldoGols: t.saldo_gols,
           pontos: t.pontos,
           porcentagem: t.porcentagem,
+          colunaExtra: t.coluna_extra,
           cartaoAmarelo: t.cartao_amarelo,
           cartaoVermelho: t.cartao_vermelho,
           cartaoAzul: t.cartao_azul,
