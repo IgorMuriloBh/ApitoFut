@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, coluna_classificacao } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
+import { coluna_classificacao } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompeticoesService } from './competicoes.service';
 
@@ -57,18 +57,10 @@ export class ClassificacaoService {
   ) {}
 
   async porCategoria(slug: string, categoriaId: string) {
-    const competicao = await this.competicoes.exigirCompeticaoVisivel(slug);
-
-    // A categoria precisa ser DESTA competição — sem isso o id viraria uma
-    // porta lateral para ler classificação de qualquer outra.
-    const categoria = await this.prisma.categorias.findFirst({
-      where: { id: categoriaId, competicao_id: competicao.id },
-    });
-    if (!categoria) {
-      throw new NotFoundException(
-        `Categoria não encontrada na competição "${slug}".`,
-      );
-    }
+    const { competicao, categoria } = await this.competicoes.exigirCategoriaVisivel(
+      slug,
+      categoriaId,
+    );
 
     const [linhas, colunas, criterios] = await Promise.all([
       this.lerLinhas(categoriaId),

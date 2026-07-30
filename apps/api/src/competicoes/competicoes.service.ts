@@ -56,6 +56,27 @@ export class CompeticoesService {
   }
 
   /**
+   * Guard obrigatório de todo endpoint aninhado em uma categoria: além da
+   * visibilidade, garante que a categoria é DESTA competição. Sem isso o
+   * categoriaId viraria porta lateral para ler dados de outra organização —
+   * e hoje ainda não há RLS ligado no banco.
+   */
+  async exigirCategoriaVisivel(slug: string, categoriaId: string) {
+    const competicao = await this.exigirCompeticaoVisivel(slug);
+
+    const categoria = await this.prisma.categorias.findFirst({
+      where: { id: categoriaId, competicao_id: competicao.id },
+    });
+    if (!categoria) {
+      throw new NotFoundException(
+        `Categoria não encontrada na competição "${slug}".`,
+      );
+    }
+
+    return { competicao, categoria };
+  }
+
+  /**
    * Monta a resposta com uma lista explícita de campos. Não devolvemos a
    * entidade do Prisma direto: `organizacao_id`, `criado_por` e afins são
    * internos e não podem vazar num endpoint público.
