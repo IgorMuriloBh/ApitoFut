@@ -1,0 +1,627 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model arbitros {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  competicao_id String         @db.Uuid
+  nome          String
+  cpf           String?        @db.Char(11)
+  foto_url      String?
+  federacao     String?
+  funcao        funcao_arbitro @default(principal)
+  contato       String?
+  competicoes   competicoes    @relation(fields: [competicao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  jogos         jogos[]
+
+  @@index([competicao_id], map: "idx_arbitros_competicao")
+}
+
+model atleta_documentos {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  atleta_id   String   @db.Uuid
+  tipo        String
+  arquivo_url String
+  enviado_em  DateTime @default(now()) @db.Timestamptz(6)
+  atletas     atletas  @relation(fields: [atleta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model atletas {
+  id                                                       String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome                                                     String
+  apelido                                                  String?
+  foto_url                                                 String?
+  cpf                                                      String?             @unique @db.Char(11)
+  rg                                                       String?
+  certidao_nascimento                                      String?
+  passaporte                                               String?
+  titulo_eleitor                                           String?
+  data_nascimento                                          DateTime?           @db.Date
+  genero                                                   String?
+  posicao                                                  String?
+  nacionalidade                                            String?             @default("Brasileira")
+  celular                                                  String?
+  email                                                    String?             @db.Citext
+  responsavel_nome                                         String?
+  responsavel_contato                                      String?
+  criado_em                                                DateTime            @default(now()) @db.Timestamptz(6)
+  atualizado_em                                            DateTime            @default(now()) @db.Timestamptz(6)
+  atleta_documentos                                        atleta_documentos[]
+  inscricoes                                               inscricoes[]
+  jogo_escalacoes                                          jogo_escalacoes[]
+  jogo_eventos_jogo_eventos_assistencia_atleta_idToatletas jogo_eventos[]      @relation("jogo_eventos_assistencia_atleta_idToatletas")
+  jogo_eventos_jogo_eventos_atleta_idToatletas             jogo_eventos[]      @relation("jogo_eventos_atleta_idToatletas")
+  jogo_eventos_jogo_eventos_substituido_atleta_idToatletas jogo_eventos[]      @relation("jogo_eventos_substituido_atleta_idToatletas")
+  suspensoes                                               suspensoes[]
+
+  @@index([data_nascimento], map: "idx_atletas_nasc")
+}
+
+model campo_fotos {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campo_id    String @db.Uuid
+  arquivo_url String
+  ordem       Int    @default(0)
+  campos      campos @relation(fields: [campo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model campos {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  competicao_id String        @db.Uuid
+  nome          String
+  endereco      String?
+  latitude      Decimal?      @db.Decimal(10, 7)
+  longitude     Decimal?      @db.Decimal(10, 7)
+  tipo_piso     String?
+  capacidade    Int?
+  observacoes   String?
+  campo_fotos   campo_fotos[]
+  competicoes   competicoes   @relation(fields: [competicao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  jogos         jogos[]
+
+  @@index([competicao_id], map: "idx_campos_competicao")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model categoria_campo_atleta {
+  categoria_id String       @db.Uuid
+  campo        campo_atleta
+  pedir        Boolean      @default(false)
+  obrigatorio  Boolean      @default(false)
+  categorias   categorias   @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([categoria_id, campo])
+}
+
+model categoria_campo_sumula {
+  categoria_id String      @db.Uuid
+  campo        tipo_evento
+  habilitado   Boolean     @default(false)
+  categorias   categorias  @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([categoria_id, campo])
+}
+
+model categoria_coluna_classificacao {
+  categoria_id String               @db.Uuid
+  coluna       coluna_classificacao
+  visivel      Boolean              @default(true)
+  categorias   categorias           @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([categoria_id, coluna])
+}
+
+model categoria_criterio_desempate {
+  categoria_id String               @db.Uuid
+  ordem        Int
+  criterio     coluna_classificacao
+  direcao      direcao_criterio     @default(DESC)
+  categorias   categorias           @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([categoria_id, ordem])
+  @@unique([categoria_id, criterio], map: "uq_criterio_unico")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model categoria_inscricao_config {
+  categoria_id       String     @id @db.Uuid
+  max_atletas        Int        @default(20)
+  max_comissao       Int        @default(3)
+  permite_inscrever  Boolean    @default(true)
+  permite_editar     Boolean    @default(true)
+  permite_remover    Boolean    @default(false)
+  inscricoes_abertas Boolean    @default(true)
+  categorias         categorias @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model categoria_regras {
+  categoria_id           String     @id @db.Uuid
+  suspensao_ativa        Boolean    @default(false)
+  num_amarelos           Int        @default(3)
+  jogos_por_amarelo      Int        @default(1)
+  jogos_por_vermelho     Int        @default(1)
+  acumular_dois_amarelos Boolean    @default(false)
+  pontos_vitoria         Int        @default(3)
+  pontos_empate          Int        @default(1)
+  pontos_derrota         Int        @default(0)
+  modelo_sumula          String     @default("modelo1")
+  categorias             categorias @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model categoria_times {
+  categoria_id String     @db.Uuid
+  time_id      String     @db.Uuid
+  grupo_id     String?    @db.Uuid
+  vinculado_em DateTime   @default(now()) @db.Timestamptz(6)
+  categorias   categorias @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  grupos       grupos?    @relation(fields: [grupo_id], references: [id], onUpdate: NoAction)
+  times        times      @relation(fields: [time_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([categoria_id, time_id])
+  @@index([grupo_id], map: "idx_cat_times_grupo")
+  @@index([time_id], map: "idx_cat_times_time")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model categorias {
+  id                             String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  competicao_id                  String                           @db.Uuid
+  nome                           String
+  tipo                           tipo_categoria                   @default(adulto)
+  genero                         genero_categoria                 @default(masculino)
+  modalidade                     modalidade                       @default(fut7)
+  formato                        formato_categoria                @default(grupos_mata)
+  num_times                      Int                              @default(8)
+  num_grupos                     Int                              @default(2)
+  fase_mata_mata                 String                           @default("semi")
+  turno_returno                  Boolean                          @default(false)
+  ordem                          Int                              @default(0)
+  criado_em                      DateTime                         @default(now()) @db.Timestamptz(6)
+  categoria_campo_atleta         categoria_campo_atleta[]
+  categoria_campo_sumula         categoria_campo_sumula[]
+  categoria_coluna_classificacao categoria_coluna_classificacao[]
+  categoria_criterio_desempate   categoria_criterio_desempate[]
+  categoria_inscricao_config     categoria_inscricao_config?
+  categoria_regras               categoria_regras?
+  categoria_times                categoria_times[]
+  competicoes                    competicoes                      @relation(fields: [competicao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  fases                          fases[]
+  grupos                         grupos[]
+  inscricoes                     inscricoes[]
+  jogos                          jogos[]
+  suspensoes                     suspensoes[]
+
+  @@unique([competicao_id, nome], map: "uq_categoria_nome")
+  @@index([competicao_id], map: "idx_categorias_competicao")
+}
+
+model comissao_tecnica {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  time_id   String  @db.Uuid
+  nome      String
+  cargo     String  @default("Técnico")
+  documento String?
+  contato   String?
+  times     times   @relation(fields: [time_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([time_id], map: "idx_comissao_time")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model competicoes {
+  id                    String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacao_id        String            @db.Uuid
+  criado_por            String?           @db.Uuid
+  nome                  String
+  slug                  String            @unique(map: "uq_comp_slug")
+  temporada             Int?
+  data_inicio           DateTime          @db.Date
+  data_fim              DateTime?         @db.Date
+  regulamento           String?
+  logo_url              String?
+  banner_url            String?
+  pais                  String            @default("Brasil")
+  estado                String            @db.Char(2)
+  cidade                String
+  cor_primaria          String            @default("#16A34A") @db.Char(7)
+  dominio_personalizado String?           @unique(map: "uq_comp_dominio")
+  status                status_competicao @default(em_criacao)
+  possui_categorias     Boolean           @default(true)
+  publicada_em          DateTime?         @db.Timestamptz(6)
+  encerrada_em          DateTime?         @db.Timestamptz(6)
+  criado_em             DateTime          @default(now()) @db.Timestamptz(6)
+  atualizado_em         DateTime          @default(now()) @db.Timestamptz(6)
+  arbitros              arbitros[]
+  campos                campos[]
+  categorias            categorias[]
+  usuarios              usuarios?         @relation(fields: [criado_por], references: [id], onUpdate: NoAction)
+  organizacoes          organizacoes      @relation(fields: [organizacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  patrocinadores        patrocinadores[]
+  times                 times[]
+
+  @@index([organizacao_id], map: "idx_comp_organizacao")
+  @@index([status], map: "idx_comp_status")
+}
+
+model faixas_etarias {
+  sub            Int @id
+  ano_nascimento Int
+  temporada      Int @default(2026)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model fases {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoria_id String     @db.Uuid
+  chave        String
+  nome         String
+  tipo         tipo_fase
+  num_jogos    Int?
+  ordem        Int
+  categorias   categorias @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  jogos        jogos[]
+
+  @@unique([categoria_id, chave], map: "uq_fase_chave")
+  @@unique([categoria_id, ordem], map: "uq_fase_ordem")
+  @@index([categoria_id], map: "idx_fases_categoria")
+}
+
+model grupos {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoria_id    String            @db.Uuid
+  nome            String            @db.Char(2)
+  ordem           Int               @default(0)
+  categoria_times categoria_times[]
+  categorias      categorias        @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  jogos           jogos[]
+
+  @@unique([categoria_id, nome], map: "uq_grupo_nome")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model inscricoes {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoria_id  String     @db.Uuid
+  time_id       String     @db.Uuid
+  atleta_id     String     @db.Uuid
+  numero_camisa Int?
+  criado_em     DateTime   @default(now()) @db.Timestamptz(6)
+  atletas       atletas    @relation(fields: [atleta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categorias    categorias @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  times         times      @relation(fields: [time_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([categoria_id, atleta_id], map: "uq_inscricao_categoria")
+  @@unique([categoria_id, time_id, numero_camisa], map: "uq_numero_camisa")
+  @@index([atleta_id], map: "idx_inscricoes_atleta")
+  @@index([time_id], map: "idx_inscricoes_time")
+}
+
+model jogo_escalacoes {
+  jogo_id   String  @db.Uuid
+  atleta_id String  @db.Uuid
+  time_id   String  @db.Uuid
+  titular   Boolean @default(true)
+  minutos   Int?
+  atletas   atletas @relation(fields: [atleta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  jogos     jogos   @relation(fields: [jogo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  times     times   @relation(fields: [time_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([jogo_id, atleta_id])
+  @@index([atleta_id], map: "idx_escalacoes_atleta")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model jogo_eventos {
+  id                                                  String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jogo_id                                             String       @db.Uuid
+  tipo                                                tipo_evento
+  time_id                                             String       @db.Uuid
+  atleta_id                                           String?      @db.Uuid
+  assistencia_atleta_id                               String?      @db.Uuid
+  substituido_atleta_id                               String?      @db.Uuid
+  minuto                                              Int
+  periodo                                             Int          @default(1) @db.SmallInt
+  gol_contra                                          Boolean      @default(false)
+  registrado_por                                      String?      @db.Uuid
+  criado_em                                           DateTime     @default(now()) @db.Timestamptz(6)
+  atualizado_em                                       DateTime     @default(now()) @db.Timestamptz(6)
+  convertido                                          Boolean      @default(true)
+  atletas_jogo_eventos_assistencia_atleta_idToatletas atletas?     @relation("jogo_eventos_assistencia_atleta_idToatletas", fields: [assistencia_atleta_id], references: [id], onUpdate: NoAction)
+  atletas_jogo_eventos_atleta_idToatletas             atletas?     @relation("jogo_eventos_atleta_idToatletas", fields: [atleta_id], references: [id], onUpdate: NoAction)
+  jogos                                               jogos        @relation(fields: [jogo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usuarios                                            usuarios?    @relation(fields: [registrado_por], references: [id], onUpdate: NoAction)
+  atletas_jogo_eventos_substituido_atleta_idToatletas atletas?     @relation("jogo_eventos_substituido_atleta_idToatletas", fields: [substituido_atleta_id], references: [id], onUpdate: NoAction)
+  times                                               times        @relation(fields: [time_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  suspensoes                                          suspensoes[]
+
+  @@index([atleta_id], map: "idx_eventos_atleta")
+  @@index([jogo_id], map: "idx_eventos_jogo")
+  @@index([tipo], map: "idx_eventos_tipo")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model jogos {
+  id                              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoria_id                    String            @db.Uuid
+  fase_id                         String?           @db.Uuid
+  grupo_id                        String?           @db.Uuid
+  rodada                          Int?
+  ordem                           Int               @default(0)
+  mandante_id                     String?           @db.Uuid
+  visitante_id                    String?           @db.Uuid
+  mandante_rotulo                 String?
+  visitante_rotulo                String?
+  data                            DateTime?         @db.Date
+  hora                            DateTime?         @db.Time(6)
+  campo_id                        String?           @db.Uuid
+  arbitro_id                      String?           @db.Uuid
+  status                          status_jogo       @default(agendado)
+  placar_mandante                 Int               @default(0)
+  placar_visitante                Int               @default(0)
+  penaltis_mandante               Int?
+  penaltis_visitante              Int?
+  periodo                         Int               @default(0) @db.SmallInt
+  crono_base_seg                  Int               @default(0)
+  crono_rodando                   Boolean           @default(false)
+  crono_desde                     DateTime?         @db.Timestamptz(6)
+  observacoes                     String?
+  criado_em                       DateTime          @default(now()) @db.Timestamptz(6)
+  atualizado_em                   DateTime          @default(now()) @db.Timestamptz(6)
+  jogo_escalacoes                 jogo_escalacoes[]
+  jogo_eventos                    jogo_eventos[]
+  arbitros                        arbitros?         @relation(fields: [arbitro_id], references: [id], onUpdate: NoAction)
+  campos                          campos?           @relation(fields: [campo_id], references: [id], onUpdate: NoAction)
+  categorias                      categorias        @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  fases                           fases?            @relation(fields: [fase_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  grupos                          grupos?           @relation(fields: [grupo_id], references: [id], onUpdate: NoAction)
+  times_jogos_mandante_idTotimes  times?            @relation("jogos_mandante_idTotimes", fields: [mandante_id], references: [id], onUpdate: NoAction)
+  times_jogos_visitante_idTotimes times?            @relation("jogos_visitante_idTotimes", fields: [visitante_id], references: [id], onUpdate: NoAction)
+
+  @@index([categoria_id], map: "idx_jogos_categoria")
+  @@index([data], map: "idx_jogos_data")
+  @@index([status], map: "idx_jogos_status", where: raw("(status = 'ao_vivo'::status_jogo)"))
+  @@index([mandante_id, visitante_id], map: "idx_jogos_times")
+}
+
+model organizacoes {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome          String
+  documento     String?
+  telefone      String?
+  email_contato String?       @db.Citext
+  criado_em     DateTime      @default(now()) @db.Timestamptz(6)
+  atualizado_em DateTime      @default(now()) @db.Timestamptz(6)
+  competicoes   competicoes[]
+  usuarios      usuarios[]
+}
+
+model patrocinadores {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  competicao_id String      @db.Uuid
+  nome          String
+  logo_url      String?
+  site_url      String?
+  ordem         Int         @default(0)
+  competicoes   competicoes @relation(fields: [competicao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([competicao_id], map: "idx_patroc_competicao")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model suspensoes {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoria_id     String           @db.Uuid
+  atleta_id        String           @db.Uuid
+  motivo           motivo_suspensao
+  evento_origem_id String?          @db.Uuid
+  jogos_suspensao  Int
+  jogos_cumpridos  Int              @default(0)
+  ativa            Boolean          @default(true)
+  observacao       String?
+  criado_em        DateTime         @default(now()) @db.Timestamptz(6)
+  atletas          atletas          @relation(fields: [atleta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categorias       categorias       @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  jogo_eventos     jogo_eventos?    @relation(fields: [evento_origem_id], references: [id], onUpdate: NoAction)
+
+  @@index([atleta_id], map: "idx_suspensoes_atleta", where: raw("ativa"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model times {
+  id                              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  competicao_id                   String             @db.Uuid
+  nome                            String
+  escudo_url                      String?
+  uniforme_primario               String?            @db.Char(7)
+  uniforme_secundario             String?            @db.Char(7)
+  cidade                          String?
+  estado                          String?            @db.Char(2)
+  contato                         String?
+  email                           String?            @db.Citext
+  responsavel                     String?
+  origem                          origem_time        @default(organizador)
+  codigo_acesso                   String?            @db.Char(6)
+  inscrito_em                     DateTime?          @db.Timestamptz(6)
+  criado_em                       DateTime           @default(now()) @db.Timestamptz(6)
+  categoria_times                 categoria_times[]
+  comissao_tecnica                comissao_tecnica[]
+  inscricoes                      inscricoes[]
+  jogo_escalacoes                 jogo_escalacoes[]
+  jogo_eventos                    jogo_eventos[]
+  jogos_jogos_mandante_idTotimes  jogos[]            @relation("jogos_mandante_idTotimes")
+  jogos_jogos_visitante_idTotimes jogos[]            @relation("jogos_visitante_idTotimes")
+  competicoes                     competicoes        @relation(fields: [competicao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([competicao_id, codigo_acesso], map: "uq_time_codigo")
+  @@unique([competicao_id, nome], map: "uq_time_nome")
+  @@index([competicao_id], map: "idx_times_competicao")
+}
+
+model usuarios {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacao_id String?          @db.Uuid
+  nome           String
+  email          String           @unique @db.Citext
+  senha_hash     String
+  perfil         perfil_usuario   @default(organizador)
+  situacao       situacao_usuario @default(pendente)
+  ultimo_acesso  DateTime?        @db.Timestamptz(6)
+  liberado_por   String?          @db.Uuid
+  liberado_em    DateTime?        @db.Timestamptz(6)
+  criado_em      DateTime         @default(now()) @db.Timestamptz(6)
+  atualizado_em  DateTime         @default(now()) @db.Timestamptz(6)
+  competicoes    competicoes[]
+  jogo_eventos   jogo_eventos[]
+  usuarios       usuarios?        @relation("usuariosTousuarios", fields: [liberado_por], references: [id], onUpdate: NoAction)
+  other_usuarios usuarios[]       @relation("usuariosTousuarios")
+  organizacoes   organizacoes?    @relation(fields: [organizacao_id], references: [id], onUpdate: NoAction)
+
+  @@index([organizacao_id], map: "idx_usuarios_organizacao")
+  @@index([situacao], map: "idx_usuarios_situacao", where: raw("(situacao = 'pendente'::situacao_usuario)"))
+}
+
+enum campo_atleta {
+  apelido
+  foto
+  cpf
+  rg
+  certidao_nascimento
+  data_nascimento
+  posicao
+  numero_camisa
+  celular
+  email
+  passaporte
+  titulo_eleitor
+  genero
+  responsavel
+  nacionalidade
+  documentos_anexo
+}
+
+enum coluna_classificacao {
+  pontos
+  jogos
+  vitorias
+  empates
+  derrotas
+  gols_pro
+  gols_contra
+  saldo_gols
+  porcentagem
+  cartao_amarelo
+  cartao_vermelho
+  cartao_azul
+  coluna_extra
+}
+
+enum direcao_criterio {
+  ASC
+  DESC
+}
+
+enum formato_categoria {
+  grupos_mata
+  pontos_mata
+}
+
+enum funcao_arbitro {
+  principal
+  assistente
+  mesario
+}
+
+enum genero_categoria {
+  masculino
+  feminino
+}
+
+enum modalidade {
+  fut7
+  fut9
+  futsal
+  fut11
+}
+
+enum motivo_suspensao {
+  acumulo_amarelos
+  cartao_vermelho
+  manual
+}
+
+enum origem_time {
+  organizador
+  link_convite
+}
+
+enum perfil_usuario {
+  superadmin
+  organizador
+  operador
+  tecnico
+  arbitro
+  atleta
+}
+
+enum situacao_usuario {
+  pendente
+  ativo
+  bloqueado
+}
+
+enum status_competicao {
+  em_criacao
+  publicada
+  em_andamento
+  encerrada
+}
+
+enum status_jogo {
+  agendado
+  ao_vivo
+  encerrado
+  adiado
+  cancelado
+  wo
+}
+
+enum tipo_categoria {
+  infanto_juvenil
+  adulto
+}
+
+enum tipo_evento {
+  gol
+  penalti
+  assistencia
+  cartao_amarelo
+  cartao_vermelho
+  cartao_azul
+  substituicao
+  falta
+  falta_recebida
+  escanteio
+  defesa_dificil
+  defesa_penalti
+  desarme
+  passe_correto
+  passe_errado
+  finalizacao_certa
+  finalizacao_errada
+  finalizacao_trave
+  jogador_destaque
+}
+
+enum tipo_fase {
+  grupos
+  mata
+}

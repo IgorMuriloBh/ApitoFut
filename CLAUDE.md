@@ -29,10 +29,15 @@ ele é a especificação executável.
 ```bash
 docker compose up -d          # sobe PostgreSQL 18 + Adminer
 docker compose down -v        # zera tudo e reaplica schema + seed na próxima subida
-psql postgresql://apitofut:apitofut_dev@localhost:5432/apitofut
+psql postgresql://apitofut:apitofut_dev@localhost:5433/apitofut
 ```
 
 Adminer em http://localhost:8080 · servidor `db` · usuário `apitofut` · senha `apitofut_dev`
+
+O container publica a **5433** no host, não a 5432: a máquina de desenvolvimento tem um
+Postgres.app nativo ocupando a 5432, e no macOS o bind específico (`127.0.0.1`) ganha do
+curinga do Docker — conectar na 5432 cai no servidor errado e dá `P1010 denied access`.
+Dentro da rede do compose o Adminer continua falando com `db:5432`.
 
 Os arquivos de `db/` rodam em ordem alfabética **apenas na primeira subida** do volume.
 Ao alterar o schema, use `docker compose down -v` ou crie uma migration.
@@ -114,6 +119,29 @@ expressa nada disso** no `schema.prisma`. Portanto:
   um `SET` solto vaza para o próximo request. Ver `db/optional/rls.sql`.
 - Views (`v_classificacao`, `v_estatisticas_atleta`, `v_atletas_fora_faixa`) são
   somente leitura no Prisma.
+
+## Estrutura do código
+
+Monorepo com npm workspaces (`apps/*`), sem ferramenta extra:
+
+```
+apps/api/          NestJS — a única app existente hoje
+  prisma.config.ts   URL de conexão do CLI (o Prisma 7 tirou `url` do schema)
+  prisma/schema.prisma  GERADO por `prisma db pull` — não editar
+  src/prisma/        PrismaService com driver adapter (obrigatório no Prisma 7)
+  src/competicoes/   visibilidade.ts concentra a regra de status
+apps/painel/       (ainda não criado) Vite + React
+apps/portal/       (ainda não criado) Next.js
+```
+
+```bash
+npm run api:dev     # sobe a API em http://localhost:3000
+npm run db:pull     # reintrospecta o banco após mudar o SQL
+npm run db:reset    # down -v + up, reaplica 01/02/03
+```
+
+Endpoints públicos devem montar a resposta com lista explícita de campos, nunca
+devolver a entidade do Prisma direto — `organizacao_id` e `criado_por` são internos.
 
 ## Ao trabalhar neste projeto
 

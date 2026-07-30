@@ -39,14 +39,14 @@ docker compose up -d
 
 Isso levanta dois contêineres:
 
-- **PostgreSQL 18** em `localhost:5432` — aplica `db/01-schema.sql`, `db/02-seed.sql`
+- **PostgreSQL 18** em `localhost:5433` — aplica `db/01-schema.sql`, `db/02-seed.sql`
   e `db/03-hardening.sql` automaticamente na primeira subida
 - **Adminer** em http://localhost:8080 — cliente web para navegar nas tabelas
 
 Credenciais de desenvolvimento:
 
 ```
-host: localhost      porta: 5432
+host: localhost      porta: 5433
 banco: apitofut      usuário: apitofut      senha: apitofut_dev
 ```
 
@@ -107,7 +107,7 @@ Com um MCP de Postgres, o Claude consulta as tabelas direto em vez de adivinhar 
 ```bash
 claude mcp add postgres --scope project \
   -- npx -y @modelcontextprotocol/server-postgres \
-  postgresql://apitofut:apitofut_dev@localhost:5432/apitofut
+  postgresql://apitofut:apitofut_dev@localhost:5433/apitofut
 ```
 
 Verifique com `/mcp` dentro do Claude Code. Use conexão somente leitura em qualquer
