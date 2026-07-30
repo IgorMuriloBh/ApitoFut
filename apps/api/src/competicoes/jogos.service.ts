@@ -1,7 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma, status_jogo } from '@prisma/client';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompeticoesService } from './competicoes.service';
+import {
+  MOTIVO_ATLETAS_OCULTOS,
+  placarDivulgavel,
+  podeExibirNomesDeAtletas,
+} from './visibilidade';
 
 const JOGO_COM_RELACOES = {
   fases: true,
@@ -14,11 +19,6 @@ const JOGO_COM_RELACOES = {
 type JogoCompleto = Prisma.jogosGetPayload<{
   include: typeof JOGO_COM_RELACOES;
 }>;
-
-/** Placar só aparece com o jogo em andamento ou encerrado — igual ao protótipo. */
-function placarVisivel(status: status_jogo): boolean {
-  return status === 'encerrado' || status === 'ao_vivo';
-}
 
 function soData(valor: Date | null): string | null {
   return valor ? valor.toISOString().slice(0, 10) : null;
@@ -58,6 +58,143 @@ export class JogosService {
       faseGrupos: this.agruparGrupos(grupos),
       mataMata: this.agruparMata(mata),
     };
+  }
+
+  /**
+   * Detalhe do jogo. É aqui que a regra de nomes de atleta morde: em
+   * `publicada` a competição já aparece no portal, mas escalações e lances
+   * ficam retidos — a maioria das categorias tem menores de idade.
+   */
+  async detalhe(slug: string, categoriaId: string, jogoId: string) {
+    const { competicao, categoria } =
+      await this.competicoes.exigirCategoriaVisivel(slug, categoriaId);
+
+    const jogo = await this.prisma.jogos.findFirst({
+      where: { id: jogoId, categoria_id: categoriaId },
+      include: { ...JOGO_COM_RELACOES, arbitros: true },
+    });
+    if (!jogo) {
+      throw new NotFoundException('Jogo não encontrado nesta categoria.');
+    }
+
+    const liberado = podeExibirNomesDeAtletas(competicao.status);
+
+    // Só vai ao banco quando pode divulgar. Não é otimização: o dado sequer
+    // entra no processo, então nenhum bug de serialização adiante tem o que
+    // vazar. Preferir isso a buscar e depois filtrar.
+    const [escalacoes, lances] = liberado
+      ? await Promise.all([
+          this.lerEscalacoes(jogo.id, categoriaId, jogo),
+          this.lerLances(jogo.id),
+        ])
+      : [null, null];
+
+    return {
+      competicao: { slug: competicao.slug, nome: competicao.nome },
+      categoria: { id: categoria.id, nome: categoria.nome },
+      jogo: {
+        ...this.paraJogoPublico(jogo),
+        fase: jogo.fases
+          ? { chave: jogo.fases.chave, nome: jogo.fases.nome }
+          : null,
+        grupo: jogo.grupos?.nome.trim() ?? null,
+        arbitro: jogo.arbitros
+          ? { id: jogo.arbitros.id, nome: jogo.arbitros.nome }
+          : null,
+      },
+      exibeNomesDeAtletas: liberado,
+      motivoBloqueio: liberado ? null : MOTIVO_ATLETAS_OCULTOS,
+      escalacoes,
+      lances,
+    };
+  }
+
+  /** Elenco escalado de cada lado, com o número da camisa vindo da inscrição. */
+  private async lerEscalacoes(
+    jogoId: string,
+    categoriaId: string,
+    jogo: JogoCompleto,
+  ) {
+    const [escalados, inscritos] = await Promise.all([
+      this.prisma.jogo_escalacoes.findMany({
+        where: { jogo_id: jogoId },
+        include: { atletas: true },
+      }),
+      this.prisma.inscricoes.findMany({ where: { categoria_id: categoriaId } }),
+    ]);
+
+    const numeroPorAtleta = new Map(
+      inscritos.map((i) => [i.atleta_id, i.numero_camisa]),
+    );
+
+    const doTime = (timeId: string | null) =>
+      timeId === null
+        ? []
+        : escalados
+            .filter((e) => e.time_id === timeId)
+            .map((e) => ({
+              atletaId: e.atleta_id,
+              nome: e.atletas.nome,
+              apelido: e.atletas.apelido,
+              posicao: e.atletas.posicao,
+              numero: numeroPorAtleta.get(e.atleta_id) ?? null,
+              titular: e.titular,
+              minutos: e.minutos,
+            }))
+            .sort(
+              (a, b) =>
+                Number(b.titular) - Number(a.titular) ||
+                (a.numero ?? 99) - (b.numero ?? 99),
+            );
+
+    return {
+      mandante: doTime(jogo.mandante_id),
+      visitante: doTime(jogo.visitante_id),
+    };
+  }
+
+  /** Cronologia do mais recente para o mais antigo, como no protótipo. */
+  private async lerLances(jogoId: string) {
+    const eventos = await this.prisma.jogo_eventos.findMany({
+      where: { jogo_id: jogoId },
+      include: {
+        times: true,
+        atletas_jogo_eventos_atleta_idToatletas: true,
+        atletas_jogo_eventos_assistencia_atleta_idToatletas: true,
+        atletas_jogo_eventos_substituido_atleta_idToatletas: true,
+      },
+      orderBy: [{ periodo: 'desc' }, { minuto: 'desc' }],
+    });
+
+    return eventos.map((e) => ({
+      id: e.id,
+      tipo: e.tipo,
+      minuto: e.minuto,
+      periodo: e.periodo,
+      golContra: e.gol_contra,
+      // só faz sentido em tipo=penalti; ver migration 03
+      convertido: e.tipo === 'penalti' ? e.convertido : null,
+      time: { id: e.times.id, nome: e.times.nome },
+      // escanteio é o único lance sem atleta
+      atleta: e.atletas_jogo_eventos_atleta_idToatletas
+        ? {
+            id: e.atletas_jogo_eventos_atleta_idToatletas.id,
+            nome: e.atletas_jogo_eventos_atleta_idToatletas.nome,
+          }
+        : null,
+      assistencia: e.atletas_jogo_eventos_assistencia_atleta_idToatletas
+        ? {
+            id: e.atletas_jogo_eventos_assistencia_atleta_idToatletas.id,
+            nome: e.atletas_jogo_eventos_assistencia_atleta_idToatletas.nome,
+          }
+        : null,
+      substituido: e.atletas_jogo_eventos_substituido_atleta_idToatletas
+        ? {
+            id: e.atletas_jogo_eventos_substituido_atleta_idToatletas.id,
+            nome: e.atletas_jogo_eventos_substituido_atleta_idToatletas.nome,
+          }
+        : null,
+    }));
   }
 
   /** Fase de grupos: grupo → rodada, como o protótipo desenha a tabela. */
@@ -123,7 +260,7 @@ export class JogosService {
    * `podeExibirNomesDeAtletas`.
    */
   private paraJogoPublico(j: JogoCompleto) {
-    const mostrarPlacar = placarVisivel(j.status);
+    const mostrarPlacar = placarDivulgavel(j.status);
 
     return {
       id: j.id,

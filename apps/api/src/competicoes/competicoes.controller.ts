@@ -34,4 +34,17 @@ export class CompeticoesController {
   ) {
     return this.jogos.porCategoria(slug, categoriaId);
   }
+
+  /**
+   * GET /competicoes/:slug/categorias/:categoriaId/jogos/:jogoId
+   * Escalações e lances só saem de `em_andamento` em diante (RF020).
+   */
+  @Get(':slug/categorias/:categoriaId/jogos/:jogoId')
+  detalheDoJogo(
+    @Param('slug') slug: string,
+    @Param('categoriaId', ParseUUIDPipe) categoriaId: string,
+    @Param('jogoId', ParseUUIDPipe) jogoId: string,
+  ) {
+    return this.jogos.detalhe(slug, categoriaId, jogoId);
+  }
 }
