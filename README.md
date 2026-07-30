@@ -46,9 +46,15 @@ Isso levanta dois contêineres:
 Credenciais de desenvolvimento:
 
 ```
-host: localhost      porta: 5433
-banco: apitofut      usuário: apitofut      senha: apitofut_dev
+host: localhost      porta: 5433      banco: apitofut
+
+apitofut      / apitofut_dev        dono, superuser — migrations e psql
+apitofut_app  / apitofut_app_dev    aplicação, sujeito ao RLS
 ```
+
+A API conecta com `apitofut_app`. O dono ignora RLS, então usá-lo em runtime
+anularia o isolamento entre organizações — ele serve para migrations e para
+o `prisma db pull`, que precisa enxergar o catálogo inteiro.
 
 ### Conferir se subiu certo
 
@@ -160,7 +166,8 @@ apitofut/
 │   ├── 02-seed.sql              carga de desenvolvimento
 │   ├── 03-hardening.sql         migration de correções do modelo
 │   ├── 04-classificacao.sql     v_classificacao alinhada ao protótipo
-│   └── optional/rls.sql         RLS multi-tenant (aplicar manualmente)
+│   ├── 05-coluna-extra.sql      ajuste manual do organizador por equipe
+│   └── 06-rls.sql               Row Level Security multi-tenant
 ├── docs/
 │   ├── especificacao-completa.docx
 │   ├── modelo-dados-apitofut.docx

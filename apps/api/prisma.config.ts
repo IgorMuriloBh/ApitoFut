@@ -10,9 +10,11 @@ try {
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
-  // Usado apenas pelo CLI (db pull / migrate diff). Em runtime, o
-  // PrismaClient recebe um driver adapter — ver src/prisma/prisma.service.ts
+  // Só o CLI (db pull / migrate diff) usa isto, e ele precisa do DONO do
+  // banco para enxergar o catálogo inteiro — o papel da aplicação está sob
+  // RLS e enxergaria um schema parcial.
+  // Em runtime quem manda é o driver adapter, com a DATABASE_URL restrita.
   datasource: {
-    url: env('DATABASE_URL'),
+    url: process.env.DIRECT_URL ?? env('DATABASE_URL'),
   },
 });

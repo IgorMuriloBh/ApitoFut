@@ -22,8 +22,8 @@ ele é a especificação executável.
 - `db/03-hardening.sql` — migration de correções (locks, defaults de categoria,
   pênalti perdido, faixa etária por temporada, slug, checks de hex)
 - `db/04-classificacao.sql` — v_classificacao alinhada ao protótipo
-- `db/optional/rls.sql` — políticas de Row Level Security, **não** aplicadas
-  automaticamente; ativar quando a role de conexão da aplicação existir
+- `db/05-coluna-extra.sql` — ajuste manual do organizador por equipe
+- `db/06-rls.sql` — Row Level Security multi-tenant, **ativo**
 
 ## Banco de dados
 
@@ -120,8 +120,13 @@ expressa nada disso** no `schema.prisma`. Portanto:
   antigo. Sempre reler o jogo após inserir/editar/remover um evento.
 - **Tempo real (RF020) não passa pelo Prisma.** `LISTEN/NOTIFY` exige uma conexão `pg`
   dedicada, separada do pool do Prisma.
-- **RLS exige `SET LOCAL app.current_org` dentro da transação.** Com pool de conexões,
-  um `SET` solto vaza para o próximo request. Ver `db/optional/rls.sql`.
+- **O RLS está ativo** (migration 06). A aplicação conecta como `apitofut_app`, que
+  não é superuser — `apitofut` é o dono e ignora RLS, use só em migrations. Sem
+  `app.current_org` definido o banco entrega apenas competições públicas; para o
+  painel, `SET LOCAL app.current_org` **dentro** da transação, porque um `SET`
+  solto vaza para o próximo request do pool.
+- **Views precisam de `security_invoker`.** Sem isso rodam com os privilégios do
+  dono e devolvem linhas que o RLS deveria esconder. As três já estão marcadas.
 - Views (`v_classificacao`, `v_estatisticas_atleta`, `v_atletas_fora_faixa`) são
   somente leitura no Prisma.
 
