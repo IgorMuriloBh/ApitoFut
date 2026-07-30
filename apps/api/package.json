@@ -4,10 +4,10 @@
   "private": true,
   "description": "API do ApitoFut — NestJS sobre PostgreSQL",
   "scripts": {
-    "build": "nest build",
-    "start": "nest start",
-    "start:dev": "nest start --watch",
-    "start:prod": "node dist/main",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "start:dev": "tsc -p tsconfig.json --watch --preserveWatchOutput & node --watch dist/main.js",
+    "start:prod": "node dist/main.js",
     "db:pull": "prisma db pull && prisma generate",
     "db:generate": "prisma generate"
   },
@@ -23,8 +23,6 @@
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
-    "@nestjs/cli": "^11.0.0",
-    "@nestjs/schematics": "^11.0.0",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.20.0",

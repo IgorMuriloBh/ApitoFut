@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls *)",
+      "Bash(wc *)",
+      "Bash(which *)",
+      "Bash(file *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(sed -n *)",
+
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git check-ignore *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npm ls *)",
+      "Bash(npm view *)",
+      "Bash(npm audit)",
+      "Bash(npx prisma *)",
+      "Bash(npx tsc *)",
+      "Bash(node --version)",
+      "Bash(node -p *)",
+
+      "Bash(docker compose up *)",
+      "Bash(docker compose ps *)",
+      "Bash(docker compose logs *)",
+      "Bash(docker inspect *)",
+      "Bash(docker manifest inspect *)",
+      "Bash(docker exec apitofut-db psql *)",
+
+      "Bash(curl -s http://localhost:*)",
+      "Bash(pkill -f \"node dist/main.js\")"
+    ]
+  }
+}

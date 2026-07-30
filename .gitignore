@@ -5,3 +5,6 @@ node_modules/
 .DS_Store
 dist/
 build/
+
+# grants automáticos da sessão — churna sozinho, não versionar
+.claude/settings.local.json
