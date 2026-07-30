@@ -13,10 +13,17 @@
     "api:dev": "npm run start:dev --workspace @apitofut/api",
     "db:pull": "npm run db:pull --workspace @apitofut/api",
     "db:reset": "docker compose down -v && docker compose up -d",
-    "test": "npm test --workspace @apitofut/api"
+    "test": "npm test --workspace @apitofut/api",
+    "portal:dev": "npm run dev --workspace @apitofut/portal",
+    "portal:build": "npm run build --workspace @apitofut/portal"
   },
   "allowScripts": {
     "@prisma/engines@7.9.1": true,
-    "prisma@7.9.1": true
+    "prisma@7.9.1": true,
+    "sharp@0.35.3": true
+  },
+  "overrides": {
+    "postcss": "^8.5.25",
+    "sharp": "^0.35.3"
   }
 }

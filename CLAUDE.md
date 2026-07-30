@@ -156,14 +156,23 @@ apps/api/          NestJS — a única app existente hoje
   src/prisma/        PrismaService com driver adapter (obrigatório no Prisma 7)
   src/competicoes/   visibilidade.ts concentra a regra de status
 apps/painel/       (ainda não criado) Vite + React
-apps/portal/       (ainda não criado) Next.js
+apps/portal/       Next.js 16 (App Router) — portal público SSR
+  lib/api.ts         cliente dos endpoints públicos (o portal nunca autentica)
+  app/[slug]/        competição · [categoriaId] classificação+jogos · [jogoId] detalhe
+  AoVivo.tsx         client component: EventSource no feed SSE + router.refresh()
 ```
 
 ```bash
 npm run api:dev     # sobe a API em http://localhost:3000
+npm run portal:dev  # sobe o portal em http://localhost:3001 (exige a API de pé)
 npm run db:pull     # reintrospecta o banco após mudar o SQL
-npm run db:reset    # down -v + up, reaplica 01/02/03
+npm run db:reset    # down -v + up, reaplica todas as migrations
+npm test            # suíte completa (exige docker compose up -d)
 ```
+
+Dependências do Next com CVE herdada (`postcss`, `sharp`) são fixadas por
+`overrides` no package.json da raiz — se o `npm ls` marcar "invalid", é só o
+aviso de que a versão instalada difere da faixa pedida pelo Next, de propósito.
 
 Endpoints públicos devem montar a resposta com lista explícita de campos, nunca
 devolver a entidade do Prisma direto — `organizacao_id` e `criado_por` são internos.
