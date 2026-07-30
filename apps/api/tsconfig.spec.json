@@ -1,0 +1,9 @@
+{
+  // Mesmo build da produção, porém incluindo os *.spec.ts. Os testes vivem
+  // sob src/ de propósito: se ficassem em test/, o rootDir comum subiria
+  // para a raiz do pacote e a saída viraria dist/src/main.js, quebrando o
+  // `npm start`.
+  "extends": "./tsconfig.json",
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

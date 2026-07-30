@@ -12,7 +12,8 @@
   "scripts": {
     "api:dev": "npm run start:dev --workspace @apitofut/api",
     "db:pull": "npm run db:pull --workspace @apitofut/api",
-    "db:reset": "docker compose down -v && docker compose up -d"
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "test": "npm test --workspace @apitofut/api"
   },
   "allowScripts": {
     "@prisma/engines@7.9.1": true,
