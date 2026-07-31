@@ -51,19 +51,59 @@ export class PainelController {
         orderBy: { criado_em: 'desc' },
         include: {
           categorias: { select: { id: true, nome: true }, orderBy: { ordem: 'asc' } },
+          // contagens que o painel do protótipo mostra nos cartões
+          _count: { select: { times: true } },
         },
       });
 
-      return lista.map((c) => ({
-        id: c.id,
-        nome: c.nome,
-        slug: c.slug,
-        status: c.status,
-        dataInicio: c.data_inicio.toISOString().slice(0, 10),
-        cidade: c.cidade,
-        estado: c.estado,
-        categorias: c.categorias,
-      }));
+      // jogos e inscrições pendem da categoria, não da competição: uma
+      // consulta agrupada evita N+1 conforme o organizador cresce
+      const categoriaIds = lista.flatMap((c) => c.categorias.map((k) => k.id));
+      const [jogos, inscricoes] = await Promise.all([
+        categoriaIds.length
+          ? tx.jogos.groupBy({
+              by: ['categoria_id'],
+              where: { categoria_id: { in: categoriaIds } },
+              _count: { _all: true },
+            })
+          : [],
+        categoriaIds.length
+          ? tx.inscricoes.groupBy({
+              by: ['categoria_id'],
+              where: { categoria_id: { in: categoriaIds } },
+              _count: { _all: true },
+            })
+          : [],
+      ]);
+
+      const somaPorCompeticao = (
+        grupos: { categoria_id: string; _count: { _all: number } }[],
+        ids: string[],
+      ) =>
+        grupos
+          .filter((g) => ids.includes(g.categoria_id))
+          .reduce((total, g) => total + g._count._all, 0);
+
+      return lista.map((c) => {
+        const ids = c.categorias.map((k) => k.id);
+        return {
+          id: c.id,
+          nome: c.nome,
+          slug: c.slug,
+          status: c.status,
+          dataInicio: c.data_inicio.toISOString().slice(0, 10),
+          dataFim: c.data_fim ? c.data_fim.toISOString().slice(0, 10) : null,
+          cidade: c.cidade,
+          estado: c.estado,
+          cor: c.cor_primaria,
+          categorias: c.categorias,
+          totais: {
+            equipes: c._count.times,
+            jogos: somaPorCompeticao(jogos, ids),
+            atletas: somaPorCompeticao(inscricoes, ids),
+          },
+        };
+      });
     });
   }
 }

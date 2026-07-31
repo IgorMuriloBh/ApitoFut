@@ -155,7 +155,10 @@ apps/api/          NestJS — a única app existente hoje
   prisma/schema.prisma  GERADO por `prisma db pull` — não editar
   src/prisma/        PrismaService com driver adapter (obrigatório no Prisma 7)
   src/competicoes/   visibilidade.ts concentra a regra de status
-apps/painel/       (ainda não criado) Vite + React
+apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
+  src/lib/api.ts     cliente autenticado; token em sessionStorage
+  src/lib/dominio.ts vocabulário do protótipo (STATUS, CORES, FASES…)
+  src/telas/         Login · Painel · Wizard (3 etapas) · Competicao
 apps/portal/       Next.js 16 (App Router) — portal público SSR
   lib/api.ts         cliente dos endpoints públicos (o portal nunca autentica)
   app/[slug]/        competição · [categoriaId] classificação+jogos · [jogoId] detalhe
@@ -165,6 +168,7 @@ apps/portal/       Next.js 16 (App Router) — portal público SSR
 ```bash
 npm run api:dev     # sobe a API em http://localhost:3000
 npm run portal:dev  # sobe o portal em http://localhost:3001 (exige a API de pé)
+npm run painel:dev  # sobe o painel em http://localhost:5173 (proxy /api → 3000)
 npm run db:pull     # reintrospecta o banco após mudar o SQL
 npm run db:reset    # down -v + up, reaplica todas as migrations
 npm test            # suíte completa (exige docker compose up -d)

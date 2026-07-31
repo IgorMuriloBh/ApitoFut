@@ -15,7 +15,9 @@
     "db:reset": "docker compose down -v && docker compose up -d",
     "test": "npm test --workspace @apitofut/api",
     "portal:dev": "npm run dev --workspace @apitofut/portal",
-    "portal:build": "npm run build --workspace @apitofut/portal"
+    "portal:build": "npm run build --workspace @apitofut/portal",
+    "painel:dev": "npm run dev --workspace @apitofut/painel",
+    "painel:build": "npm run build --workspace @apitofut/painel"
   },
   "allowScripts": {
     "@prisma/engines@7.9.1": true,

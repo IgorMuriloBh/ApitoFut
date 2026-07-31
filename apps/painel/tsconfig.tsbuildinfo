@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/componentes/ui.tsx","./src/lib/api.ts","./src/lib/dominio.ts","./src/telas/competicao.tsx","./src/telas/login.tsx","./src/telas/painel.tsx","./src/telas/wizard.tsx"],"version":"5.9.3"}
