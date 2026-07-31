@@ -16,6 +16,9 @@ ele é a especificação executável.
 
 ## Documentação
 
+- **`docs/SISTEMA.md` — mapa do sistema: o que existe, por quê, e o que falta.**
+  Consulte ao voltar a um trecho depois de um tempo ou antes de refazer uma
+  decisão já tomada; este CLAUDE.md continua sendo a referência das regras.
 - `docs/especificacao-completa.docx` — requisitos funcionais RF001 a RF034
 - `docs/modelo-dados-apitofut.docx` — dicionário de dados e decisões de modelagem
 - `db/01-schema.sql` — DDL PostgreSQL, fonte da verdade do banco

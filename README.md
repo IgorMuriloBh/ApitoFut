@@ -62,7 +62,7 @@ o `prisma db pull`, que precisa enxergar o catálogo inteiro.
 docker compose ps
 docker compose logs db | tail -20
 
-# 27 tabelas criadas?
+# 28 tabelas criadas? (27 do schema + categoria_coluna_extra da migration 05)
 docker exec apitofut-db psql -U apitofut -d apitofut -c "\dt"
 
 # o gatilho de placar funcionou? (deve retornar 2 | 1)
@@ -162,7 +162,7 @@ apitofut/
 ├── README.md                    este arquivo
 ├── docker-compose.yml           Postgres + Adminer
 ├── db/
-│   ├── 01-schema.sql            DDL — 27 tabelas, 16 enums, 3 views, 6 triggers
+│   ├── 01-schema.sql            DDL inicial — 27 tabelas, 16 enums, 3 views
 │   ├── 02-seed.sql              carga de desenvolvimento
 │   ├── 03-hardening.sql         migration de correções do modelo
 │   ├── 04-classificacao.sql     v_classificacao alinhada ao protótipo
