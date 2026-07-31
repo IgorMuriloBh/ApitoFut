@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 118 testes (exige o banco de pé)
+npm test                  # 128 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -121,7 +121,7 @@ propósito faz 5 testes falharem.
 
 ## 4. Banco de dados
 
-12 migrations, aplicadas em ordem alfabética **na primeira subida do volume**.
+13 migrations, aplicadas em ordem alfabética **na primeira subida do volume**.
 Estado atual do schema: **28 tabelas, 3 views, 16 enums, 28 políticas de RLS**.
 Mudou o schema? Nova migration. Nunca editar as antigas, nunca `prisma migrate dev`.
 Depois, `npm run db:pull` para regenerar os tipos.
@@ -140,6 +140,7 @@ Depois, `npm run db:pull` para regenerar os tipos.
 | `10-senha-app.sh` | Senha do papel da aplicação vinda do ambiente |
 | `11-dedup-atleta.sql` | Identidade do atleta sem CPF |
 | `12-soft-delete.sql` | Exclusão lógica de organização e competição |
+| `13-avanco-mata-mata.sql` | Vencedor sobe para a fase seguinte ao encerrar |
 
 ### Triggers — onde as regras realmente moram
 
@@ -153,6 +154,7 @@ Depois, `npm run db:pull` para regenerar os tipos.
 | `trg_categoria_defaults` | `categorias` | Configuração completa ao criar |
 | `trg_competicao_slug` | `competicoes` | Slug a partir do nome |
 | `trg_barra_delete_organizacao` | `organizacoes` | Impede o `DELETE` em cascata |
+| `trg_avanca_mata_mata` | `jogos` | Promove o vencedor à fase seguinte; reabrir desfaz |
 
 > **Por que `trg_zz_notifica_lance`:** o PostgreSQL dispara triggers do mesmo
 > evento em **ordem alfabética**. O aviso precisa rodar *depois* de `trg_placar`
@@ -290,7 +292,7 @@ se a tela e o servidor divergirem por um segundo, vale o servidor.
 
 ## 7. Testes
 
-118 testes, ~2,5s, **sem nenhuma dependência de teste**. Runner nativo do Node 24
+128 testes, ~3s, **sem nenhuma dependência de teste**. Runner nativo do Node 24
 e `fetch` global.
 
 ```bash
@@ -313,6 +315,7 @@ outro — falhava de verdade, com corrida real.
 | `elenco.e2e.spec.ts` | RF010, limite, faixa etária, isolamento |
 | `tabela.e2e.spec.ts` | Geração e programação |
 | `sumula.e2e.spec.ts` | Operação + ciclo completo com o SSE |
+| `mata-mata.e2e.spec.ts` | Avanço do vencedor, correção de resultado, limites |
 
 Os unitários são **exaustivos sobre os enums** de propósito: acrescentar um
 status novo ao banco quebra o teste e obriga a decidir conscientemente o que ele
@@ -340,7 +343,6 @@ Em ordem de impacto:
 | Item | Situação |
 |---|---|
 | **Suspensões automáticas (RF032)** | A tabela existe e os cartões são contados, mas nada gera a suspensão por acúmulo nem impede o atleta suspenso de ser escalado |
-| **Avanço no mata-mata** | Os rótulos "Vencedor Semifinal 1" existem, mas ninguém preenche o time ao encerrar o jogo — o protótipo tem `avancarVencedor` |
 | **Domínio próprio no portal** | `competicoes.dominio_personalizado` existe no banco; falta o middleware do Next resolvendo por host |
 | **Upload de imagens** | Sem storage nem endpoint; escudo, logo e foto ficam `null` |
 | **Configuração da categoria pelo painel** | As tabelas de configuração existem e são respeitadas, mas só dá para editá-las por SQL |
@@ -365,4 +367,5 @@ Registro do que foi decidido e **por quê** — para não refazer a discussão.
 | Porta 5433 | Desligar o Postgres.app | O Postgres.app é do usuário e pode estar em uso por outros projetos |
 | Soft-delete só no topo | `excluido_em` em 28 tabelas | Complexidade em toda consulta sem ganho proporcional |
 | Dedup por nome + nascimento | Certidão de nascimento | Certidão é campo **opcional** na configuração da categoria; identidade não pode depender do que pode não ser pedido |
+| Avanço do mata-mata por trigger | Lógica na API | Encerrar um jogo pode vir do endpoint, de um W.O. lançado direto ou de correção por SQL; no banco vale em todos os casos |
 | Regras curadas em `.claude/settings.json` | Commitar `settings.local.json` | O arquivo local é reescrito pelo próprio Claude Code a cada permissão — versioná-lo geraria diff toda sessão |

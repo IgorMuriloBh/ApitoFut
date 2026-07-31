@@ -173,7 +173,8 @@ apitofut/
 │   ├── 09-categoria-defaults.sql  defaults completos por categoria
 │   ├── 10-senha-app.sh          senha do papel da aplicação via ambiente
 │   ├── 11-dedup-atleta.sql      identidade do atleta sem CPF
-│   └── 12-soft-delete.sql       exclusão lógica (organização e competição)
+│   ├── 12-soft-delete.sql       exclusão lógica (organização e competição)
+│   └── 13-avanco-mata-mata.sql  vencedor sobe para a fase seguinte
 ├── docs/
 │   ├── especificacao-completa.docx
 │   ├── modelo-dados-apitofut.docx

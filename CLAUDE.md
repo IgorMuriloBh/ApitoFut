@@ -33,6 +33,7 @@ ele é a especificação executável.
 - `db/10-senha-app.sh` — senha do papel da aplicação vinda do ambiente
 - `db/11-dedup-atleta.sql` — identidade do atleta sem CPF (nome + nascimento)
 - `db/12-soft-delete.sql` — exclusão lógica de organização e competição
+- `db/13-avanco-mata-mata.sql` — vencedor sobe para a fase seguinte (RF017)
 
 ## Banco de dados
 
@@ -72,6 +73,8 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
   Homônimos de mesma data coexistem via `atletas.desambiguacao`
 - **Organização e competição não são apagadas fisicamente** — `excluida_em`
   (migration 12). O RLS já esconde o excluído; restaurar é `fn_restaurar_competicao`
+- **O vencedor do mata-mata sobe sozinho** ao encerrar o jogo — trigger
+  `trg_avanca_mata_mata`. Reabrir o jogo esvazia a vaga que ele preencheu
 - **Classificação conta só fase de grupos e jogo encerrado** — inclusive os
   cartões. Toda equipe inscrita aparece na tabela, mesmo sem ter jogado
 - **Só desempata por coluna visível**: esconder uma coluna da classificação
@@ -204,6 +207,10 @@ devolver a entidade do Prisma direto — `organizacao_id` e `criado_por` são in
 
 ## Ao trabalhar neste projeto
 
+- **Toda mudança relevante atualiza `docs/SISTEMA.md` no mesmo commit** — nova
+  migration, endpoint, tela, decisão de arquitetura ou item que sai da lista de
+  pendências. O documento serve para retomar o projeto sem reconstruir o
+  contexto; desatualizado, ele passa a atrapalhar em vez de ajudar.
 - Rode o protótipo no navegador antes de reimplementar uma tela
 - Mudança de schema = nova migration, nunca editar `01-schema.sql` retroativamente
 - Regra nova de negócio: avalie se cabe no banco (constraint/trigger) antes de pôr só no código
