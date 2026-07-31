@@ -6,6 +6,8 @@ import { PainelCompeticoesService } from '../painel/painel-competicoes.service';
 import { PainelController } from '../painel/painel.controller';
 import { SumulaController } from '../painel/sumula.controller';
 import { SumulaService } from '../painel/sumula.service';
+import { TabelaController } from '../painel/tabela.controller';
+import { TabelaService } from '../painel/tabela.service';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
@@ -16,6 +18,7 @@ import { AuthService } from './auth.service';
     PainelController,
     SumulaController,
     ElencoController,
+    TabelaController,
   ],
   providers: [
     AuthService,
@@ -24,6 +27,7 @@ import { AuthService } from './auth.service';
     SumulaService,
     EquipesService,
     ElencoService,
+    TabelaService,
   ],
 })
 export class AuthModule {}
