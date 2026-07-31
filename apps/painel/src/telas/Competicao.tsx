@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { Alerta, Botao, Cartao, Selo } from '../componentes/ui';
-import { api, type CompeticaoDoPainel } from '../lib/api';
+import { api, type CompeticaoDoPainel, type JogoDaTabela } from '../lib/api';
 import { STATUS, formataData } from '../lib/dominio';
 import { Atletas } from './Atletas';
 import { Equipes } from './Equipes';
+import { Sumula } from './Sumula';
+import { Tabela } from './Tabela';
 
-type Aba = 'visao' | 'equipes' | 'atletas';
+type Aba = 'visao' | 'equipes' | 'atletas' | 'tabela';
 
 const ABAS: [Aba, string][] = [
   ['visao', 'Visão geral'],
   ['equipes', 'Equipes'],
   ['atletas', 'Atletas'],
+  ['tabela', 'Tabela de jogos'],
 ];
 
 const PORTAL = import.meta.env.VITE_PORTAL_URL ?? 'http://localhost:3001';
@@ -29,6 +32,7 @@ export function Competicao({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>('visao');
+  const [operando, setOperando] = useState<{ jogo: JogoDaTabela; categoriaId: string } | null>(null);
 
   const publico = status !== 'em_criacao';
 
@@ -44,6 +48,17 @@ export function Competicao({
     } finally {
       setSalvando(false);
     }
+  }
+
+  // a súmula ocupa a tela inteira — o operador precisa de foco
+  if (operando) {
+    return (
+      <Sumula
+        jogo={operando.jogo}
+        categoriaId={operando.categoriaId}
+        aoVoltar={() => setOperando(null)}
+      />
+    );
   }
 
   return (
@@ -103,6 +118,12 @@ export function Competicao({
 
       {aba === 'equipes' && <Equipes competicao={competicao} />}
       {aba === 'atletas' && <Atletas competicao={competicao} />}
+      {aba === 'tabela' && (
+        <Tabela
+          competicao={competicao}
+          aoOperar={(jogo, categoriaId) => setOperando({ jogo, categoriaId })}
+        />
+      )}
 
       <div
         className="grid lg:grid-cols-[1fr_340px] gap-5"

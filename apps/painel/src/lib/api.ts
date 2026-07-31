@@ -199,6 +199,62 @@ export interface AvisoDeFaixa {
   anoDoAtleta: number;
 }
 
+
+export interface JogoDaTabela {
+  id: string;
+  fase: { chave: string; nome: string; tipo: string } | null;
+  grupo: string | null;
+  rodada: number | null;
+  ordem: number;
+  data: string | null;
+  hora: string | null;
+  campo: { id: string; nome: string } | null;
+  status: string;
+  mandante: { id: string | null; nome: string };
+  visitante: { id: string | null; nome: string };
+  placar: { mandante: number; visitante: number } | null;
+}
+
+export interface OpcoesDeGeracao {
+  simples?: boolean;
+  dataInicio?: string;
+  intervaloDias?: number;
+  primeiroHorario?: string;
+  intervaloMinutos?: number;
+  substituir?: boolean;
+}
+
+export interface ResumoDaGeracao {
+  categoria: { id: string; nome: string };
+  grupos: { id: string; nome: string; equipes: string[] }[];
+  jogos: { total: number; faseDeGrupos: number; mataMata: number; semProgramacao: number };
+}
+
+
+export interface EstadoDoJogo {
+  id: string;
+  status: string;
+  periodo: number;
+  cronoRodando: boolean;
+  cronoBaseSeg: number;
+  placar: { mandante: number; visitante: number };
+  penaltis: { mandante: number; visitante: number } | null;
+}
+
+export interface LanceRegistrado {
+  lance: {
+    id: string;
+    tipo: string;
+    minuto: number;
+    periodo: number;
+    timeId: string;
+    atletaId: string | null;
+    assistenciaAtletaId: string | null;
+  };
+  placar: { mandante: number; visitante: number };
+  status: string;
+}
+
 export const api = {
   login: (email: string, senha: string) =>
     requisitar<Sessao>('/auth/login', {
@@ -262,6 +318,53 @@ export const api = {
 
   removerInscricao: (inscricaoId: string) =>
     requisitar(`/painel/inscricoes/${inscricaoId}`, { metodo: 'DELETE' }),
+
+
+  tabela: (categoriaId: string) =>
+    requisitar<JogoDaTabela[]>(`/painel/categorias/${categoriaId}/tabela`),
+
+  gerarTabela: (categoriaId: string, opcoes: OpcoesDeGeracao) =>
+    requisitar<ResumoDaGeracao>(`/painel/categorias/${categoriaId}/tabela`, {
+      metodo: 'POST',
+      corpo: opcoes,
+    }),
+
+  programarJogo: (
+    jogoId: string,
+    dados: { data?: string | null; hora?: string | null },
+  ) =>
+    requisitar<{ id: string; data: string | null; hora: string | null }>(
+      `/painel/jogos/${jogoId}/programacao`,
+      { metodo: 'PATCH', corpo: dados },
+    ),
+
+
+  iniciarJogo: (jogoId: string) =>
+    requisitar<EstadoDoJogo>(`/painel/jogos/${jogoId}/iniciar`, { metodo: 'POST' }),
+
+  trocarPeriodo: (jogoId: string, periodo: number) =>
+    requisitar<EstadoDoJogo>(`/painel/jogos/${jogoId}/periodo`, {
+      metodo: 'POST',
+      corpo: { periodo },
+    }),
+
+  encerrarJogo: (
+    jogoId: string,
+    penaltis?: { mandante: number; visitante: number },
+  ) =>
+    requisitar<EstadoDoJogo>(`/painel/jogos/${jogoId}/encerrar`, {
+      metodo: 'POST',
+      corpo: penaltis ? { penaltis } : {},
+    }),
+
+  registrarLance: (jogoId: string, lance: Record<string, unknown>) =>
+    requisitar<LanceRegistrado>(`/painel/jogos/${jogoId}/lances`, {
+      metodo: 'POST',
+      corpo: lance,
+    }),
+
+  removerLance: (jogoId: string, lanceId: string) =>
+    requisitar(`/painel/jogos/${jogoId}/lances/${lanceId}`, { metodo: 'DELETE' }),
 
   mudarStatus: (id: string, status: string) =>
     requisitar<{ id: string; slug: string; status: string }>(
