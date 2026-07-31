@@ -2,6 +2,16 @@ import { useState } from 'react';
 import { Alerta, Botao, Cartao, Selo } from '../componentes/ui';
 import { api, type CompeticaoDoPainel } from '../lib/api';
 import { STATUS, formataData } from '../lib/dominio';
+import { Atletas } from './Atletas';
+import { Equipes } from './Equipes';
+
+type Aba = 'visao' | 'equipes' | 'atletas';
+
+const ABAS: [Aba, string][] = [
+  ['visao', 'Visão geral'],
+  ['equipes', 'Equipes'],
+  ['atletas', 'Atletas'],
+];
 
 const PORTAL = import.meta.env.VITE_PORTAL_URL ?? 'http://localhost:3001';
 
@@ -18,6 +28,7 @@ export function Competicao({
   const [escolhido, setEscolhido] = useState(competicao.status);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [aba, setAba] = useState<Aba>('visao');
 
   const publico = status !== 'em_criacao';
 
@@ -74,7 +85,29 @@ export function Competicao({
         <Numero rotulo="Jogos" valor={competicao.totais.jogos} />
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_340px] gap-5">
+      <nav className="flex gap-1 border-b border-slate-200 mb-5">
+        {ABAS.map(([chave, rotulo]) => (
+          <button
+            key={chave}
+            onClick={() => setAba(chave)}
+            className={`px-4 py-2 text-sm -mb-px border-b-2 ${
+              aba === chave
+                ? 'border-marca text-marca font-medium'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {rotulo}
+          </button>
+        ))}
+      </nav>
+
+      {aba === 'equipes' && <Equipes competicao={competicao} />}
+      {aba === 'atletas' && <Atletas competicao={competicao} />}
+
+      <div
+        className="grid lg:grid-cols-[1fr_340px] gap-5"
+        hidden={aba !== 'visao'}
+      >
         <Cartao
           titulo="Categorias"
           sub="Cada categoria tem sua própria tabela, classificação e configuração"

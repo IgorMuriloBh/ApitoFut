@@ -31,13 +31,23 @@ export const sessao = {
   },
 };
 
-/** Erro com a mensagem que a API devolveu — é ela que a tela mostra. */
+/**
+ * Erro com a mensagem que a API devolveu — é ela que a tela mostra. O
+ * corpo inteiro vem junto porque alguns 409 carregam dados que a tela
+ * usa, como os avisos de faixa etária.
+ */
 export class ErroDaApi extends Error {
   constructor(
     readonly status: number,
     mensagem: string,
+    readonly dados?: Record<string, unknown>,
   ) {
     super(mensagem);
+  }
+
+  /** 409 de faixa etária: aviso que o organizador pode confirmar. */
+  get ehAvisoDeFaixaEtaria(): boolean {
+    return this.status === 409 && this.dados?.erro === 'faixa_etaria';
   }
 }
 
@@ -71,7 +81,11 @@ async function requisitar<T>(
     const msg =
       (dados as { message?: string | string[] })?.message ??
       `Erro ${r.status} na requisição.`;
-    throw new ErroDaApi(r.status, Array.isArray(msg) ? msg.join(', ') : msg);
+    throw new ErroDaApi(
+      r.status,
+      Array.isArray(msg) ? msg.join(', ') : msg,
+      (dados ?? undefined) as Record<string, unknown> | undefined,
+    );
   }
   return dados as T;
 }
@@ -117,6 +131,74 @@ export interface NovaCompeticao {
   categorias: CategoriaDoWizard[];
 }
 
+
+export interface EquipeDoPainel {
+  id: string;
+  nome: string;
+  escudoUrl: string | null;
+  uniformePrimario: string | null;
+  uniformeSecundario: string | null;
+  cidade: string | null;
+  estado: string | null;
+  contato: string | null;
+  email: string | null;
+  responsavel: string | null;
+  origem: string;
+  comissao: number;
+  categorias: { id: string; nome: string; grupo: { id: string; nome: string } | null }[];
+}
+
+export interface AtletaDaBase {
+  id: string;
+  nome: string;
+  apelido: string | null;
+  dataNascimento: string | null;
+  posicao: string | null;
+}
+
+export interface AtletaInscrito {
+  inscricaoId: string;
+  atletaId: string;
+  nome: string;
+  apelido: string | null;
+  posicao: string | null;
+  numero: number | null;
+  dataNascimento: string | null;
+  /** Aviso de faixa etária — nunca esconde nem impede o atleta. */
+  foraDaFaixa: boolean;
+}
+
+export interface Elenco {
+  categoria: { id: string; nome: string; maxAtletas: number | null };
+  equipes: {
+    id: string;
+    nome: string;
+    vagas: number | null;
+    atletas: AtletaInscrito[];
+  }[];
+}
+
+export interface PedidoDeInscricao {
+  timeId: string;
+  categoriaIds: string[];
+  atletaId?: string;
+  atleta?: {
+    nome: string;
+    dataNascimento?: string | null;
+    posicao?: string | null;
+    apelido?: string | null;
+  };
+  numeroCamisa?: number | null;
+  confirmarFaixaEtaria?: boolean;
+}
+
+/** Avisos que a API devolve no 409 de faixa etária. */
+export interface AvisoDeFaixa {
+  categoria: string;
+  anoEsperado: number;
+  anoDoAtleta: number;
+}
+
 export const api = {
   login: (email: string, senha: string) =>
     requisitar<Sessao>('/auth/login', {
@@ -132,6 +214,54 @@ export const api = {
       '/painel/competicoes',
       { metodo: 'POST', corpo: dados },
     ),
+
+
+  equipes: (competicaoId: string) =>
+    requisitar<EquipeDoPainel[]>(`/painel/competicoes/${competicaoId}/times`),
+
+  criarEquipe: (competicaoId: string, dados: Record<string, unknown>) =>
+    requisitar<{ id: string; nome: string }>(
+      `/painel/competicoes/${competicaoId}/times`,
+      { metodo: 'POST', corpo: dados },
+    ),
+
+  editarEquipe: (timeId: string, dados: Record<string, unknown>) =>
+    requisitar<{ id: string; nome: string }>(`/painel/times/${timeId}`, {
+      metodo: 'PATCH',
+      corpo: dados,
+    }),
+
+  removerEquipe: (timeId: string) =>
+    requisitar<{ removido: string }>(`/painel/times/${timeId}`, { metodo: 'DELETE' }),
+
+  vincular: (categoriaId: string, timeId: string, grupoId: string | null) =>
+    requisitar(`/painel/categorias/${categoriaId}/times/${timeId}`, {
+      metodo: 'PUT',
+      corpo: { grupoId },
+    }),
+
+  desvincular: (categoriaId: string, timeId: string) =>
+    requisitar(`/painel/categorias/${categoriaId}/times/${timeId}`, {
+      metodo: 'DELETE',
+    }),
+
+  buscarAtletas: (busca: string) =>
+    requisitar<AtletaDaBase[]>(`/painel/atletas?busca=${encodeURIComponent(busca)}`),
+
+  elenco: (categoriaId: string) =>
+    requisitar<Elenco>(`/painel/categorias/${categoriaId}/elenco`),
+
+  inscrever: (pedido: PedidoDeInscricao) =>
+    requisitar<{ atletaId: string; categorias: { id: string; nome: string }[] }>(
+      '/painel/inscricoes',
+      { metodo: 'POST', corpo: pedido },
+    ),
+
+  editarInscricao: (inscricaoId: string, dados: { numeroCamisa?: number | null }) =>
+    requisitar(`/painel/inscricoes/${inscricaoId}`, { metodo: 'PATCH', corpo: dados }),
+
+  removerInscricao: (inscricaoId: string) =>
+    requisitar(`/painel/inscricoes/${inscricaoId}`, { metodo: 'DELETE' }),
 
   mudarStatus: (id: string, status: string) =>
     requisitar<{ id: string; slug: string; status: string }>(
