@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { DisciplinaController } from '../painel/disciplina.controller';
+import { DisciplinaService } from '../painel/disciplina.service';
 import { ElencoController } from '../painel/elenco.controller';
 import { ElencoService } from '../painel/elenco.service';
 import { EquipesService } from '../painel/equipes.service';
@@ -19,6 +21,7 @@ import { AuthService } from './auth.service';
     SumulaController,
     ElencoController,
     TabelaController,
+    DisciplinaController,
   ],
   providers: [
     AuthService,
@@ -28,6 +31,7 @@ import { AuthService } from './auth.service';
     EquipesService,
     ElencoService,
     TabelaService,
+    DisciplinaService,
   ],
 })
 export class AuthModule {}

@@ -174,7 +174,8 @@ apitofut/
 │   ├── 10-senha-app.sh          senha do papel da aplicação via ambiente
 │   ├── 11-dedup-atleta.sql      identidade do atleta sem CPF
 │   ├── 12-soft-delete.sql       exclusão lógica (organização e competição)
-│   └── 13-avanco-mata-mata.sql  vencedor sobe para a fase seguinte
+│   ├── 13-avanco-mata-mata.sql  vencedor sobe para a fase seguinte
+│   └── 14-suspensoes.sql        suspensão automática por cartões (RF032)
 ├── docs/
 │   ├── especificacao-completa.docx
 │   ├── modelo-dados-apitofut.docx

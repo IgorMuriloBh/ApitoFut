@@ -34,6 +34,7 @@ ele é a especificação executável.
 - `db/11-dedup-atleta.sql` — identidade do atleta sem CPF (nome + nascimento)
 - `db/12-soft-delete.sql` — exclusão lógica de organização e competição
 - `db/13-avanco-mata-mata.sql` — vencedor sobe para a fase seguinte (RF017)
+- `db/14-suspensoes.sql` — suspensão automática por cartões (RF032)
 
 ## Banco de dados
 
@@ -75,6 +76,9 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
   (migration 12). O RLS já esconde o excluído; restaurar é `fn_restaurar_competicao`
 - **O vencedor do mata-mata sobe sozinho** ao encerrar o jogo — trigger
   `trg_avanca_mata_mata`. Reabrir o jogo esvazia a vaga que ele preencheu
+- **Suspensão é persistida e se cumpre** (migration 14): o cartão gera, cada jogo
+  que a equipe disputa sem o atleta desconta, e atleta suspenso não é escalado.
+  Corrigir ou apagar o cartão desfaz a suspensão que ele originou
 - **Classificação conta só fase de grupos e jogo encerrado** — inclusive os
   cartões. Toda equipe inscrita aparece na tabela, mesmo sem ter jogado
 - **Só desempata por coluna visível**: esconder uma coluna da classificação

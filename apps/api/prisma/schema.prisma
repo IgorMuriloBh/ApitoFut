@@ -326,27 +326,27 @@ model jogo_escalacoes {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model jogo_eventos {
-  id                                                  String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  jogo_id                                             String       @db.Uuid
+  id                                                  String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jogo_id                                             String      @db.Uuid
   tipo                                                tipo_evento
-  time_id                                             String       @db.Uuid
-  atleta_id                                           String?      @db.Uuid
-  assistencia_atleta_id                               String?      @db.Uuid
-  substituido_atleta_id                               String?      @db.Uuid
+  time_id                                             String      @db.Uuid
+  atleta_id                                           String?     @db.Uuid
+  assistencia_atleta_id                               String?     @db.Uuid
+  substituido_atleta_id                               String?     @db.Uuid
   minuto                                              Int
-  periodo                                             Int          @default(1) @db.SmallInt
-  gol_contra                                          Boolean      @default(false)
-  registrado_por                                      String?      @db.Uuid
-  criado_em                                           DateTime     @default(now()) @db.Timestamptz(6)
-  atualizado_em                                       DateTime     @default(now()) @db.Timestamptz(6)
-  convertido                                          Boolean      @default(true)
-  atletas_jogo_eventos_assistencia_atleta_idToatletas atletas?     @relation("jogo_eventos_assistencia_atleta_idToatletas", fields: [assistencia_atleta_id], references: [id], onUpdate: NoAction)
-  atletas_jogo_eventos_atleta_idToatletas             atletas?     @relation("jogo_eventos_atleta_idToatletas", fields: [atleta_id], references: [id], onUpdate: NoAction)
-  jogos                                               jogos        @relation(fields: [jogo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  usuarios                                            usuarios?    @relation(fields: [registrado_por], references: [id], onUpdate: NoAction)
-  atletas_jogo_eventos_substituido_atleta_idToatletas atletas?     @relation("jogo_eventos_substituido_atleta_idToatletas", fields: [substituido_atleta_id], references: [id], onUpdate: NoAction)
-  times                                               times        @relation(fields: [time_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  suspensoes                                          suspensoes[]
+  periodo                                             Int         @default(1) @db.SmallInt
+  gol_contra                                          Boolean     @default(false)
+  registrado_por                                      String?     @db.Uuid
+  criado_em                                           DateTime    @default(now()) @db.Timestamptz(6)
+  atualizado_em                                       DateTime    @default(now()) @db.Timestamptz(6)
+  convertido                                          Boolean     @default(true)
+  atletas_jogo_eventos_assistencia_atleta_idToatletas atletas?    @relation("jogo_eventos_assistencia_atleta_idToatletas", fields: [assistencia_atleta_id], references: [id], onUpdate: NoAction)
+  atletas_jogo_eventos_atleta_idToatletas             atletas?    @relation("jogo_eventos_atleta_idToatletas", fields: [atleta_id], references: [id], onUpdate: NoAction)
+  jogos                                               jogos       @relation(fields: [jogo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usuarios                                            usuarios?   @relation(fields: [registrado_por], references: [id], onUpdate: NoAction)
+  atletas_jogo_eventos_substituido_atleta_idToatletas atletas?    @relation("jogo_eventos_substituido_atleta_idToatletas", fields: [substituido_atleta_id], references: [id], onUpdate: NoAction)
+  times                                               times       @relation(fields: [time_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  suspensoes                                          suspensoes?
 
   @@index([atleta_id], map: "idx_eventos_atleta")
   @@index([jogo_id], map: "idx_eventos_jogo")
@@ -428,7 +428,7 @@ model suspensoes {
   categoria_id     String           @db.Uuid
   atleta_id        String           @db.Uuid
   motivo           motivo_suspensao
-  evento_origem_id String?          @db.Uuid
+  evento_origem_id String?          @unique(map: "uq_suspensao_por_evento", where: raw("(evento_origem_id IS NOT NULL)")) @db.Uuid
   jogos_suspensao  Int
   jogos_cumpridos  Int              @default(0)
   ativa            Boolean          @default(true)
@@ -439,6 +439,7 @@ model suspensoes {
   jogo_eventos     jogo_eventos?    @relation(fields: [evento_origem_id], references: [id], onUpdate: NoAction)
 
   @@index([atleta_id], map: "idx_suspensoes_atleta", where: raw("ativa"))
+  @@index([categoria_id, atleta_id], map: "idx_suspensoes_categoria_atleta", where: raw("ativa"))
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

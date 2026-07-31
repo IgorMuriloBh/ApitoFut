@@ -313,6 +313,22 @@ export class SumulaService {
       exigir(corpo.atletaId, 'Informe o atleta do lance.');
     }
 
+    // Suspensão em vigor barra o atleta (RF032). O trigger do banco
+    // também barra na escalação, mas aqui a mensagem diz quantos jogos
+    // faltam — e o lance nem chega a ser gravado.
+    const suspenso = async (atletaId: string, quem: string) => {
+      const pendentes = await tx.suspensoes.aggregate({
+        where: { categoria_id: jogo.categoria_id, atleta_id: atletaId, ativa: true },
+        _sum: { jogos_suspensao: true, jogos_cumpridos: true },
+      });
+      const restam =
+        (pendentes._sum.jogos_suspensao ?? 0) - (pendentes._sum.jogos_cumpridos ?? 0);
+      exigir(
+        restam <= 0,
+        `${quem} está suspenso: ${restam} jogo(s) a cumprir nesta categoria.`,
+      );
+    };
+
     const inscrito = async (atletaId: string, mensagem: string) => {
       const i = await tx.inscricoes.findFirst({
         where: {
@@ -326,6 +342,7 @@ export class SumulaService {
 
     if (corpo.atletaId) {
       await inscrito(corpo.atletaId, 'Atleta não inscrito por esta equipe na categoria.');
+      await suspenso(corpo.atletaId, 'O atleta');
     }
 
     // assistência: gol/pênalti, habilitada na categoria, nunca o autor
@@ -343,6 +360,7 @@ export class SumulaService {
         'A assistência não pode ser do mesmo atleta que marcou o gol.');
       await inscrito(corpo.assistenciaAtletaId,
         'Atleta da assistência não inscrito por esta equipe na categoria.');
+      await suspenso(corpo.assistenciaAtletaId, 'O atleta da assistência');
       assistencia = corpo.assistenciaAtletaId;
     }
 
