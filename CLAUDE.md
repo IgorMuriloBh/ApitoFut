@@ -27,6 +27,9 @@ ele é a especificação executável.
 - `db/07-realtime.sql` — NOTIFY de lances/jogo para a súmula ao vivo (RF020)
 - `db/08-auth.sql` — frestas SECURITY DEFINER para o login atravessar o RLS
 - `db/09-categoria-defaults.sql` — categoria nova nasce com colunas, critérios e súmula default
+- `db/10-senha-app.sh` — senha do papel da aplicação vinda do ambiente
+- `db/11-dedup-atleta.sql` — identidade do atleta sem CPF (nome + nascimento)
+- `db/12-soft-delete.sql` — exclusão lógica de organização e competição
 
 ## Banco de dados
 
@@ -60,7 +63,12 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
   atleta, equipe e assistência, mas não o tempo
 - **Limite de atletas por equipe** vem de `categoria_inscricao_config.max_atletas`
 - **Configurações são por categoria**, replicáveis mas editáveis individualmente
-- **Faixa etária Sub-N é aviso, não bloqueio** — tabela `faixas_etarias`
+- **Faixa etária Sub-N é aviso, não bloqueio** — a API responde 409 e o cliente
+  reenvia com `confirmarFaixaEtaria`; o ano esperado é `temporada - N`
+- **Atleta sem CPF é identificado por nome + data de nascimento** (migration 11).
+  Homônimos de mesma data coexistem via `atletas.desambiguacao`
+- **Organização e competição não são apagadas fisicamente** — `excluida_em`
+  (migration 12). O RLS já esconde o excluído; restaurar é `fn_restaurar_competicao`
 - **Classificação conta só fase de grupos e jogo encerrado** — inclusive os
   cartões. Toda equipe inscrita aparece na tabela, mesmo sem ter jogado
 - **Só desempata por coluna visível**: esconder uma coluna da classificação
@@ -180,6 +188,16 @@ aviso de que a versão instalada difere da faixa pedida pelo Next, de propósito
 
 Endpoints públicos devem montar a resposta com lista explícita de campos, nunca
 devolver a entidade do Prisma direto — `organizacao_id` e `criado_por` são internos.
+
+## Antes de qualquer deploy
+
+- **Segredos**: `POSTGRES_PASSWORD`, `APITOFUT_APP_PASSWORD` e `AUTH_SEGREDO` têm
+  padrões de desenvolvimento no repositório. Defina os três por ambiente — a API
+  recusa subir em produção com o `AUTH_SEGREDO` de exemplo ou com menos de 32
+  caracteres, e o `db/10-senha-app.sh` avisa no log quando a senha do papel da
+  aplicação segue a padrão.
+- Medir o RLS com `EXPLAIN` em competição grande: as políticas em cascata são
+  legíveis, mas podem pedir `organizacao_id` materializado nas tabelas netas.
 
 ## Ao trabalhar neste projeto
 

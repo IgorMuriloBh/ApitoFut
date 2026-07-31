@@ -6,8 +6,11 @@ services:
     environment:
       POSTGRES_DB: apitofut
       POSTGRES_USER: apitofut
-      POSTGRES_PASSWORD: apitofut_dev
+      # Sobrescreva por ambiente; o padrão só serve para desenvolvimento local.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-apitofut_dev}
       TZ: America/Sao_Paulo
+      # Senha do papel da aplicação (db/10-senha-app.sh a aplica no init).
+      APITOFUT_APP_PASSWORD: ${APITOFUT_APP_PASSWORD:-apitofut_app_dev}
     ports:
       # 5433 no host: a 5432 já é do Postgres.app nativo desta máquina.
       # Dentro da rede do compose o Adminer segue falando com db:5432.

@@ -170,7 +170,10 @@ apitofut/
 │   ├── 06-rls.sql               Row Level Security multi-tenant
 │   ├── 07-realtime.sql          NOTIFY da súmula ao vivo (RF020)
 │   ├── 08-auth.sql              frestas SECURITY DEFINER para o login
-│   └── 09-categoria-defaults.sql  defaults completos por categoria
+│   ├── 09-categoria-defaults.sql  defaults completos por categoria
+│   ├── 10-senha-app.sh          senha do papel da aplicação via ambiente
+│   ├── 11-dedup-atleta.sql      identidade do atleta sem CPF
+│   └── 12-soft-delete.sql       exclusão lógica (organização e competição)
 ├── docs/
 │   ├── especificacao-completa.docx
 │   ├── modelo-dados-apitofut.docx
@@ -183,7 +186,8 @@ apitofut/
 
 ## 9. Cuidados antes de qualquer deploy
 
-- Trocar as senhas do `docker-compose.yml` e os hashes placeholder do seed
+- Definir `POSTGRES_PASSWORD`, `APITOFUT_APP_PASSWORD` e `AUTH_SEGREDO` no ambiente
+  (os padrões do repositório servem só para desenvolvimento local)
 - Nunca versionar `.env` com credenciais reais
 - Aplicar Row Level Security antes de expor a API a mais de um organizador
 - O portal público não pode exibir nome de atleta enquanto a competição não estiver

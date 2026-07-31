@@ -3,7 +3,8 @@ import { describe, test } from 'node:test';
 import { gerarHash, verificarSenha } from './senha';
 import { emitirToken, validarToken } from './token';
 
-process.env.AUTH_SEGREDO ??= 'segredo-de-teste';
+// 32+ caracteres: o mesmo mínimo que a API exige em qualquer ambiente
+process.env.AUTH_SEGREDO ??= 'segredo-de-teste-com-tamanho-suficiente-123';
 
 describe('senha (scrypt)', () => {
   test('hash e verificação fecham o ciclo', async () => {
@@ -28,8 +29,10 @@ describe('senha (scrypt)', () => {
   });
 });
 
+const dadosDeTeste = { sub: 'u1', org: 'o1', perfil: 'organizador' };
+
 describe('token de sessão (HMAC)', () => {
-  const dados = { sub: 'u1', org: 'o1', perfil: 'organizador' };
+  const dados = dadosDeTeste;
 
   test('emite e valida', () => {
     const t = emitirToken(dados);
@@ -56,6 +59,46 @@ describe('token de sessão (HMAC)', () => {
   test('lixo não derruba o validador', () => {
     for (const ruim of ['', '.', 'a.b.c', 'não-é-token']) {
       assert.equal(validarToken(ruim), null);
+    }
+  });
+});
+
+describe('guardas do segredo de assinatura', () => {
+  const original = process.env.AUTH_SEGREDO;
+  const NODE_ENV = process.env.NODE_ENV;
+
+  const restaurar = () => {
+    process.env.AUTH_SEGREDO = original;
+    if (NODE_ENV === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = NODE_ENV;
+  };
+
+  test('segredo curto é recusado em qualquer ambiente', () => {
+    process.env.AUTH_SEGREDO = 'curto';
+    try {
+      assert.throws(() => emitirToken(dadosDeTeste), /curto demais/);
+    } finally {
+      restaurar();
+    }
+  });
+
+  test('o valor de exemplo do .env.example não assina em produção', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.AUTH_SEGREDO = 'troque-me-em-producao-com-32-caracteres-ou-mais';
+    try {
+      // com ele, quem lê o repositório forja token de qualquer organização
+      assert.throws(() => emitirToken(dadosDeTeste), /valor de exemplo/);
+    } finally {
+      restaurar();
+    }
+  });
+
+  test('ausência de segredo é erro explícito, não token silenciosamente fraco', () => {
+    delete process.env.AUTH_SEGREDO;
+    try {
+      assert.throws(() => emitirToken(dadosDeTeste), /não definido/);
+    } finally {
+      restaurar();
     }
   });
 });

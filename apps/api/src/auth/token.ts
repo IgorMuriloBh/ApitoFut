@@ -15,10 +15,24 @@ export interface SessaoToken {
   exp: number;
 }
 
+/** Valor de exemplo do .env.example — nunca pode assinar em produção. */
+const SEGREDO_DE_EXEMPLO = 'troque-me';
+
 function segredo(): string {
   const s = process.env.AUTH_SEGREDO;
   if (!s) {
     throw new Error('AUTH_SEGREDO não definido — ver apps/api/.env.example');
+  }
+  // Barra o segredo de exemplo fora de desenvolvimento: com ele qualquer
+  // pessoa que leia o repositório forja um token de qualquer organização.
+  if (process.env.NODE_ENV === 'production' && s.includes(SEGREDO_DE_EXEMPLO)) {
+    throw new Error(
+      'AUTH_SEGREDO ainda é o valor de exemplo. Gere um por ambiente: ' +
+        'node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'base64url\'))"',
+    );
+  }
+  if (s.length < 32) {
+    throw new Error('AUTH_SEGREDO curto demais: use ao menos 32 caracteres.');
   }
   return s;
 }

@@ -52,6 +52,7 @@ model atletas {
   responsavel_contato                                      String?
   criado_em                                                DateTime            @default(now()) @db.Timestamptz(6)
   atualizado_em                                            DateTime            @default(now()) @db.Timestamptz(6)
+  desambiguacao                                            String?
   atleta_documentos                                        atleta_documentos[]
   inscricoes                                               inscricoes[]
   jogo_escalacoes                                          jogo_escalacoes[]
@@ -241,6 +242,7 @@ model competicoes {
   encerrada_em          DateTime?         @db.Timestamptz(6)
   criado_em             DateTime          @default(now()) @db.Timestamptz(6)
   atualizado_em         DateTime          @default(now()) @db.Timestamptz(6)
+  excluida_em           DateTime?         @db.Timestamptz(6)
   arbitros              arbitros[]
   campos                campos[]
   categorias            categorias[]
@@ -251,6 +253,7 @@ model competicoes {
 
   @@index([organizacao_id], map: "idx_comp_organizacao")
   @@index([status], map: "idx_comp_status")
+  @@index([organizacao_id], map: "idx_comp_ativas", where: raw("(excluida_em IS NULL)"))
 }
 
 model faixas_etarias {
@@ -402,6 +405,7 @@ model organizacoes {
   email_contato String?       @db.Citext
   criado_em     DateTime      @default(now()) @db.Timestamptz(6)
   atualizado_em DateTime      @default(now()) @db.Timestamptz(6)
+  excluida_em   DateTime?     @db.Timestamptz(6)
   competicoes   competicoes[]
   usuarios      usuarios[]
 }

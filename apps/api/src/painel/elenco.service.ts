@@ -32,6 +32,8 @@ export interface DadosDoAtleta {
   email?: string | null;
   responsavelNome?: string | null;
   responsavelContato?: string | null;
+  /** Diferencia homônimos de mesma data de nascimento (migration 11). */
+  desambiguacao?: string | null;
 }
 
 export interface PedidoDeInscricao {
@@ -260,20 +262,52 @@ export class ElencoService {
       // --- grava --------------------------------------------------------
       if (!atletaId) {
         const d = pedido.atleta!;
-        const novo = await tx.atletas.create({
-          data: {
-            nome: d.nome!.trim(),
-            apelido: d.apelido ?? null,
-            data_nascimento: dataNascimento,
-            posicao: d.posicao ?? null,
-            cpf: d.cpf?.replace(/\D/g, '') || null,
-            celular: d.celular ?? null,
-            email: d.email ?? null,
-            responsavel_nome: d.responsavelNome ?? null,
-            responsavel_contato: d.responsavelContato ?? null,
-          },
-        });
-        atletaId = novo.id;
+        try {
+          const novo = await tx.atletas.create({
+            data: {
+              nome: d.nome!.trim(),
+              apelido: d.apelido ?? null,
+              data_nascimento: dataNascimento,
+              posicao: d.posicao ?? null,
+              cpf: d.cpf?.replace(/\D/g, '') || null,
+              celular: d.celular ?? null,
+              email: d.email ?? null,
+              responsavel_nome: d.responsavelNome ?? null,
+              responsavel_contato: d.responsavelContato ?? null,
+              desambiguacao: d.desambiguacao ?? null,
+            },
+          });
+          atletaId = novo.id;
+        } catch (e) {
+          if (
+            e instanceof Prisma.PrismaClientKnownRequestError &&
+            e.code === 'P2002'
+          ) {
+            // Deduplicação da base global (migration 11): mesmo nome +
+            // data de nascimento é a mesma pessoa. Devolvemos quem já
+            // existe para a tela oferecer reaproveitar em vez de duplicar.
+            const existente = dataNascimento
+              ? await tx.atletas.findFirst({
+                  where: {
+                    data_nascimento: dataNascimento,
+                    nome: { equals: d.nome!.trim(), mode: 'insensitive' },
+                  },
+                })
+              : null;
+
+            throw new ConflictException({
+              statusCode: 409,
+              erro: 'atleta_duplicado',
+              message:
+                'Já existe um atleta com este nome e data de nascimento na base. ' +
+                'Use o atleta existente, ou informe um diferenciador se forem pessoas distintas.',
+              atletaExistente: existente
+                ? { id: existente.id, nome: existente.nome }
+                : null,
+            });
+          }
+          throw e;
+        }
       }
 
       try {
