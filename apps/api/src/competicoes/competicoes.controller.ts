@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ClassificacaoService } from './classificacao.service';
 import { CompeticoesService } from './competicoes.service';
 import { JogosService } from './jogos.service';
@@ -10,6 +10,21 @@ export class CompeticoesController {
     private readonly classificacao: ClassificacaoService,
     private readonly jogos: JogosService,
   ) {}
+
+  /**
+   * GET /competicoes/resolver?host=copa.exemplo.com — white-label por CNAME.
+   *
+   * Declarada **antes** de `:slug`: o Nest casa na ordem de declaração, e
+   * invertido isto viraria uma busca pela competição de slug "resolver".
+   *
+   * Responde 200 com `{ slug: null }` quando o host não é de ninguém — é o
+   * caso normal do domínio da plataforma, não um erro.
+   */
+  @Get('resolver')
+  async resolverDominio(@Query('host') host?: string) {
+    const achado = await this.competicoes.resolverDominio(host ?? '');
+    return { slug: achado?.slug ?? null };
+  }
 
   /** GET /competicoes/:slug — endereço público da competição (RF002). */
   @Get(':slug')

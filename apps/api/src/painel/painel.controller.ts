@@ -6,6 +6,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -41,6 +42,16 @@ export class PainelController {
     @Body() corpo: { status?: string },
   ) {
     return this.competicoes.mudarStatus(req.sessao.org, id, corpo?.status);
+  }
+
+  /** PUT /painel/competicoes/:id/dominio — CNAME próprio (RF002). */
+  @Put('competicoes/:id/dominio')
+  definirDominio(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() corpo: { dominio?: string | null },
+  ) {
+    return this.competicoes.definirDominio(req.sessao.org, id, corpo?.dominio);
   }
 
   /** Lista as competições da organização — inclusive as `em_criacao`. */
@@ -96,6 +107,7 @@ export class PainelController {
           cidade: c.cidade,
           estado: c.estado,
           cor: c.cor_primaria,
+          dominioPersonalizado: c.dominio_personalizado,
           categorias: c.categorias,
           totais: {
             equipes: c._count.times,

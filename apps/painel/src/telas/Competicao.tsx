@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alerta, Botao, Cartao, Selo } from '../componentes/ui';
+import { Alerta, Botao, Cartao, Selo, classeEntrada } from '../componentes/ui';
 import { api, type CompeticaoDoPainel, type JogoDaTabela } from '../lib/api';
 import { STATUS, formataData } from '../lib/dominio';
 import { Atletas } from './Atletas';
@@ -33,6 +33,10 @@ export function Competicao({
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>('visao');
   const [operando, setOperando] = useState<{ jogo: JogoDaTabela; categoriaId: string } | null>(null);
+  const [dominio, setDominio] = useState(competicao.dominioPersonalizado ?? '');
+  const [salvandoDominio, setSalvandoDominio] = useState(false);
+  const [dominioSalvo, setDominioSalvo] = useState(false);
+  const [erroDominio, setErroDominio] = useState<string | null>(null);
 
   const publico = status !== 'em_criacao';
 
@@ -47,6 +51,24 @@ export function Competicao({
       setErro(e instanceof Error ? e.message : 'Falha ao alterar o status.');
     } finally {
       setSalvando(false);
+    }
+  }
+
+  async function salvarDominio() {
+    setErroDominio(null);
+    setDominioSalvo(false);
+    setSalvandoDominio(true);
+    try {
+      const r = await api.definirDominio(competicao.id, dominio.trim() || null);
+      // a API normaliza (tira porta, www. e maiúsculas): mostrar o que foi
+      // de fato gravado evita o organizador achar que salvou outra coisa
+      setDominio(r.dominioPersonalizado ?? '');
+      setDominioSalvo(true);
+      aoMudar();
+    } catch (e) {
+      setErroDominio(e instanceof Error ? e.message : 'Falha ao salvar o domínio.');
+    } finally {
+      setSalvandoDominio(false);
     }
   }
 
@@ -210,6 +232,61 @@ export function Competicao({
             >
               {salvando ? 'Salvando…' : 'Salvar status'}
             </Botao>
+          </div>
+        </Cartao>
+
+        <Cartao titulo="Domínio próprio" sub="RF002 — white-label por CNAME">
+          <div className="p-5">
+            <p className="text-xs text-slate-500 mb-3">
+              Aponte um <b>CNAME</b> do seu domínio para o portal e a competição
+              passa a responder no endereço da sua federação, sem{' '}
+              <code>/{competicao.slug}</code> na URL.
+            </p>
+
+            {erroDominio && (
+              <div className="mb-3">
+                <Alerta tom="erro">{erroDominio}</Alerta>
+              </div>
+            )}
+            {dominioSalvo && (
+              <div className="mb-3">
+                <Alerta tom="info">
+                  {dominio
+                    ? `Portal respondendo em ${dominio}.`
+                    : 'Domínio removido — vale só o endereço da plataforma.'}
+                </Alerta>
+              </div>
+            )}
+
+            <input
+              className={classeEntrada}
+              value={dominio}
+              onChange={(e) => {
+                setDominio(e.target.value);
+                setDominioSalvo(false);
+              }}
+              placeholder="copa.suafederacao.com.br"
+              autoComplete="off"
+              spellCheck={false}
+            />
+
+            <Botao
+              onClick={salvarDominio}
+              disabled={salvandoDominio}
+              variante="neutro"
+              className="w-full mt-3"
+            >
+              {salvandoDominio ? 'Salvando…' : 'Salvar domínio'}
+            </Botao>
+
+            {/* o domínio só resolve depois de publicar: a API aplica ao CNAME
+                a mesma regra de visibilidade do slug */}
+            {status === 'em_criacao' && dominio && (
+              <p className="text-xs text-amber-700 mt-3">
+                Enquanto a competição estiver <b>em criação</b>, o domínio não
+                abre o portal.
+              </p>
+            )}
           </div>
         </Cartao>
       </div>

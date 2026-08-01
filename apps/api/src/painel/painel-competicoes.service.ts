@@ -1,9 +1,11 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { status_competicao } from '@prisma/client';
+import { Prisma, status_competicao } from '@prisma/client';
+import { normalizarHost } from '../competicoes/competicoes.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { WizardCompeticao, WizardInvalido, validarWizard } from './wizard';
 
@@ -106,6 +108,59 @@ export class PainelCompeticoesService {
       });
 
       return { id: alterada.id, slug: alterada.slug, status: alterada.status };
+    });
+  }
+
+  /**
+   * Domínio próprio da competição (RF002) — o CNAME que o middleware do
+   * portal resolve. `null` volta a valer só o endereço da plataforma.
+   *
+   * A coluna é `UNIQUE`: dois organizadores não apontam o mesmo domínio.
+   * A colisão vira 409 com explicação, não o P2002 cru do Prisma — quem
+   * comete o erro é gente, e a mensagem precisa dizer o que fazer.
+   */
+  async definirDominio(
+    organizacaoId: string,
+    competicaoId: string,
+    dominioBruto: unknown,
+  ) {
+    const dominio =
+      dominioBruto === null || dominioBruto === undefined || dominioBruto === ''
+        ? null
+        : normalizarHost(String(dominioBruto));
+
+    if (dominioBruto && !dominio) {
+      throw new BadRequestException(
+        'Informe um domínio válido, como copa.suafederacao.com.br — sem http:// e sem barra.',
+      );
+    }
+
+    return this.prisma.comOrganizacao(organizacaoId, async (tx) => {
+      const atual = await tx.competicoes.findUnique({
+        where: { id: competicaoId },
+      });
+      if (!atual) throw new NotFoundException('Competição não encontrada.');
+
+      try {
+        const alterada = await tx.competicoes.update({
+          where: { id: competicaoId },
+          data: { dominio_personalizado: dominio },
+        });
+        return {
+          id: alterada.id,
+          dominioPersonalizado: alterada.dominio_personalizado,
+        };
+      } catch (e) {
+        if (
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === 'P2002'
+        ) {
+          throw new ConflictException(
+            `O domínio ${dominio} já está em uso por outra competição.`,
+          );
+        }
+        throw e;
+      }
     });
   }
 }

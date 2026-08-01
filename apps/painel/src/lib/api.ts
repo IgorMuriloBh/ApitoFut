@@ -108,6 +108,7 @@ export interface CompeticaoDoPainel {
   cidade: string;
   estado: string;
   cor: string;
+  dominioPersonalizado: string | null;
   categorias: { id: string; nome: string }[];
   totais: { equipes: number; jogos: number; atletas: number };
 }
@@ -467,6 +468,12 @@ export const api = {
 
   removerLance: (jogoId: string, lanceId: string) =>
     requisitar(`/painel/jogos/${jogoId}/lances/${lanceId}`, { metodo: 'DELETE' }),
+
+  definirDominio: (id: string, dominio: string | null) =>
+    requisitar<{ id: string; dominioPersonalizado: string | null }>(
+      `/painel/competicoes/${id}/dominio`,
+      { metodo: 'PUT', corpo: { dominio } },
+    ),
 
   mudarStatus: (id: string, status: string) =>
     requisitar<{ id: string; slug: string; status: string }>(

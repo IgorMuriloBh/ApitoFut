@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 166 testes (exige o banco de pé)
+npm test                  # 180 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -209,6 +209,7 @@ verificados no banco antes de escrever a migration:
 
 | Método | Rota | Observação |
 |---|---|---|
+| `GET` | `/competicoes/resolver?host=` | White-label: host → slug. `{slug:null}` quando não é de ninguém |
 | `GET` | `/competicoes/:slug` | Competição e categorias |
 | `GET` | `/competicoes/:slug/categorias/:catId/classificacao` | Ordenação por critérios da categoria |
 | `GET` | `/competicoes/:slug/categorias/:catId/jogos` | Grupos por rodada + mata-mata |
@@ -226,6 +227,7 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `POST` | `/auth/cadastro` | Auto-cadastro; **rota aberta**. Devolve token só se for a 1ª conta da base |
 | `GET` `POST` | `/painel/competicoes` | Lista e wizard de criação |
 | `PATCH` | `/painel/competicoes/:id/status` | Publicação controlada |
+| `PUT` | `/painel/competicoes/:id/dominio` | CNAME próprio; 409 se já usado |
 | `GET` `POST` | `/painel/competicoes/:id/times` | Equipes |
 | `PATCH` `DELETE` | `/painel/times/:id` | Exclusão barrada se houver atletas ou jogos |
 | `PUT` `DELETE` | `/painel/categorias/:catId/times/:timeId` | Vínculo com grupo |
@@ -290,6 +292,17 @@ não existe nele: `em_criacao` vira `notFound()` pelo 404 da API; em `publicada`
 O placar ao vivo é um client component com `EventSource`; como o aviso não traz
 dado de atleta, o placar atualiza na hora e um `router.refresh()` busca a
 cronologia pela rota que aplica a regra.
+
+**Domínio próprio** (`proxy.ts`, RF002): o host da requisição vira slug por
+`/competicoes/resolver`, e um `rewrite` — não redirect — mantém o endereço que o
+visitante vê. Arquivo `proxy.ts` e não `middleware.ts` porque o Next 16 renomeou
+a convenção. Cache de host→slug em memória com TTL de 1 minuto, incluindo o
+resultado negativo: host desconhecido é o caso que mais se repete (varredura de
+bot) e é justamente o que não pode virar carga no banco. Erro de rede **não** é
+cacheado — um soluço de 2s deixaria o domínio quebrado pelo TTL inteiro.
+
+O CNAME não é porta lateral para a visibilidade: competição `em_criacao` não
+resolve, então apontar o DNS antes de publicar não entrega nada.
 
 ### Painel (`apps/painel`)
 
@@ -376,7 +389,6 @@ Em ordem de impacto:
 | Item | Situação |
 |---|---|
 | **Campos e árbitros (RF013/RF014)** | Tabelas existem; sem endpoint e sem tela |
-| **Domínio próprio no portal** | `competicoes.dominio_personalizado` existe no banco; falta o middleware do Next resolvendo por host |
 | **Upload de imagens** | Sem storage nem endpoint; escudo, logo e foto ficam `null` |
 | **Configuração da categoria pelo painel** | As tabelas de configuração existem e são respeitadas, mas só dá para editá-las por SQL |
 | **Estatísticas de atleta (RF022)** | `v_estatisticas_atleta` existe e está correta; nenhuma tela a consome |

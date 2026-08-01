@@ -15,6 +15,37 @@ function soData(valor: Date | null): string | null {
   return valor ? valor.toISOString().slice(0, 10) : null;
 }
 
+/**
+ * Host da requisição → domínio comparável com `dominio_personalizado`.
+ *
+ * O cabeçalho `Host` chega com a porta em desenvolvimento, com maiúsculas
+ * quando o cliente quer, e às vezes com ponto final (FQDN absoluto). Sem
+ * normalizar, `Copa.Exemplo.Com:3001` não casaria com `copa.exemplo.com`.
+ * O `www.` é derrubado para o organizador não precisar cadastrar duas
+ * entradas do mesmo domínio.
+ *
+ * Devolve `''` para o que não pode ser domínio de competição — inclusive
+ * `localhost` e IPs, que são a plataforma rodando local.
+ */
+export function normalizarHost(host: string | undefined): string {
+  const limpo = (host ?? '')
+    .trim()
+    .toLowerCase()
+    .split(',')[0] // X-Forwarded-Host encadeado por proxies
+    .trim()
+    .replace(/:\d+$/, '')
+    .replace(/\.$/, '')
+    .replace(/^www\./, '');
+
+  if (!limpo || limpo === 'localhost') return '';
+  // precisa ter ponto e nada de caractere fora do vocabulário de hostname
+  if (!/^[a-z0-9.-]+$/.test(limpo) || !limpo.includes('.')) return '';
+  // IPv4 puro não é domínio personalizado de ninguém
+  if (/^\d+(\.\d+)+$/.test(limpo)) return '';
+
+  return limpo;
+}
+
 @Injectable()
 export class CompeticoesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -36,6 +67,33 @@ export class CompeticoesService {
     }
 
     return this.paraRespostaPublica(competicao);
+  }
+
+  /**
+   * White-label por CNAME (RF002): dado o host da requisição, devolve o
+   * slug da competição que atende naquele domínio.
+   *
+   * A visibilidade vale igual ao slug — competição `em_criacao` não
+   * resolve. Se resolvesse, apontar o CNAME antes de publicar entregaria
+   * ao público uma competição que ainda está sendo montada.
+   *
+   * Devolve `null` em vez de lançar: o middleware do portal usa a
+   * ausência para decidir que o host é da plataforma, e um 404 no meio do
+   * caminho viraria erro em toda página do domínio principal.
+   */
+  async resolverDominio(host: string): Promise<{ slug: string } | null> {
+    const dominio = normalizarHost(host);
+    if (!dominio) return null;
+
+    const competicao = await this.prisma.competicoes.findFirst({
+      where: {
+        dominio_personalizado: dominio,
+        status: { in: STATUS_VISIVEIS_NO_PORTAL },
+      },
+      select: { slug: true },
+    });
+
+    return competicao ?? null;
   }
 
   /**
