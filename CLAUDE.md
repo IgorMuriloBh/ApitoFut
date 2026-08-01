@@ -8,11 +8,15 @@ geração de tabela, súmula ao vivo, classificação, estatísticas e portal p�
 
 Existe um **protótipo funcional validado** em `prototipo/ApitoFut.html` — arquivo único,
 sem servidor, dados em `localStorage`. Todas as telas e regras de negócio foram testadas
-ali com o cliente. O backend ainda não existe.
+ali com o cliente.
 
 O trabalho agora é reimplementar o protótipo como aplicação real, preservando as regras
 já validadas. **Antes de decidir o comportamento de qualquer tela, consulte o protótipo** —
 ele é a especificação executável.
+
+A API, o painel e o portal já existem e rodam (ver *Estrutura do código*). O que ainda
+falta do protótipo está listado em `docs/SISTEMA.md` — a área do ADM do sistema é a
+maior lacuna aberta.
 
 ## Documentação
 
@@ -54,6 +58,81 @@ Dentro da rede do compose o Adminer continua falando com `db:5432`.
 Os arquivos de `db/` rodam em ordem alfabética **apenas na primeira subida** do volume.
 Ao alterar o schema, use `docker compose down -v` ou crie uma migration.
 
+## Perfis de acesso e área do ADM do sistema
+
+O sistema tem **dois níveis de acesso**, ambos já implementados no protótipo:
+
+| perfil | alcance |
+|---|---|
+| `organizador` | administra apenas as próprias competições |
+| `superadmin` | ADM do sistema: enxerga todos os usuários e todas as competições |
+
+**Área do ADM do sistema** — seção "Administração do sistema" no menu lateral, renderizada
+somente quando `isSuper()` é verdadeiro. Três telas:
+
+- `VIEWS.adminPlataforma` — indicadores consolidados e volume por organizador
+- `VIEWS.adminUsuarios` — todas as contas, com bloco de solicitações pendentes no topo;
+  liberar, bloquear, promover e rebaixar
+- `VIEWS.adminCompeticoes` — todas as competições da base, com acesso a qualquer uma
+
+**Fluxo de liberação de conta**: toda conta nova nasce com `situacao = 'pendente'` e não
+autentica. O ADM libera em Usuários. O primeiro cadastro da base vira `superadmin` + `ativo`
+automaticamente. Situações possíveis: `pendente`, `ativo`, `bloqueado`.
+
+Quando um superadmin abre a competição de outro organizador, o sistema exibe uma tarja de
+aviso no topo. Um organizador comum que tente acessar competição alheia ou rota `admin*`
+é redirecionado.
+
+> Nada disso existe ainda fora do protótipo: a API só tem login de organizador e o painel
+> não tem as três telas. É a maior pendência aberta (RF031) — ver `docs/SISTEMA.md`.
+
+## Mapa do protótipo
+
+`prototipo/ApitoFut.html` tem 4.611 linhas — não tente ler o arquivo inteiro. Use estas
+âncoras com `Read offset`, ou `Grep` pelo nome da função.
+
+### Perfis, login e área do ADM
+- `const PERFIS` — 700 · `const SITUACOES` — 705 · `isSuper()` — 710
+- `migrarUsuarios()` — 712 · `doLogin()` — 722 · `doSignup()` — 734
+- `const NAV_ADMIN` — 792 · `renderSidebar()` — 816
+- `VIEWS.adminPlataforma` — 3717 · `VIEWS.adminUsuarios` — 3762 · `VIEWS.adminCompeticoes` — 3842
+- `definirSituacao()` — 3812 · `alternarPerfil()` — 3821
+
+### Navegação e competições
+- `go()` — 855 · `const STATUS` — 884 · `VIEWS.dashboard` — 899
+- `VIEWS.visaoGeral` — 1254 · `VIEWS.categorias` — 1355 · `VIEWS.configuracao` — 1399
+- `novaCategoriaObj()` — 1102 · `defaultConfig()` — 662
+
+### Equipes e atletas
+- `VIEWS.times` — 1584 · `VIEWS.atletas` — 1723
+- `modalInscrever()` — 1770 · `salvarInscricao()` — 1932 · `fichaAtleta()` — 1831
+- `const ANO_SUB` — 1862 · `validaIdade()` — 1872 · `statsAtleta()` — 1992
+
+### Tabela, fases e súmula
+- `VIEWS.tabela` — 2307 · `gerarTabela()` — 2444 · `roundRobin()` — 2430
+- `fasesPadrao()` — 2198 · `faseSeguinte()` — 2218 · `modalFases()` — 2556
+- `modalProgramar()` — 2683 · `sumulaHTML()` — 3351
+
+### Central ao vivo
+- `VIEWS.operar` — 2790 · `iniciarJogo()` — 2940 · `periodo()` — 2945
+- `segundosJogo()` — 2904 · `recalcularPlacar()` — 2881
+- `salvarEvento()` — 3044 · `modalEditarEvento()` — 3012
+- `const SEM_ATLETA` — 2878 · `const CONTA_GOL` — 2880
+
+### Classificação, portal e rotas
+- `calcClassificacao()` — 3075 · `VIEWS.classificacao` — 3116 · `VIEWS.estatisticas` — 3179
+- `VIEWS.portal` — 3419 · `const PORTAL_ABAS` — 3465 · `visPortal()` — 3468
+- `abrirPublico()` — 3928 · `abrirAreaEquipe()` — 4097 · `abrirValidacao()` — 4473
+- `boot()` — 4561 (roteamento por hash)
+
+### Rotas do protótipo
+| hash | tela |
+|---|---|
+| (vazio) | painel do organizador / ADM |
+| `#/p/{competicaoId}[/{aba}]` | portal público |
+| `#/e/{competicaoId}` | área da equipe (auto-cadastro por link) |
+| `#/c/{competicaoId}/{atletaId}` | validação da carteirinha (destino do QR) |
+
 ## Regras de negócio que não podem quebrar
 
 Estas foram validadas no protótipo e várias estão garantidas por constraint/trigger:
@@ -83,6 +162,10 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
   cartões. Toda equipe inscrita aparece na tabela, mesmo sem ter jogado
 - **Só desempata por coluna visível**: esconder uma coluna da classificação
   também a remove dos critérios de desempate (`calcClassificacao` no protótipo)
+- **Conta nova nasce pendente** e não autentica até o ADM liberar — regra do
+  protótipo, ainda **não** implementada na API
+- **Rotas administrativas são exclusivas do superadmin** — organizador que tenta
+  acessá-las é redirecionado; idem competição de outro dono
 
 ## Visibilidade do portal público
 

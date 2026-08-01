@@ -347,11 +347,15 @@ Em ordem de impacto:
 
 | Item | Situação |
 |---|---|
+| **Área do ADM do sistema (RF031)** | O protótipo tem dois perfis (`organizador` / `superadmin`), conta nova nascendo `pendente` e três telas de administração — Plataforma, Usuários e Todas as Competições. Nada disso saiu do protótipo: `usuarios` não tem `perfil` nem `situacao`, não há auto-cadastro, e o painel não tem as telas. Ver *Perfis de acesso* no CLAUDE.md |
+| **Campos e árbitros (RF013/RF014)** | Tabelas existem; sem endpoint e sem tela |
 | **Domínio próprio no portal** | `competicoes.dominio_personalizado` existe no banco; falta o middleware do Next resolvendo por host |
 | **Upload de imagens** | Sem storage nem endpoint; escudo, logo e foto ficam `null` |
 | **Configuração da categoria pelo painel** | As tabelas de configuração existem e são respeitadas, mas só dá para editá-las por SQL |
 | **Estatísticas de atleta (RF022)** | `v_estatisticas_atleta` existe e está correta; nenhuma tela a consome |
 | **Área da equipe** | Auto-cadastro por link de convite (`origem`/`codigo_acesso` já no schema) |
+| **Súmula impressa (RF018)** | `sumulaHTML()` no protótipo (linha 3351); sem equivalente |
+| **Carteirinha e validação por QR (RF029)** | Rota `#/c/{comp}/{atleta}` no protótipo; sem equivalente |
 
 ---
 
