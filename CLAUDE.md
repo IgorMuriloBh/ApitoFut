@@ -15,8 +15,8 @@ já validadas. **Antes de decidir o comportamento de qualquer tela, consulte o p
 ele é a especificação executável.
 
 A API, o painel e o portal já existem e rodam (ver *Estrutura do código*). O que ainda
-falta do protótipo está listado em `docs/SISTEMA.md` — a área do ADM do sistema é a
-maior lacuna aberta.
+falta do protótipo está listado em `docs/SISTEMA.md` — hoje as maiores lacunas são
+domínio próprio no portal, upload de imagens e a área da equipe.
 
 ## Documentação
 
@@ -39,6 +39,7 @@ maior lacuna aberta.
 - `db/12-soft-delete.sql` — exclusão lógica de organização e competição
 - `db/13-avanco-mata-mata.sql` — vencedor sobe para a fase seguinte (RF017)
 - `db/14-suspensoes.sql` — suspensão automática por cartões (RF032)
+- `db/15-adm-sistema.sql` — auto-cadastro e as frestas da área do ADM (RF031)
 
 ## Banco de dados
 
@@ -67,8 +68,8 @@ O sistema tem **dois níveis de acesso**, ambos já implementados no protótipo:
 | `organizador` | administra apenas as próprias competições |
 | `superadmin` | ADM do sistema: enxerga todos os usuários e todas as competições |
 
-**Área do ADM do sistema** — seção "Administração do sistema" no menu lateral, renderizada
-somente quando `isSuper()` é verdadeiro. Três telas:
+**Área do ADM do sistema** — seção "Administração do sistema" visível somente ao
+`superadmin` (menu lateral no protótipo, barra superior no painel). Três telas:
 
 - `VIEWS.adminPlataforma` — indicadores consolidados e volume por organizador
 - `VIEWS.adminUsuarios` — todas as contas, com bloco de solicitações pendentes no topo;
@@ -83,8 +84,16 @@ Quando um superadmin abre a competição de outro organizador, o sistema exibe u
 aviso no topo. Um organizador comum que tente acessar competição alheia ou rota `admin*`
 é redirecionado.
 
-> Nada disso existe ainda fora do protótipo: a API só tem login de organizador e o painel
-> não tem as três telas. É a maior pendência aberta (RF031) — ver `docs/SISTEMA.md`.
+**Implementado** (migration 15 · `apps/api/src/admin/` · `apps/painel/src/telas/Admin.tsx`).
+Duas coisas a saber antes de mexer:
+
+- O superadmin **não** tem passe-livre no RLS. As telas do ADM leem por funções
+  `SECURITY DEFINER` de recorte fixo, que reconferem o perfil do ator no banco.
+  Para abrir a competição de outro organizador, `POST /admin/competicoes/:id/assumir`
+  devolve um token apontando para a organização dona — daí em diante são as rotas
+  normais do painel, com as políticas valendo. Ele assume uma organização por vez.
+- A tarja âmbar do painel não é enfeite: sem ela o ADM edita a conta alheia
+  achando que é a dele, e a alteração é permanente.
 
 ## Mapa do protótipo
 
@@ -162,10 +171,14 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
   cartões. Toda equipe inscrita aparece na tabela, mesmo sem ter jogado
 - **Só desempata por coluna visível**: esconder uma coluna da classificação
   também a remove dos critérios de desempate (`calcClassificacao` no protótipo)
-- **Conta nova nasce pendente** e não autentica até o ADM liberar — regra do
-  protótipo, ainda **não** implementada na API
-- **Rotas administrativas são exclusivas do superadmin** — organizador que tenta
-  acessá-las é redirecionado; idem competição de outro dono
+- **Conta nova nasce pendente** e não autentica até o ADM liberar. A primeira
+  conta da base é promovida a `superadmin` + `ativo` por trigger (migration 15) —
+  senão a plataforma nasceria sem ninguém para liberar ninguém
+- **A plataforma nunca fica sem ADM ativo**, e ninguém altera o próprio perfil
+  ou a própria situação — garantido em `fn_admin_alterna_perfil` /
+  `fn_admin_define_situacao`, não só no botão da tela
+- **Rotas administrativas são exclusivas do superadmin** — 403 no `SuperadminGuard`
+  e reconferência no banco; idem competição de outro dono
 
 ## Visibilidade do portal público
 
@@ -256,10 +269,11 @@ apps/api/          NestJS — a única app existente hoje
   prisma/schema.prisma  GERADO por `prisma db pull` — não editar
   src/prisma/        PrismaService com driver adapter (obrigatório no Prisma 7)
   src/competicoes/   visibilidade.ts concentra a regra de status
+  src/admin/         área do ADM: só frestas SECURITY DEFINER, nunca comOrganizacao
 apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/lib/api.ts     cliente autenticado; token em sessionStorage
   src/lib/dominio.ts vocabulário do protótipo (STATUS, CORES, FASES…)
-  src/telas/         Login · Painel · Wizard (3 etapas) · Competicao
+  src/telas/         Login · Painel · Wizard (3 etapas) · Competicao · Admin
 apps/portal/       Next.js 16 (App Router) — portal público SSR
   lib/api.ts         cliente dos endpoints públicos (o portal nunca autentica)
   app/[slug]/        competição · [categoriaId] classificação+jogos · [jogoId] detalhe
