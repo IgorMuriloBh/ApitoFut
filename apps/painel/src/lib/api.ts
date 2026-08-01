@@ -10,6 +10,12 @@ const CHAVE = 'apitofut.sessao';
 export interface Sessao {
   token: string;
   usuario: { id: string; nome: string; perfil: string; organizacaoId: string };
+  /**
+   * Preenchido quando o ADM assumiu a organização de outro organizador.
+   * É o que acende a tarja de aviso e o botão de voltar — o token também
+   * carrega essa informação, mas a tela precisa do nome para exibir.
+   */
+  assumida?: { competicaoId: string; organizacao: string } | null;
 }
 
 export const sessao = {
@@ -255,6 +261,60 @@ export interface LanceRegistrado {
   status: string;
 }
 
+// ------------------------------------------------- área do ADM (RF031)
+
+export interface UsuarioDaPlataforma {
+  id: string;
+  nome: string;
+  email: string;
+  organizacao: string | null;
+  perfil: 'organizador' | 'superadmin';
+  situacao: 'pendente' | 'ativo' | 'bloqueado';
+  competicoes: number;
+  atletas: number;
+  ultimoAcesso: string | null;
+  criadoEm: string;
+}
+
+export interface CompeticaoDaPlataforma {
+  id: string;
+  nome: string;
+  slug: string;
+  status: string;
+  temporada: number | null;
+  cidade: string;
+  estado: string;
+  organizacaoId: string;
+  organizacao: string;
+  dono: string | null;
+  categorias: number;
+  times: number;
+  atletas: number;
+  jogos: number;
+  criadoEm: string;
+}
+
+export interface IndicadoresDaPlataforma {
+  usuarios: number;
+  organizadores: number;
+  pendentes: number;
+  competicoes: number;
+  competicoesAtivas: number;
+  times: number;
+  atletas: number;
+  jogos: number;
+  jogosEncerrados: number;
+}
+
+/** Resposta do auto-cadastro: só a primeira conta da base recebe token. */
+export interface RespostaDeCadastro {
+  situacao: 'pendente' | 'ativo';
+  perfil: string;
+  mensagem: string;
+  token: string | null;
+  usuario: Sessao['usuario'] | null;
+}
+
 export const api = {
   login: (email: string, senha: string) =>
     requisitar<Sessao>('/auth/login', {
@@ -262,6 +322,48 @@ export const api = {
       corpo: { email, senha },
       autenticado: false,
     }),
+
+  cadastrar: (dados: {
+    nome: string;
+    email: string;
+    senha: string;
+    organizacao: string;
+  }) =>
+    requisitar<RespostaDeCadastro>('/auth/cadastro', {
+      metodo: 'POST',
+      corpo: dados,
+      autenticado: false,
+    }),
+
+  admin: {
+    indicadores: () => requisitar<IndicadoresDaPlataforma>('/admin/indicadores'),
+
+    usuarios: () => requisitar<UsuarioDaPlataforma[]>('/admin/usuarios'),
+
+    definirSituacao: (id: string, situacao: 'ativo' | 'bloqueado') =>
+      requisitar<{ situacao: string }>(`/admin/usuarios/${id}/situacao`, {
+        metodo: 'PATCH',
+        corpo: { situacao },
+      }),
+
+    alternarPerfil: (id: string) =>
+      requisitar<{ perfil: string }>(`/admin/usuarios/${id}/perfil`, {
+        metodo: 'PATCH',
+      }),
+
+    competicoes: () => requisitar<CompeticaoDaPlataforma[]>('/admin/competicoes'),
+
+    assumir: (competicaoId: string) =>
+      requisitar<{ token: string; organizacaoId: string; competicaoId: string }>(
+        `/admin/competicoes/${competicaoId}/assumir`,
+        { metodo: 'POST' },
+      ),
+
+    voltar: () =>
+      requisitar<{ token: string; organizacaoId: string }>('/admin/voltar', {
+        metodo: 'POST',
+      }),
+  },
 
   competicoes: () => requisitar<CompeticaoDoPainel[]>('/painel/competicoes'),
 

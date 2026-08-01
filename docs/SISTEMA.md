@@ -296,6 +296,18 @@ cronologia pela rota que aplica a regra.
 Login → lista de campeonatos → competição com quatro abas (visão geral, equipes,
 atletas, tabela de jogos) → súmula em tela cheia.
 
+O login também faz o **auto-cadastro** ("Primeiro campeonato? Criar conta") e
+mostra a tela de "cadastro enviado" quando a conta nasce pendente.
+
+**Administração do sistema** (`telas/Admin.tsx`) aparece na barra superior só
+para o `superadmin`. As três telas do protótipo viraram abas de uma tela só —
+o painel não tem menu lateral, e três itens de topo para um perfil que é
+minoria poluiria a navegação de quem apenas organiza competição.
+
+Ao abrir a competição de outro organizador, o painel troca o token pelo que a
+API devolve e acende uma **tarja âmbar** com o nome da organização e o botão de
+voltar. Sem a tarja, o ADM editaria a competição alheia achando que é a dele.
+
 **Token em `sessionStorage`, não `localStorage`** — some ao fechar a aba, que é
 o certo num painel usado em máquina compartilhada de secretaria ou federação.
 Qualquer `401` dispara um evento que derruba a sessão de uma vez.
@@ -363,7 +375,6 @@ Em ordem de impacto:
 
 | Item | Situação |
 |---|---|
-| **Telas do ADM do sistema (RF031)** | Banco e API prontos (migration 15, rotas `/admin/*`, `/auth/cadastro`). Falta o painel: as três telas, o formulário de auto-cadastro no login e a tarja de "você está em outra conta" |
 | **Campos e árbitros (RF013/RF014)** | Tabelas existem; sem endpoint e sem tela |
 | **Domínio próprio no portal** | `competicoes.dominio_personalizado` existe no banco; falta o middleware do Next resolvendo por host |
 | **Upload de imagens** | Sem storage nem endpoint; escudo, logo e foto ficam `null` |
@@ -387,6 +398,8 @@ Registro do que foi decidido e **por quê** — para não refazer a discussão.
 | `tsc` puro no build | Manter `@nestjs/cli` | Ele arrastava 4 CVEs *high* sem correção upstream; o único "fix" era rebaixar o Nest da 11 para a 6.8.1 |
 | `scrypt` do `node:crypto` | bcrypt/argon2 | Mesmo papel (KDF memory-hard, baseline OWASP), sem dependência nativa |
 | Runner nativo do Node | Jest | Manter `npm audit` em zero |
+| Frestas `SECURITY DEFINER` para o ADM | `OR app_is_super()` nas políticas de RLS | Afrouxar a política valeria para toda consulta de toda tabela, para sempre; a fresta é estreita, nomeada e auditável |
+| ADM assume uma organização por vez | Passe-livre no RLS para o superadmin | Ele segue pelas rotas normais do painel, com as políticas valendo — e a tarja diz de quem é a conta |
 | SSE | WebSocket | Fluxo unidirecional; zero dependência nova |
 | Porta 5433 | Desligar o Postgres.app | O Postgres.app é do usuário e pode estar em uso por outros projetos |
 | Soft-delete só no topo | `excluido_em` em 28 tabelas | Complexidade em toda consulta sem ganho proporcional |
