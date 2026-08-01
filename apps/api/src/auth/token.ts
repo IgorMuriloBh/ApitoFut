@@ -11,6 +11,13 @@ export interface SessaoToken {
   /** organização — é o que vira app.current_org no RLS */
   org: string;
   perfil: string;
+  /**
+   * Só existe quando um superadmin assumiu a organização de outro
+   * organizador (`POST /admin/competicoes/:id/assumir`): guarda a
+   * organização de origem, para poder voltar. A presença deste campo é o
+   * que o painel usa para exibir a tarja de "você está em outra conta".
+   */
+  orgPropria?: string;
   /** epoch em segundos */
   exp: number;
 }

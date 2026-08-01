@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 147 testes (exige o banco de pé)
+npm test                  # 166 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -121,7 +121,7 @@ propósito faz 5 testes falharem.
 
 ## 4. Banco de dados
 
-14 migrations, aplicadas em ordem alfabética **na primeira subida do volume**.
+15 migrations, aplicadas em ordem alfabética **na primeira subida do volume**.
 Estado atual do schema: **28 tabelas, 4 views, 16 enums, 28 políticas de RLS**.
 Mudou o schema? Nova migration. Nunca editar as antigas, nunca `prisma migrate dev`.
 Depois, `npm run db:pull` para regenerar os tipos.
@@ -142,6 +142,7 @@ Depois, `npm run db:pull` para regenerar os tipos.
 | `12-soft-delete.sql` | Exclusão lógica de organização e competição |
 | `13-avanco-mata-mata.sql` | Vencedor sobe para a fase seguinte ao encerrar |
 | `14-suspensoes.sql` | Suspensão automática por cartões, cumprimento e bloqueio (RF032) |
+| `15-adm-sistema.sql` | Auto-cadastro, primeira conta vira ADM e as frestas da área do ADM (RF031) |
 
 ### Triggers — onde as regras realmente moram
 
@@ -222,6 +223,7 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | Método | Rota | Observação |
 |---|---|---|
 | `POST` | `/auth/login` | Mesma mensagem para e-mail inexistente e senha errada |
+| `POST` | `/auth/cadastro` | Auto-cadastro; **rota aberta**. Devolve token só se for a 1ª conta da base |
 | `GET` `POST` | `/painel/competicoes` | Lista e wizard de criação |
 | `PATCH` | `/painel/competicoes/:id/status` | Publicação controlada |
 | `GET` `POST` | `/painel/competicoes/:id/times` | Equipes |
@@ -234,6 +236,20 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `PATCH` | `/painel/jogos/:id/programacao` | Data, hora e campo |
 | `POST` | `/painel/jogos/:id/{iniciar,periodo,encerrar,reabrir}` | Controle da partida |
 | `POST` `PATCH` `DELETE` | `/painel/jogos/:id/lances[/:lanceId]` | Súmula |
+
+### Área do ADM do sistema (`superadmin`)
+
+| Método | Rota | Observação |
+|---|---|---|
+| `GET` | `/admin/indicadores` | Visão da Plataforma — soma a base inteira |
+| `GET` | `/admin/usuarios` | Todas as contas, pendentes primeiro |
+| `PATCH` | `/admin/usuarios/:id/situacao` | Liberar / bloquear / desbloquear |
+| `PATCH` | `/admin/usuarios/:id/perfil` | Promove a ADM ou rebaixa |
+| `GET` | `/admin/competicoes` | Todas as competições da base |
+| `POST` | `/admin/competicoes/:id/assumir` | Token novo apontando para a organização dona |
+| `POST` | `/admin/voltar` | Desfaz o "assumir" |
+
+O organizador leva **403** em qualquer uma delas (`SuperadminGuard`).
 
 ### Decisões da API que vale conhecer
 
@@ -347,7 +363,7 @@ Em ordem de impacto:
 
 | Item | Situação |
 |---|---|
-| **Área do ADM do sistema (RF031)** | O protótipo tem dois perfis (`organizador` / `superadmin`), conta nova nascendo `pendente` e três telas de administração — Plataforma, Usuários e Todas as Competições. Nada disso saiu do protótipo: `usuarios` não tem `perfil` nem `situacao`, não há auto-cadastro, e o painel não tem as telas. Ver *Perfis de acesso* no CLAUDE.md |
+| **Telas do ADM do sistema (RF031)** | Banco e API prontos (migration 15, rotas `/admin/*`, `/auth/cadastro`). Falta o painel: as três telas, o formulário de auto-cadastro no login e a tarja de "você está em outra conta" |
 | **Campos e árbitros (RF013/RF014)** | Tabelas existem; sem endpoint e sem tela |
 | **Domínio próprio no portal** | `competicoes.dominio_personalizado` existe no banco; falta o middleware do Next resolvendo por host |
 | **Upload de imagens** | Sem storage nem endpoint; escudo, logo e foto ficam `null` |
