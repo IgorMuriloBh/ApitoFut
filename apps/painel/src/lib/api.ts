@@ -354,6 +354,78 @@ async function baixarArquivo(caminho: string) {
   URL.revokeObjectURL(url);
 }
 
+// ---------------------- catálogo: categorias, base de atletas, ao vivo
+
+export interface DadosDaCategoria {
+  nome?: string;
+  tipo?: string;
+  genero?: string;
+  modalidade?: string;
+  formato?: string;
+  numTimes?: number;
+  numGrupos?: number;
+  faseMataMata?: string;
+  turnoReturno?: boolean;
+}
+
+export interface AtletaDaBase2 {
+  id: string;
+  nome: string;
+  apelido: string | null;
+  dataNascimento: string | null;
+  posicao: string | null;
+  fotoUrl: string | null;
+  /** Em quantas competições da conta ele já jogou (RF008). */
+  competicoes: number;
+  equipes: string | null;
+}
+
+export interface PaginaDaBase {
+  pagina: number;
+  porPagina: number;
+  total: number;
+  atletas: AtletaDaBase2[];
+}
+
+export interface HistoricoDoAtleta {
+  atleta: {
+    id: string;
+    nome: string;
+    apelido: string | null;
+    dataNascimento: string | null;
+    posicao: string | null;
+    fotoUrl: string | null;
+  };
+  participacoes: {
+    competicao: string;
+    temporada: number | null;
+    categoria: string;
+    equipe: string;
+    numero: number | null;
+    jogos: number;
+    gols: number;
+    assistencias: number;
+    cartoesAmarelos: number;
+    cartoesVermelhos: number;
+  }[];
+}
+
+export interface JogoDaCentral {
+  id: string;
+  categoriaId: string;
+  categoria: string;
+  fase: string | null;
+  rodada: number | null;
+  data: string | null;
+  hora: string | null;
+  campo: string | null;
+  status: string;
+  periodo: number;
+  mandante: { id: string | null; nome: string };
+  visitante: { id: string | null; nome: string };
+  placar: { mandante: number; visitante: number };
+}
+
 // ------------------------------------------- classificação e disciplina
 
 export interface LinhaDaClassificacao {
@@ -724,6 +796,34 @@ export const api = {
 
   removerLance: (jogoId: string, lanceId: string) =>
     requisitar(`/painel/jogos/${jogoId}/lances/${lanceId}`, { metodo: 'DELETE' }),
+
+  criarCategoria: (competicaoId: string, dados: DadosDaCategoria) =>
+    requisitar<{ id: string; nome: string }>(
+      `/painel/competicoes/${competicaoId}/categorias`,
+      { metodo: 'POST', corpo: dados },
+    ),
+
+  editarCategoria: (categoriaId: string, dados: DadosDaCategoria) =>
+    requisitar<{ id: string; nome: string }>(
+      `/painel/categorias/${categoriaId}`,
+      { metodo: 'PATCH', corpo: dados },
+    ),
+
+  removerCategoria: (categoriaId: string) =>
+    requisitar(`/painel/categorias/${categoriaId}`, { metodo: 'DELETE' }),
+
+  baseDeAtletas: (busca: string, pagina = 1) =>
+    requisitar<PaginaDaBase>(
+      `/painel/atletas/base?busca=${encodeURIComponent(busca)}&pagina=${pagina}`,
+    ),
+
+  historicoDoAtleta: (atletaId: string) =>
+    requisitar<HistoricoDoAtleta>(`/painel/atletas/${atletaId}/historico`),
+
+  centralAoVivo: (competicaoId: string) =>
+    requisitar<{ aoVivo: JogoDaCentral[]; agendados: JogoDaCentral[] }>(
+      `/painel/competicoes/${competicaoId}/ao-vivo`,
+    ),
 
   classificacao: (categoriaId: string) =>
     requisitar<ClassificacaoDoPainel>(

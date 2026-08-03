@@ -179,6 +179,10 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
   "melhor defesa" nem a "fair play"
 - **CSV do sistema abre no Excel em português**: BOM UTF-8, separador `;` e
   aspas simples em célula que começa com `=`, `+`, `-` ou `@` (fórmula)
+- **Categoria com tabela gerada não muda de estrutura** (formato, grupos,
+  nº de equipes) — a tabela ficaria incoerente e só se descobriria na fase
+  seguinte. Excluir exige categoria vazia: a cascata apagaria jogos,
+  inscrições e configuração sem aviso
 - **Campo ou árbitro em uso não é excluído** — as FKs são `SET NULL` e o
   banco deixaria, esvaziando o local de jogos já programados sem aviso
 - **Escalar campo/árbitro exige mesma competição**: duas competições da
@@ -303,9 +307,11 @@ apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/lib/api.ts     cliente autenticado; token em sessionStorage
   src/lib/dominio.ts vocabulário do protótipo (STATUS, CORES, FASES…)
   src/componentes/MenuLateral.tsx  navegação por seções, como o protótipo
+                     (duas: a global da conta e a da competição aberta)
   src/telas/         Login · Painel · Wizard · Competicao (menu lateral) · Admin
                      Equipes · Atletas · Tabela · Sumula · Classificacao ·
-                     Estatisticas · Suspensoes · Estrutura · Configuracao
+                     Estatisticas · Suspensoes · Estrutura · Configuracao ·
+                     Categorias · AoVivo · BaseDeAtletas · RankingGeral
 apps/portal/       Next.js 16 (App Router) — portal público SSR
   lib/api.ts         cliente dos endpoints públicos (o portal nunca autentica)
   proxy.ts           domínio próprio: host → slug por rewrite (Next 16 renomeou

@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 298 testes (exige o banco de pé)
+npm test                  # 312 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -249,6 +249,11 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `GET` | `/painel/jogos/:id/sumula.html` | Súmula em branco para a mesa (RF018) |
 | `GET` | `/painel/categorias/:id/sumulas.html?rodada=&data=` | Lote da rodada |
 | `GET` | `/painel/categorias/:id/classificacao` | Mesma tabela do portal, visível desde `em_criacao` |
+| `POST` | `/painel/competicoes/:id/categorias` | Categoria depois do wizard |
+| `PATCH` `DELETE` | `/painel/categorias/:id` | 409 se mudar estrutura com tabela gerada, ou excluir com conteúdo |
+| `GET` | `/painel/atletas/base?busca=&pagina=` | Cadastro único, com contagem de competições |
+| `GET` | `/painel/atletas/:id/historico` | Ficha: onde jogou e o que fez |
+| `GET` | `/painel/competicoes/:id/ao-vivo` | Central: jogos de todas as categorias |
 | `GET` | `/painel/categorias/:id/estatisticas` | RF022 — os quatro rankings |
 | `GET` | `/painel/ranking` | RF023 — consolidado da conta |
 | `GET` | `/painel/categorias/:id/{inscritos,classificacao,estatisticas,jogos}.csv` | Exportações |
@@ -373,6 +378,25 @@ documento.
 > Ao testar: `Response.text()` do fetch **remove o BOM** por especificação. Um
 > teste que verifica BOM precisa ler `arrayBuffer()`, senão conclui que ele
 > sumiu quando está lá.
+
+### CRUD de categoria, base de atletas e central ao vivo
+
+`catalogo.service.ts` — o que é da conta, não de um jogo.
+
+**Categoria** só existia no wizard: renomear um "Sub-15" digitado errado exigia
+SQL. Duas travas que o banco não faz: mudar formato, grupos ou nº de equipes com
+**tabela já gerada** responde 409 (a tabela ficaria incoerente e só se
+descobriria na fase seguinte), e excluir exige categoria vazia (a cascata
+apagaria jogos, inscrições e configuração sem avisar). Criar não monta
+configuração nenhuma — o trigger da migration 09 já faz isso.
+
+**Base de atletas** mostra o cadastro único (RF008) com quantas competições cada
+um disputa, e a ficha traz uma linha por participação. É o que torna visível que
+o mesmo atleta atravessa temporadas sem recadastro.
+
+**Central ao vivo** junta os jogos de **todas** as categorias: a tabela de jogos
+é por categoria, e num sábado de rodada o operador precisa de todas na mesma
+tela. Recarrega a cada 20s enquanto há jogo rolando.
 
 ### Configuração da categoria (RF005)
 
@@ -506,8 +530,12 @@ Ao abrir a competição de outro organizador, o painel troca o token pelo que a
 API devolve e acende uma **tarja âmbar** com o nome da organização e o botão de
 voltar. Sem a tarja, o ADM editaria a competição alheia achando que é a dele.
 
-**Navegação por menu lateral**, como o protótipo (`NAV_COMP`, linha 797), com
-as seções *Competição* / *Operação* / *Estrutura*. Era uma fila de abas no topo;
+**Duas navegações laterais**, como o protótipo. A **global** (`NAV_GLOBAL`, linha
+786) tem as telas da conta — meus campeonatos, base de atletas, ranking da
+plataforma — mais a seção do ADM para quem é `superadmin`. A **da competição**
+(`NAV_COMP`, linha 797) tem as seções *Competição* / *Operação* / *Estrutura*.
+A global some quando uma competição está aberta: duas laterais competiriam
+entre si, e voltar é um clique em "Meus campeonatos". Era uma fila de abas no topo;
 com nove itens ela transbordava e perdia o agrupamento — cadastro, operação e
 estrutura são três momentos diferentes do trabalho. Em tela estreita o menu vira
 faixa rolável: o painel é usado em tablet na beira do campo.

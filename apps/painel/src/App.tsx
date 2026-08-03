@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, sessao, type CompeticaoDoPainel, type Sessao } from './lib/api';
+import { MenuLateral, type SecaoDoMenu } from './componentes/MenuLateral';
 import { Admin, type AbaDoAdm } from './telas/Admin';
+import { BaseDeAtletas } from './telas/BaseDeAtletas';
 import { Competicao } from './telas/Competicao';
+import { RankingGeral } from './telas/RankingGeral';
 import { Login } from './telas/Login';
 import { Painel } from './telas/Painel';
 import { Wizard } from './telas/Wizard';
@@ -9,8 +12,38 @@ import { Wizard } from './telas/Wizard';
 type Tela =
   | { nome: 'painel' }
   | { nome: 'wizard' }
+  | { nome: 'base' }
+  | { nome: 'ranking' }
   | { nome: 'competicao'; competicao: CompeticaoDoPainel }
   | { nome: 'admin'; aba: AbaDoAdm };
+
+/**
+ * Navegação global — o `NAV_GLOBAL`/`NAV_ADMIN` do protótipo (linhas 786 e
+ * 792). São as telas **da conta**, não de um campeonato: valem estando ou
+ * não dentro de uma competição.
+ *
+ * Fica escondida enquanto uma competição está aberta, para não competir
+ * com o menu da competição — voltar é um clique em "Meus campeonatos".
+ */
+const NAV_GLOBAL: SecaoDoMenu[] = [
+  {
+    titulo: 'Minha conta',
+    itens: [
+      { chave: 'painel', icone: '⌂', rotulo: 'Meus campeonatos' },
+      { chave: 'base', icone: '👥', rotulo: 'Base de atletas' },
+      { chave: 'ranking', icone: '📊', rotulo: 'Ranking da plataforma' },
+    ],
+  },
+];
+
+const NAV_ADMIN: SecaoDoMenu = {
+  titulo: 'Administração do sistema',
+  itens: [
+    { chave: 'admin:plataforma', icone: '🛡', rotulo: 'Visão da plataforma' },
+    { chave: 'admin:usuarios', icone: '👤', rotulo: 'Usuários' },
+    { chave: 'admin:competicoes', icone: '🗃', rotulo: 'Todas as competições' },
+  ],
+};
 
 export function App() {
   const [atual, setAtual] = useState<Sessao | null>(() => sessao.ler());
@@ -84,21 +117,6 @@ export function App() {
             ⚽ ApitoFut
           </button>
 
-          {/* a seção do ADM só existe para quem é ADM — igual ao protótipo,
-              onde o bloco do menu lateral depende de isSuper() */}
-          {ehAdm && (
-            <button
-              onClick={() => setTela({ nome: 'admin', aba: 'plataforma' })}
-              className={`text-sm font-medium px-3 py-1.5 rounded-lg transition ${
-                tela.nome === 'admin'
-                  ? 'bg-purple-100 text-purple-800'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Administração do sistema
-            </button>
-          )}
-
           <span className="flex-1" />
           <span className="text-sm text-slate-500 hidden sm:inline">
             {atual.usuario.nome}
@@ -149,6 +167,26 @@ export function App() {
         </div>
       )}
 
+      <div className="flex flex-col lg:flex-row">
+        {/* a lateral global some dentro de uma competição: lá quem manda é
+            o menu da competição, e duas laterais competiriam entre si */}
+        {tela.nome !== 'competicao' && (
+          <MenuLateral
+            secoes={ehAdm ? [...NAV_GLOBAL, NAV_ADMIN] : NAV_GLOBAL}
+            atual={
+              tela.nome === 'admin' ? `admin:${tela.aba}` : tela.nome
+            }
+            aoEscolher={(chave) => {
+              if (chave.startsWith('admin:')) {
+                setTela({ nome: 'admin', aba: chave.slice(6) as AbaDoAdm });
+              } else {
+                setTela({ nome: chave as 'painel' | 'base' | 'ranking' });
+              }
+            }}
+          />
+        )}
+
+        <div className="flex-1 min-w-0">
       {tela.nome === 'painel' && (
         <Painel
           recarregarEm={versao}
@@ -181,6 +219,9 @@ export function App() {
         />
       )}
 
+      {tela.nome === 'base' && <BaseDeAtletas />}
+      {tela.nome === 'ranking' && <RankingGeral />}
+
       {tela.nome === 'admin' &&
         (ehAdm ? (
           <Admin
@@ -194,6 +235,8 @@ export function App() {
           // mostrar tela vazia, e a API devolveria 403 de qualquer jeito
           <RedirecionaParaPainel aoRedirecionar={() => setTela({ nome: 'painel' })} />
         ))}
+        </div>
+      </div>
     </div>
   );
 }

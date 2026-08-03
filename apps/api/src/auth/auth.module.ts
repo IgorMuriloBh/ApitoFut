@@ -4,6 +4,7 @@ import { DisciplinaService } from '../painel/disciplina.service';
 import { ElencoController } from '../painel/elenco.controller';
 import { ElencoService } from '../painel/elenco.service';
 import { EquipesService } from '../painel/equipes.service';
+import { CatalogoService } from '../painel/catalogo.service';
 import { ClassificacaoService } from '../competicoes/classificacao.service';
 import { CompeticoesService } from '../competicoes/competicoes.service';
 import { ConfiguracaoService } from '../painel/configuracao.service';
@@ -41,6 +42,7 @@ import { AuthService } from './auth.service';
     EstatisticasService,
     ExportacaoService,
     ClassificacaoService,
+    CatalogoService,
     CompeticoesService,
     ImpressaoService,
     SumulaService,

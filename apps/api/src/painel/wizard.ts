@@ -60,6 +60,50 @@ function exigir(cond: unknown, mensagem: string): asserts cond {
   if (!cond) throw new WizardInvalido(mensagem);
 }
 
+/**
+ * Saneia UMA categoria. Extraído do wizard porque o CRUD de categoria
+ * (criar e editar depois que a competição existe) precisa exatamente das
+ * mesmas regras — e duas cópias divergiriam na primeira mudança.
+ */
+export function validarCategoria(
+  c: WizardCategoria,
+  ordem = 0,
+): CategoriaSaneada {
+  // mensagem de wzFinishCats
+  exigir(c?.nome?.trim(), 'Todas as categorias precisam de um nome.');
+
+  const formato = c.formato ?? 'grupos_mata';
+  const numTimes = c.numTimes ?? 8;
+  const numGrupos = formato === 'pontos_mata' ? 1 : (c.numGrupos ?? 2); // catSet força 1
+  const fase = c.faseMataMata ?? 'semi';
+
+  exigir(
+    Number.isInteger(numTimes) && numTimes >= 2 && numTimes <= 128,
+    `Categoria "${c.nome}": nº de times deve estar entre 2 e 128.`,
+  );
+  exigir(
+    Number.isInteger(numGrupos) && numGrupos >= 1 && numGrupos <= 16,
+    `Categoria "${c.nome}": nº de grupos deve estar entre 1 e 16.`,
+  );
+  exigir(
+    FASES_MATA.includes(fase),
+    `Categoria "${c.nome}": fase do mata-mata deve ser ${FASES_MATA.join(', ')}.`,
+  );
+
+  return {
+    nome: c.nome.trim(),
+    tipo: (c.tipo ?? 'adulto') as CategoriaSaneada['tipo'],
+    genero: (c.genero ?? 'masculino') as CategoriaSaneada['genero'],
+    modalidade: (c.modalidade ?? 'fut7') as CategoriaSaneada['modalidade'],
+    formato: formato as CategoriaSaneada['formato'],
+    num_times: numTimes,
+    num_grupos: numGrupos,
+    fase_mata_mata: fase,
+    turno_returno: c.turnoReturno ?? false,
+    ordem,
+  };
+}
+
 /** Valida e normaliza; devolve o que o INSERT precisa. Lança WizardInvalido. */
 export function validarWizard(w: WizardCompeticao): {
   competicao: {
@@ -104,41 +148,7 @@ export function validarWizard(w: WizardCompeticao): {
     'Inclua ao menos uma categoria, ou envie possuiCategorias=false para a categoria única.',
   );
 
-  const categorias = brutas.map((c, i): CategoriaSaneada => {
-    // mensagem de wzFinishCats
-    exigir(c?.nome?.trim(), 'Todas as categorias precisam de um nome.');
-
-    const formato = c.formato ?? 'grupos_mata';
-    const numTimes = c.numTimes ?? 8;
-    const numGrupos = formato === 'pontos_mata' ? 1 : (c.numGrupos ?? 2); // catSet força 1
-    const fase = c.faseMataMata ?? 'semi';
-
-    exigir(
-      Number.isInteger(numTimes) && numTimes >= 2 && numTimes <= 128,
-      `Categoria "${c.nome}": nº de times deve estar entre 2 e 128.`,
-    );
-    exigir(
-      Number.isInteger(numGrupos) && numGrupos >= 1 && numGrupos <= 16,
-      `Categoria "${c.nome}": nº de grupos deve estar entre 1 e 16.`,
-    );
-    exigir(
-      FASES_MATA.includes(fase),
-      `Categoria "${c.nome}": fase do mata-mata deve ser ${FASES_MATA.join(', ')}.`,
-    );
-
-    return {
-      nome: c.nome.trim(),
-      tipo: c.tipo ?? 'adulto',
-      genero: c.genero ?? 'masculino',
-      modalidade: c.modalidade ?? 'fut7',
-      formato,
-      num_times: numTimes,
-      num_grupos: numGrupos,
-      fase_mata_mata: fase,
-      turno_returno: c.turnoReturno ?? false,
-      ordem: i,
-    };
-  });
+  const categorias = brutas.map((c, i) => validarCategoria(c, i));
 
   const nomes = new Set(categorias.map((c) => c.nome.toLowerCase()));
   exigir(nomes.size === categorias.length, 'Há categorias com o mesmo nome.');

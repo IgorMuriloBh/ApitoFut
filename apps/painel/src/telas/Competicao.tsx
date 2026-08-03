@@ -8,6 +8,8 @@ import { Atletas } from './Atletas';
 import { Configuracao } from './Configuracao';
 import { Estatisticas } from './Estatisticas';
 import { Estrutura } from './Estrutura';
+import { AoVivo } from './AoVivo';
+import { Categorias } from './Categorias';
 import { Classificacao } from './Classificacao';
 import { Suspensoes } from './Suspensoes';
 import { Equipes } from './Equipes';
@@ -16,9 +18,11 @@ import { Tabela } from './Tabela';
 
 type Aba =
   | 'visao'
+  | 'categorias'
   | 'equipes'
   | 'atletas'
   | 'tabela'
+  | 'aovivo'
   | 'classificacao'
   | 'estatisticas'
   | 'suspensoes'
@@ -37,6 +41,7 @@ const SECOES: SecaoDoMenu[] = [
     titulo: 'Competição',
     itens: [
       { chave: 'visao', icone: '◎', rotulo: 'Visão geral' },
+      { chave: 'categorias', icone: '🗂', rotulo: 'Categorias' },
       { chave: 'equipes', icone: '🛡', rotulo: 'Equipes' },
       { chave: 'atletas', icone: '🎽', rotulo: 'Atletas' },
     ],
@@ -45,6 +50,7 @@ const SECOES: SecaoDoMenu[] = [
     titulo: 'Operação',
     itens: [
       { chave: 'tabela', icone: '📅', rotulo: 'Tabela de jogos' },
+      { chave: 'aovivo', icone: '🔴', rotulo: 'Central ao vivo' },
       { chave: 'classificacao', icone: '📈', rotulo: 'Classificação' },
       { chave: 'estatisticas', icone: '🥇', rotulo: 'Estatísticas' },
       { chave: 'suspensoes', icone: '🚫', rotulo: 'Suspensões' },
@@ -206,6 +212,15 @@ export function Competicao({
           </div>
         )}
 
+        {aba === 'categorias' && (
+          <Categorias competicao={competicao} aoMudar={aoMudar} />
+        )}
+        {aba === 'aovivo' && (
+          <AoVivo
+            competicao={competicao}
+            aoOperar={(jogo, categoriaId) => setOperando({ jogo, categoriaId })}
+          />
+        )}
         {aba === 'equipes' && <Equipes competicao={competicao} />}
         {aba === 'atletas' && <Atletas competicao={competicao} />}
         {aba === 'estrutura' && <Estrutura competicao={competicao} />}

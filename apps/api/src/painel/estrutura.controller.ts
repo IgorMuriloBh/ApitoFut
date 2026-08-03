@@ -17,6 +17,7 @@ import {
 import type { Response } from 'express';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
 import { ClassificacaoService } from '../competicoes/classificacao.service';
+import { CatalogoService } from './catalogo.service';
 import { EstatisticasService } from './estatisticas.service';
 import {
   EstruturaService,
@@ -26,6 +27,7 @@ import {
 import { cabecalhoDeDownload } from './csv';
 import { ExportacaoService } from './exportacao.service';
 import { ImpressaoService } from './impressao.service';
+import type { WizardCategoria } from './wizard';
 
 /**
  * Campos, árbitros, estatísticas e súmula impressa (RF013, RF014, RF018,
@@ -40,7 +42,71 @@ export class EstruturaController {
     private readonly impressao: ImpressaoService,
     private readonly exportacao: ExportacaoService,
     private readonly classificacao: ClassificacaoService,
+    private readonly catalogo: CatalogoService,
   ) {}
+
+  // -------------------------------------------------------- categorias
+
+  @Post('competicoes/:id/categorias')
+  criarCategoria(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() corpo: WizardCategoria,
+  ) {
+    return this.catalogo.criar(req.sessao.org, id, corpo ?? {});
+  }
+
+  @Patch('categorias/:id')
+  editarCategoria(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() corpo: WizardCategoria,
+  ) {
+    return this.catalogo.editar(req.sessao.org, id, corpo ?? {});
+  }
+
+  @Delete('categorias/:id')
+  removerCategoria(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.catalogo.remover(req.sessao.org, id);
+  }
+
+  // --------------------------------------------- base global de atletas
+
+  /** GET /painel/atletas/base?busca=&pagina= — o cadastro único (RF008). */
+  @Get('atletas/base')
+  baseDeAtletas(
+    @Req() req: RequestAutenticado,
+    @Query('busca') busca = '',
+    @Query('pagina') pagina = '1',
+  ) {
+    const n = Number(pagina);
+    return this.catalogo.baseDeAtletas(
+      req.sessao.org,
+      busca,
+      Number.isInteger(n) && n > 0 ? n : 1,
+    );
+  }
+
+  @Get('atletas/:id/historico')
+  historicoDoAtleta(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.catalogo.historicoDoAtleta(req.sessao.org, id);
+  }
+
+  // ---------------------------------------------------- central ao vivo
+
+  @Get('competicoes/:id/ao-vivo')
+  centralAoVivo(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.catalogo.centralAoVivo(req.sessao.org, id);
+  }
 
   /**
    * GET /painel/categorias/:id/classificacao — a mesma tabela do portal,
