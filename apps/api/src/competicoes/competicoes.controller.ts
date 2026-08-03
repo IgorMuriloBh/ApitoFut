@@ -2,6 +2,7 @@ import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ClassificacaoService } from './classificacao.service';
 import { CompeticoesService } from './competicoes.service';
 import { JogosService } from './jogos.service';
+import { PortalExtraService } from './portal-extra.service';
 
 @Controller('competicoes')
 export class CompeticoesController {
@@ -9,6 +10,7 @@ export class CompeticoesController {
     private readonly competicoes: CompeticoesService,
     private readonly classificacao: ClassificacaoService,
     private readonly jogos: JogosService,
+    private readonly portalExtra: PortalExtraService,
   ) {}
 
   /**
@@ -48,6 +50,24 @@ export class CompeticoesController {
     @Param('categoriaId', ParseUUIDPipe) categoriaId: string,
   ) {
     return this.jogos.porCategoria(slug, categoriaId);
+  }
+
+  /** GET .../estatisticas — artilharia e companhia; nível 2 (RF022). */
+  @Get(':slug/categorias/:categoriaId/estatisticas')
+  estatisticasDaCategoria(
+    @Param('slug') slug: string,
+    @Param('categoriaId', ParseUUIDPipe) categoriaId: string,
+  ) {
+    return this.portalExtra.estatisticas(slug, categoriaId);
+  }
+
+  /** GET .../elencos — escalações por equipe; nível 2, tem nome de atleta. */
+  @Get(':slug/categorias/:categoriaId/elencos')
+  elencosDaCategoria(
+    @Param('slug') slug: string,
+    @Param('categoriaId', ParseUUIDPipe) categoriaId: string,
+  ) {
+    return this.portalExtra.elencos(slug, categoriaId);
   }
 
   /**

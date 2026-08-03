@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 312 testes (exige o banco de pé)
+npm test                  # 321 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -216,6 +216,8 @@ verificados no banco antes de escrever a migration:
 | `GET` | `/competicoes/:slug/categorias/:catId/classificacao` | Ordenação por critérios da categoria |
 | `GET` | `/competicoes/:slug/categorias/:catId/jogos` | Grupos por rodada + mata-mata |
 | `GET` | `/competicoes/:slug/categorias/:catId/jogos/:jogoId` | Escalações e lances **só de `em_andamento`** |
+| `GET` | `.../categorias/:catId/estatisticas` | Artilharia etc. — nível 2 |
+| `GET` | `.../categorias/:catId/elencos` | Escalações por equipe — nível 2 |
 | `SSE` | `.../jogos/:jogoId/ao-vivo` | 403 em `publicada` — recurso de nível 2 |
 | `GET` | `/uploads/:organizacao/:nome` | Imagens; nome é o hash do conteúdo |
 | `GET` | `/convite/:slug` | Área da equipe: competição e categorias abertas |
@@ -490,9 +492,19 @@ internos.
 
 ### Portal (`apps/portal`)
 
-Três rotas SSR: `/{slug}`, `/{slug}/{categoriaId}`, `/{slug}/{categoriaId}/{jogoId}`.
-`generateMetadata` por página — o SEO por competição foi o motivo de escolher o
-Next para esta camada.
+**Uma página com abas** em `/{slug}`, como o protótipo (`PORTAL_ABAS`, linha
+3465): Tabela, Classificação, Resultados, Estatísticas, Escalações e Tempo real.
+Antes era drill-down — escolher a categoria numa tela para só então ver
+classificação e jogos misturados na outra.
+
+A aba é `?aba=` e a categoria `?cat=`, não estado de cliente: cada combinação é
+uma URL que o organizador cola no grupo da competição, e cada uma é renderizada
+no servidor — que é a razão de o portal ser Next. `generateMetadata` por página.
+
+**A aba bloqueada aparece com cadeado**, não some: o visitante vê que existe mais
+conteúdo a caminho. Link direto para aba travada cai na Tabela, nunca em branco.
+
+O detalhe do jogo continua em `/{slug}/{categoriaId}/{jogoId}`.
 
 **O portal não contém nenhuma regra de visibilidade.** O que a API não devolve
 não existe nele: `em_criacao` vira `notFound()` pelo 404 da API; em `publicada`,

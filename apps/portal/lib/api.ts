@@ -18,6 +18,21 @@ async function buscar<T>(caminho: string): Promise<T> {
   return (await r.json()) as T;
 }
 
+/**
+ * Igual a `buscar`, mas devolve `null` em 403 em vez de estourar.
+ *
+ * As abas de nível 2 (estatísticas, escalações) respondem 403 enquanto a
+ * competição está `publicada` — é resposta esperada, não erro: a aba
+ * aparece cadeadeada em vez de derrubar a página inteira.
+ */
+async function buscarOpcional<T>(caminho: string): Promise<T | null> {
+  const r = await fetch(`${API}${caminho}`, { cache: 'no-store' });
+  if (r.status === 403) return null;
+  if (r.status === 404) notFound();
+  if (!r.ok) throw new Error(`API ${r.status} em ${caminho}`);
+  return (await r.json()) as T;
+}
+
 export interface Categoria {
   id: string;
   nome: string;
@@ -144,6 +159,44 @@ export interface DetalheDoJogo {
   lances: Lance[] | null;
 }
 
+export interface AtletaNasEstatisticas {
+  atletaId: string;
+  nome: string;
+  apelido: string | null;
+  posicao: string | null;
+  fotoUrl: string | null;
+  equipe: string;
+  jogos: number;
+  gols: number;
+  assistencias: number;
+  cartoesAmarelos: number;
+  cartoesVermelhos: number;
+  defesas: number;
+}
+
+export interface EstatisticasPublicas {
+  competicao: { slug: string; nome: string };
+  categoria: { id: string; nome: string };
+  atletas: AtletaNasEstatisticas[];
+}
+
+export interface ElencosPublicos {
+  competicao: { slug: string; nome: string };
+  categoria: { id: string; nome: string };
+  equipes: {
+    id: string;
+    nome: string;
+    escudoUrl: string | null;
+    atletas: {
+      nome: string;
+      apelido: string | null;
+      numero: number | null;
+      posicao: string | null;
+      fotoUrl: string | null;
+    }[];
+  }[];
+}
+
 export const api = {
   competicao: (slug: string) => buscar<Competicao>(`/competicoes/${slug}`),
   classificacao: (slug: string, categoriaId: string) =>
@@ -152,6 +205,14 @@ export const api = {
     ),
   jogos: (slug: string, categoriaId: string) =>
     buscar<TabelaDeJogos>(`/competicoes/${slug}/categorias/${categoriaId}/jogos`),
+  estatisticas: (slug: string, categoriaId: string) =>
+    buscarOpcional<EstatisticasPublicas>(
+      `/competicoes/${slug}/categorias/${categoriaId}/estatisticas`,
+    ),
+  elencos: (slug: string, categoriaId: string) =>
+    buscarOpcional<ElencosPublicos>(
+      `/competicoes/${slug}/categorias/${categoriaId}/elencos`,
+    ),
   jogo: (slug: string, categoriaId: string, jogoId: string) =>
     buscar<DetalheDoJogo>(
       `/competicoes/${slug}/categorias/${categoriaId}/jogos/${jogoId}`,

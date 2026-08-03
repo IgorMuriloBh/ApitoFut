@@ -166,3 +166,71 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ---------------------------------------------------------------------
+   Barra de abas do portal — a navegação do protótipo (`PORTAL_ABAS`).
+   Rola na horizontal no celular, que é de onde o torcedor abre o link.
+   --------------------------------------------------------------------- */
+.barra-abas {
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.abas {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  padding: 6px 16px;
+  scrollbar-width: none;
+}
+.abas::-webkit-scrollbar { display: none; }
+
+.aba {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--tinta2);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.aba:hover { background: #f1f5f9; color: inherit; }
+.aba.ativa {
+  background: color-mix(in srgb, var(--cor, #16a34a) 12%, transparent);
+  color: var(--cor, #16a34a);
+  font-weight: 700;
+}
+/* travada não é link: não há para onde ir, e o cadastro do cursor deixa
+   isso claro antes do clique */
+.aba.travada { opacity: 0.45; cursor: not-allowed; }
+
+.cats {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  padding-left: 12px;
+  border-left: 1px solid #e2e8f0;
+}
+.cat {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--tinta2);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.cat:hover { background: #f1f5f9; }
+.cat.ativa {
+  background: var(--cor, #16a34a);
+  color: #fff;
+  font-weight: 600;
+}
+
+.placar.vivo {
+  background: #dc2626;
+  color: #fff;
+  animation: pulsa 1.4s infinite;
+}

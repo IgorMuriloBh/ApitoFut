@@ -316,7 +316,7 @@ apps/portal/       Next.js 16 (App Router) — portal público SSR
   lib/api.ts         cliente dos endpoints públicos (o portal nunca autentica)
   proxy.ts           domínio próprio: host → slug por rewrite (Next 16 renomeou
                      middleware.ts para proxy.ts)
-  app/[slug]/        competição · [categoriaId] classificação+jogos · [jogoId] detalhe
+  app/[slug]/        competição em abas (?aba=&cat=) · [categoriaId]/[jogoId] detalhe
   app/[slug]/inscricao/  área da equipe (client component, noindex)
   app/c/[comp]/[atleta]/ validação da carteirinha (destino do QR, noindex)
   AoVivo.tsx         client component: EventSource no feed SSE + router.refresh()
