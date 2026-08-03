@@ -4,6 +4,7 @@ import { DisciplinaService } from '../painel/disciplina.service';
 import { ElencoController } from '../painel/elenco.controller';
 import { ElencoService } from '../painel/elenco.service';
 import { EquipesService } from '../painel/equipes.service';
+import { ConfiguracaoService } from '../painel/configuracao.service';
 import { PainelCompeticoesService } from '../painel/painel-competicoes.service';
 import { PainelController } from '../painel/painel.controller';
 import { SumulaController } from '../painel/sumula.controller';
@@ -27,6 +28,7 @@ import { AuthService } from './auth.service';
     AuthService,
     AuthGuard,
     PainelCompeticoesService,
+    ConfiguracaoService,
     SumulaService,
     EquipesService,
     ElencoService,

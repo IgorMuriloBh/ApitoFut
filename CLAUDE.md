@@ -16,7 +16,7 @@ ele é a especificação executável.
 
 A API, o painel e o portal já existem e rodam (ver *Estrutura do código*). O que ainda
 falta do protótipo está listado em `docs/SISTEMA.md` — hoje as maiores lacunas são
-a configuração da categoria pelo painel e a carteirinha com QR.
+a súmula impressa (RF018), campos e árbitros (RF013/RF014) e o ranking geral.
 
 ## Documentação
 
@@ -41,6 +41,7 @@ a configuração da categoria pelo painel e a carteirinha com QR.
 - `db/14-suspensoes.sql` — suspensão automática por cartões (RF032)
 - `db/15-adm-sistema.sql` — auto-cadastro e as frestas da área do ADM (RF031)
 - `db/16-area-da-equipe.sql` — convite por link e código de acesso da equipe (RF006)
+- `db/17-carteirinha.sql` — credencial do atleta para a arbitragem (RF029)
 
 ## Banco de dados
 
@@ -171,7 +172,11 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
 - **Classificação conta só fase de grupos e jogo encerrado** — inclusive os
   cartões. Toda equipe inscrita aparece na tabela, mesmo sem ter jogado
 - **Só desempata por coluna visível**: esconder uma coluna da classificação
-  também a remove dos critérios de desempate (`calcClassificacao` no protótipo)
+  também a remove dos critérios de desempate — garantido na gravação da
+  configuração, não só na tela
+- **A carteirinha pública não mostra documento.** O protótipo exibe o CPF
+  na validação por QR; aqui não. A arbitragem precisa saber quem é e se
+  pode jogar, e a página é pública com dado de menor de idade
 - **Conta nova nasce pendente** e não autentica até o ADM liberar. A primeira
   conta da base é promovida a `superadmin` + `ativo` por trigger (migration 15) —
   senão a plataforma nasceria sem ninguém para liberar ninguém
@@ -280,6 +285,7 @@ apps/api/          NestJS — a única app existente hoje
   src/admin/         área do ADM: só frestas SECURITY DEFINER, nunca comOrganizacao
   src/arquivos/      upload e entrega de imagens; tipo detectado pelos bytes
   src/convite/       área da equipe: rotas abertas, código no cabeçalho
+  src/carteirinha/   credencial da arbitragem por QR; nunca devolve documento
 apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/lib/api.ts     cliente autenticado; token em sessionStorage
   src/lib/dominio.ts vocabulário do protótipo (STATUS, CORES, FASES…)
@@ -290,6 +296,7 @@ apps/portal/       Next.js 16 (App Router) — portal público SSR
                      middleware.ts para proxy.ts)
   app/[slug]/        competição · [categoriaId] classificação+jogos · [jogoId] detalhe
   app/[slug]/inscricao/  área da equipe (client component, noindex)
+  app/c/[comp]/[atleta]/ validação da carteirinha (destino do QR, noindex)
   AoVivo.tsx         client component: EventSource no feed SSE + router.refresh()
 ```
 

@@ -4,17 +4,19 @@ import { Alerta, Botao, Cartao, Selo, classeEntrada } from '../componentes/ui';
 import { api, type CompeticaoDoPainel, type JogoDaTabela } from '../lib/api';
 import { STATUS, formataData } from '../lib/dominio';
 import { Atletas } from './Atletas';
+import { Configuracao } from './Configuracao';
 import { Equipes } from './Equipes';
 import { Sumula } from './Sumula';
 import { Tabela } from './Tabela';
 
-type Aba = 'visao' | 'equipes' | 'atletas' | 'tabela';
+type Aba = 'visao' | 'equipes' | 'atletas' | 'tabela' | 'config';
 
 const ABAS: [Aba, string][] = [
   ['visao', 'Visão geral'],
   ['equipes', 'Equipes'],
   ['atletas', 'Atletas'],
   ['tabela', 'Tabela de jogos'],
+  ['config', 'Configuração'],
 ];
 
 const PORTAL = import.meta.env.VITE_PORTAL_URL ?? 'http://localhost:3001';
@@ -152,6 +154,7 @@ export function Competicao({
 
       {aba === 'equipes' && <Equipes competicao={competicao} />}
       {aba === 'atletas' && <Atletas competicao={competicao} />}
+      {aba === 'config' && <Configuracao competicao={competicao} />}
       {aba === 'tabela' && (
         <Tabela
           competicao={competicao}

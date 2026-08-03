@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 223 testes (exige o banco de pé)
+npm test                  # 250 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -121,7 +121,7 @@ propósito faz 5 testes falharem.
 
 ## 4. Banco de dados
 
-16 migrations, aplicadas em ordem alfabética **na primeira subida do volume**.
+17 migrations, aplicadas em ordem alfabética **na primeira subida do volume**.
 Estado atual do schema: **28 tabelas, 4 views, 16 enums, 28 políticas de RLS**.
 Mudou o schema? Nova migration. Nunca editar as antigas, nunca `prisma migrate dev`.
 Depois, `npm run db:pull` para regenerar os tipos.
@@ -144,6 +144,7 @@ Depois, `npm run db:pull` para regenerar os tipos.
 | `14-suspensoes.sql` | Suspensão automática por cartões, cumprimento e bloqueio (RF032) |
 | `15-adm-sistema.sql` | Auto-cadastro, primeira conta vira ADM e as frestas da área do ADM (RF031) |
 | `16-area-da-equipe.sql` | Convite por link: código de acesso e frestas de leitura (RF006/RF007) |
+| `17-carteirinha.sql` | Credencial do atleta para a arbitragem, sem documento (RF029) |
 
 ### Triggers — onde as regras realmente moram
 
@@ -222,6 +223,8 @@ verificados no banco antes de escrever a migration:
 | `GET` `PATCH` | `/convite/:slug/equipe` | Painel da equipe — exige `X-Codigo-Equipe` |
 | `POST` `DELETE` | `/convite/:slug/equipe/atletas[/:id]` | Elenco, sujeito às permissões da categoria |
 | `POST` `DELETE` | `/convite/:slug/equipe/comissao[/:id]` | Comissão técnica |
+| `GET` | `/carteirinha/:competicaoId/:atletaId` | Credencial para a arbitragem |
+| `GET` | `/carteirinha/:competicaoId/:atletaId/qr.svg` | QR impresso na carteirinha |
 
 Todo endpoint aninhado valida que a categoria é **daquela** competição. Sem
 isso o `categoriaId` seria porta lateral para ler dados de outra organização.
@@ -236,6 +239,8 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `PATCH` | `/painel/competicoes/:id/status` | Publicação controlada |
 | `PUT` | `/painel/competicoes/:id/dominio` | CNAME próprio; 409 se já usado |
 | `PUT` | `/painel/competicoes/:id/imagens` | Logo e banner |
+| `GET` `PUT` | `/painel/categorias/:id/configuracao` | RF005 inteiro; envio parcial aceito |
+| `POST` | `/painel/categorias/:id/configuracao/replicar` | Copia para as categorias irmãs |
 | `POST` | `/painel/uploads` | Corpo = bytes da imagem, sem multipart |
 | `GET` `POST` | `/painel/competicoes/:id/times` | Equipes |
 | `PATCH` `DELETE` | `/painel/times/:id` | Exclusão barrada se houver atletas ou jogos |
@@ -285,6 +290,41 @@ log de proxy, no `Referer` e no histórico da máquina compartilhada do clube.
 Quem manda no que a equipe pode fazer é a **configuração da categoria**
 (`permite_inscrever`, `permite_remover`, `inscricoes_abertas`, `max_atletas`,
 `max_comissao`) — conferida no serviço e no banco, nunca só na tela.
+
+### Configuração da categoria (RF005)
+
+`src/painel/configuracao.service.ts` — seis tabelas que só se editavam por SQL.
+
+**Só desempata por coluna visível.** Esconder uma coluna da classificação a
+remove dos critérios, na gravação. Sem isso a tabela ordenaria por um número
+que ninguém vê, e o organizador não teria como explicar o desempate para a
+equipe que reclamou.
+
+`gol` e `penalti` **estão** em `categoria_campo_sumula` (a migration 09 grava o
+enum inteiro) mas ficam fora da lista configurável: sem eles não há placar. Tudo
+que entra e sai é filtrado por essa lista — inclusive a réplica, que sem o filtro
+reenviava `gol` e recusava a si mesma.
+
+`replicar` copia para as categorias irmãs **menos** `inscricoes_abertas`: é o
+único campo que muda o que o público vê, e abrir inscrição alheia sem querer
+seria caro de desfazer.
+
+### Carteirinha e validação por QR (RF029)
+
+`src/carteirinha/` — rota aberta; quem escaneia é a arbitragem, na beira do
+campo. O QR aponta para `/c/{competicao}/{atleta}` no portal, e a página abre
+com o veredito, não com dados: **pode entrar ou não**.
+
+**Documento não sai daqui.** O protótipo mostra o CPF na validação; aqui não. A
+página é pública e a maioria dos atletas é menor de idade — a arbitragem precisa
+saber quem é e se pode jogar, não o número do documento.
+
+Exige os **dois** uuids, e não existe rota que enumere atletas. Suspensão viva
+bloqueia; faixa etária é aviso, como em todo o resto do sistema.
+
+O SVG do QR é gerado no servidor (`qrcode-svg`, zero dependências transitivas —
+o `qrcode` clássico arrastaria yargs@15). Painel e portal só precisam de uma
+`<img>`.
 
 ### Imagens (RF003, RF006, RF009)
 
@@ -451,10 +491,8 @@ Em ordem de impacto:
 | Item | Situação |
 |---|---|
 | **Campos e árbitros (RF013/RF014)** | Tabelas existem; sem endpoint e sem tela |
-| **Configuração da categoria pelo painel** | As tabelas de configuração existem e são respeitadas, mas só dá para editá-las por SQL |
 | **Estatísticas de atleta (RF022)** | `v_estatisticas_atleta` existe e está correta; nenhuma tela a consome |
 | **Súmula impressa (RF018)** | `sumulaHTML()` no protótipo (linha 3351); sem equivalente |
-| **Carteirinha e validação por QR (RF029)** | Rota `#/c/{comp}/{atleta}` no protótipo; sem equivalente |
 
 ---
 

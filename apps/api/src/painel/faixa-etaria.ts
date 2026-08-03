@@ -62,3 +62,17 @@ export function mensagemDeFaixa(avisos: AvisoDeFaixa[]): string {
     .join('; ');
   return `Ano de nascimento fora da faixa da categoria (${detalhe}). Confira a data; se estiver correta, confirme novamente para prosseguir.`;
 }
+
+/**
+ * Ano de nascimento esperado da categoria: `temporada - N` do "Sub-N".
+ * `null` quando não se aplica — categoria adulta ou competição sem
+ * temporada definida. Usado pela carteirinha (RF029), que precisa do ano
+ * isolado, sem montar a lista de avisos.
+ */
+export function anoEsperadoDaCategoria(
+  nome: string,
+  temporada: number | null,
+): number | null {
+  const n = subDaCategoria(nome);
+  return n && temporada ? temporada - n : null;
+}

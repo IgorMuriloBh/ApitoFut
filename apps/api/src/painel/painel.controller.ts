@@ -13,6 +13,10 @@ import {
 import { urlPublica } from '../arquivos/armazenamento';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  ConfiguracaoService,
+  type ConfiguracaoDaCategoria,
+} from './configuracao.service';
 import { PainelCompeticoesService } from './painel-competicoes.service';
 import { WizardCompeticao } from './wizard';
 
@@ -27,6 +31,7 @@ export class PainelController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly competicoes: PainelCompeticoesService,
+    private readonly configuracao: ConfiguracaoService,
   ) {}
 
   /** POST /painel/competicoes — wizard "Criar campeonato" (RF003/RF004). */
@@ -63,6 +68,34 @@ export class PainelController {
     @Body() corpo: { logoUrl?: string | null; bannerUrl?: string | null },
   ) {
     return this.competicoes.definirImagens(req.sessao.org, id, corpo ?? {});
+  }
+
+  /** GET /painel/categorias/:id/configuracao — RF005 completo. */
+  @Get('categorias/:id/configuracao')
+  lerConfiguracao(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.configuracao.ler(req.sessao.org, id);
+  }
+
+  /** PUT /painel/categorias/:id/configuracao — envio parcial é aceito. */
+  @Put('categorias/:id/configuracao')
+  salvarConfiguracao(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() corpo: ConfiguracaoDaCategoria,
+  ) {
+    return this.configuracao.salvar(req.sessao.org, id, corpo ?? {});
+  }
+
+  /** POST /painel/categorias/:id/configuracao/replicar — para as irmãs. */
+  @Post('categorias/:id/configuracao/replicar')
+  replicarConfiguracao(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.configuracao.replicar(req.sessao.org, id);
   }
 
   /** Lista as competições da organização — inclusive as `em_criacao`. */

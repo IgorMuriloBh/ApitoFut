@@ -9,6 +9,8 @@ import {
   type Elenco,
 } from '../lib/api';
 
+const PORTAL_URL = import.meta.env.VITE_PORTAL_URL ?? 'http://localhost:3001';
+
 /**
  * Elenco por categoria (RF008–RF012). O atleta vem da base global ou é
  * criado na hora — as duas portas do `salvarInscricao` do protótipo.
@@ -133,7 +135,19 @@ export function Atletas({ competicao }: { competicao: CompeticaoDoPainel }) {
                                 )}
                               </td>
                               <td className="py-2 text-slate-500">{a.posicao ?? ''}</td>
-                              <td className="py-2 pr-5 text-right">
+                              <td className="py-2 pr-5 text-right whitespace-nowrap">
+                                {/* carteirinha (RF029): o QR aponta para a
+                                    página de validação que a arbitragem
+                                    abre na beira do campo */}
+                                <a
+                                  href={`${PORTAL_URL}/c/${competicao.id}/${a.atletaId}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="Carteirinha e validação por QR"
+                                  className="text-slate-400 hover:text-marca px-2"
+                                >
+                                  🪪
+                                </a>
                                 <button
                                   onClick={() => remover(a.inscricaoId, a.nome)}
                                   className="text-slate-400 hover:text-red-600 text-sm"

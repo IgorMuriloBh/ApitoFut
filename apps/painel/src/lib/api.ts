@@ -292,6 +292,41 @@ export interface LanceRegistrado {
   status: string;
 }
 
+// ---------------------------------------- configuração da categoria (RF005)
+
+export interface ConfiguracaoDaCategoria {
+  categoria: { id: string; nome: string };
+  /** Vocabulário vindo do banco — a tela não mantém cópia dele. */
+  opcoes: {
+    colunas: string[];
+    camposSumula: string[];
+    camposAtleta: string[];
+  };
+  regras: {
+    suspensaoAtiva: boolean;
+    numAmarelos: number;
+    jogosPorAmarelo: number;
+    jogosPorVermelho: number;
+    acumularDoisAmarelos: boolean;
+    pontosVitoria: number;
+    pontosEmpate: number;
+    pontosDerrota: number;
+    modeloSumula: string;
+  };
+  inscricoes: {
+    maxAtletas: number;
+    maxComissao: number;
+    permiteInscrever: boolean;
+    permiteEditar: boolean;
+    permiteRemover: boolean;
+    inscricoesAbertas: boolean;
+  };
+  colunas: Record<string, boolean>;
+  desempate: { criterio: string; direcao: string }[];
+  campoSumula: Record<string, boolean>;
+  camposAtleta: Record<string, { pedir: boolean; obrigatorio: boolean }>;
+}
+
 // ------------------------------------------------- área do ADM (RF031)
 
 export interface UsuarioDaPlataforma {
@@ -498,6 +533,26 @@ export const api = {
 
   removerLance: (jogoId: string, lanceId: string) =>
     requisitar(`/painel/jogos/${jogoId}/lances/${lanceId}`, { metodo: 'DELETE' }),
+
+  configuracao: (categoriaId: string) =>
+    requisitar<ConfiguracaoDaCategoria>(
+      `/painel/categorias/${categoriaId}/configuracao`,
+    ),
+
+  salvarConfiguracao: (
+    categoriaId: string,
+    cfg: Partial<ConfiguracaoDaCategoria>,
+  ) =>
+    requisitar<{ salvo: boolean }>(
+      `/painel/categorias/${categoriaId}/configuracao`,
+      { metodo: 'PUT', corpo: cfg },
+    ),
+
+  replicarConfiguracao: (categoriaId: string) =>
+    requisitar<{ replicadas: number }>(
+      `/painel/categorias/${categoriaId}/configuracao/replicar`,
+      { metodo: 'POST' },
+    ),
 
   enviarImagem: (arquivo: File) => enviarArquivo(arquivo),
 
