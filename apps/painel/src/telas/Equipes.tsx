@@ -4,6 +4,8 @@ import { EnvioDeImagem } from '../componentes/EnvioDeImagem';
 import { api, type CompeticaoDoPainel, type EquipeDoPainel } from '../lib/api';
 import { CORES, UFS } from '../lib/dominio';
 
+const PORTAL_URL = import.meta.env.VITE_PORTAL_URL ?? 'http://localhost:3001';
+
 /** Equipes da competição (RF006/RF007) e seu vínculo com as categorias. */
 export function Equipes({ competicao }: { competicao: CompeticaoDoPainel }) {
   const [lista, setLista] = useState<EquipeDoPainel[] | null>(null);
@@ -62,6 +64,8 @@ export function Equipes({ competicao }: { competicao: CompeticaoDoPainel }) {
         />
       )}
 
+      <ConviteDeEquipes slug={competicao.slug} />
+
       <Cartao
         titulo="Equipes"
         sub={`${lista?.length ?? 0} equipe(s) — vincule cada uma às categorias que disputa`}
@@ -98,6 +102,14 @@ export function Equipes({ competicao }: { competicao: CompeticaoDoPainel }) {
                         <b>{t.nome}</b>
                         <span className="block text-xs text-slate-500">
                           {[t.cidade, t.estado].filter(Boolean).join(' · ') || '—'}
+                          {t.origem === 'link_convite' && t.codigoAcesso && (
+                            <>
+                              {' · '}
+                              <span title="Código de acesso da equipe">
+                                🔑 <code className="tracking-widest">{t.codigoAcesso}</code>
+                              </span>
+                            </>
+                          )}
                         </span>
                       </span>
                     </span>
@@ -274,6 +286,55 @@ function FormularioDeEquipe({
           {salvando ? 'Salvando…' : 'Salvar equipe'}
         </Botao>
       </footer>
+    </Cartao>
+  );
+}
+
+/**
+ * Link de convite — o organizador copia e manda para as equipes, que se
+ * cadastram sozinhas (RF006/RF007).
+ *
+ * Fica no topo da tela de equipes de propósito: é ali que o organizador
+ * está quando pensa "preciso das equipes", e o caminho alternativo
+ * (cadastrar uma a uma) está logo abaixo.
+ */
+function ConviteDeEquipes({ slug }: { slug: string }) {
+  const [copiado, setCopiado] = useState(false);
+  const link = `${PORTAL_URL}/${slug}/inscricao`;
+
+  return (
+    <Cartao
+      titulo="Link de inscrição de equipes"
+      sub="Quem receber este link se cadastra sozinho e recebe um código de acesso"
+    >
+      <div className="p-5 flex flex-wrap gap-2 items-center">
+        <code className="flex-1 min-w-64 text-xs bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 break-all">
+          {link}
+        </code>
+        <Botao
+          variante="neutro"
+          onClick={() => {
+            void navigator.clipboard.writeText(link).then(() => {
+              setCopiado(true);
+              setTimeout(() => setCopiado(false), 2000);
+            });
+          }}
+        >
+          {copiado ? '✓ Copiado' : '⧉ Copiar link'}
+        </Botao>
+        <a
+          href={link}
+          target="_blank"
+          rel="noreferrer"
+          className="px-4 py-2 rounded-lg text-sm font-medium bg-white border border-slate-300 hover:bg-slate-50"
+        >
+          Abrir ↗
+        </a>
+      </div>
+      <p className="px-5 pb-5 -mt-2 text-xs text-slate-500">
+        A inscrição só funciona enquanto houver categoria com{' '}
+        <b>inscrições abertas</b> — controle isso na configuração da categoria.
+      </p>
     </Cartao>
   );
 }

@@ -124,3 +124,45 @@ tbody tr:nth-child(even) { background: #fbfcfe; }
   font-size: 13.5px;
 }
 .timeline .min { color: var(--tinta2); min-width: 34px; font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------------
+   Formulários — usados só pela área da equipe (/{slug}/inscricao). O resto
+   do portal é leitura; por isso estes estilos vivem no fim do arquivo, e
+   não no topo junto com os componentes de conteúdo.
+   --------------------------------------------------------------------- */
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+  background: #fff;
+  color: inherit;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--cor, #16a34a) 40%, transparent);
+  border-color: var(--cor, #16a34a);
+}
+input[type='checkbox'] {
+  width: auto;
+  accent-color: var(--cor, #16a34a);
+}
+
+button {
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--cor, #16a34a);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

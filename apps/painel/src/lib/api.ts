@@ -177,6 +177,7 @@ export interface EquipeDoPainel {
   email: string | null;
   responsavel: string | null;
   origem: string;
+  codigoAcesso: string | null;
   comissao: number;
   categorias: { id: string; nome: string; grupo: { id: string; nome: string } | null }[];
 }

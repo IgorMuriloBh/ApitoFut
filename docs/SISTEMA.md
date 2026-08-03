@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 203 testes (exige o banco de pé)
+npm test                  # 223 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -121,7 +121,7 @@ propósito faz 5 testes falharem.
 
 ## 4. Banco de dados
 
-15 migrations, aplicadas em ordem alfabética **na primeira subida do volume**.
+16 migrations, aplicadas em ordem alfabética **na primeira subida do volume**.
 Estado atual do schema: **28 tabelas, 4 views, 16 enums, 28 políticas de RLS**.
 Mudou o schema? Nova migration. Nunca editar as antigas, nunca `prisma migrate dev`.
 Depois, `npm run db:pull` para regenerar os tipos.
@@ -143,6 +143,7 @@ Depois, `npm run db:pull` para regenerar os tipos.
 | `13-avanco-mata-mata.sql` | Vencedor sobe para a fase seguinte ao encerrar |
 | `14-suspensoes.sql` | Suspensão automática por cartões, cumprimento e bloqueio (RF032) |
 | `15-adm-sistema.sql` | Auto-cadastro, primeira conta vira ADM e as frestas da área do ADM (RF031) |
+| `16-area-da-equipe.sql` | Convite por link: código de acesso e frestas de leitura (RF006/RF007) |
 
 ### Triggers — onde as regras realmente moram
 
@@ -216,6 +217,11 @@ verificados no banco antes de escrever a migration:
 | `GET` | `/competicoes/:slug/categorias/:catId/jogos/:jogoId` | Escalações e lances **só de `em_andamento`** |
 | `SSE` | `.../jogos/:jogoId/ao-vivo` | 403 em `publicada` — recurso de nível 2 |
 | `GET` | `/uploads/:organizacao/:nome` | Imagens; nome é o hash do conteúdo |
+| `GET` | `/convite/:slug` | Área da equipe: competição e categorias abertas |
+| `POST` | `/convite/:slug/equipes` | Auto-cadastro; devolve o código de acesso |
+| `GET` `PATCH` | `/convite/:slug/equipe` | Painel da equipe — exige `X-Codigo-Equipe` |
+| `POST` `DELETE` | `/convite/:slug/equipe/atletas[/:id]` | Elenco, sujeito às permissões da categoria |
+| `POST` `DELETE` | `/convite/:slug/equipe/comissao[/:id]` | Comissão técnica |
 
 Todo endpoint aninhado valida que a categoria é **daquela** competição. Sem
 isso o `categoriaId` seria porta lateral para ler dados de outra organização.
@@ -255,6 +261,30 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `POST` | `/admin/voltar` | Desfaz o "assumir" |
 
 O organizador leva **403** em qualquer uma delas (`SuperadminGuard`).
+
+### Área da equipe (RF006, RF007)
+
+`src/convite/` — rotas **abertas**: quem chega pelo link não tem conta.
+
+**Duas credenciais diferentes.** O link (slug) dá direito a *criar* uma equipe —
+é o que o organizador distribui. O código de 6 caracteres dá direito a mexer
+*naquela* equipe, e toda rota de escrita o reconfere contra a equipe alvo. Uma
+equipe não alcança o elenco da outra nem com link válido; tem teste.
+
+**Por que precisa de fresta.** O protótipo libera inscrição desde que a
+competição não esteja `encerrada` — inclusive em `em_criacao`, que é o fluxo
+real: montar, abrir inscrições, juntar equipes, e só então publicar. Mas
+`em_criacao` é invisível por RLS e o visitante não tem organização. As funções
+da migration 16 resolvem competição e equipe; **nenhuma escreve**. A escrita
+entra em `comOrganizacao` da organização que a fresta devolveu, com as políticas
+valendo.
+
+O código viaja em `X-Codigo-Equipe`, não na URL: em query string apareceria em
+log de proxy, no `Referer` e no histórico da máquina compartilhada do clube.
+
+Quem manda no que a equipe pode fazer é a **configuração da categoria**
+(`permite_inscrever`, `permite_remover`, `inscricoes_abertas`, `max_atletas`,
+`max_comissao`) — conferida no serviço e no banco, nunca só na tela.
 
 ### Imagens (RF003, RF006, RF009)
 
@@ -423,7 +453,6 @@ Em ordem de impacto:
 | **Campos e árbitros (RF013/RF014)** | Tabelas existem; sem endpoint e sem tela |
 | **Configuração da categoria pelo painel** | As tabelas de configuração existem e são respeitadas, mas só dá para editá-las por SQL |
 | **Estatísticas de atleta (RF022)** | `v_estatisticas_atleta` existe e está correta; nenhuma tela a consome |
-| **Área da equipe** | Auto-cadastro por link de convite (`origem`/`codigo_acesso` já no schema) |
 | **Súmula impressa (RF018)** | `sumulaHTML()` no protótipo (linha 3351); sem equivalente |
 | **Carteirinha e validação por QR (RF029)** | Rota `#/c/{comp}/{atleta}` no protótipo; sem equivalente |
 

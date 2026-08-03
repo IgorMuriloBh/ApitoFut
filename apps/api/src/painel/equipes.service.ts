@@ -71,6 +71,9 @@ export class EquipesService {
         id: t.id,
         nome: t.nome,
         escudoUrl: urlPublica(t.escudo_url),
+        // o organizador precisa poder recuperar o código: a equipe perde,
+        // e sem isto a única saída seria mexer no banco
+        codigoAcesso: t.codigo_acesso?.trim() ?? null,
         uniformePrimario: t.uniforme_primario,
         uniformeSecundario: t.uniforme_secundario,
         cidade: t.cidade,

@@ -16,7 +16,7 @@ ele é a especificação executável.
 
 A API, o painel e o portal já existem e rodam (ver *Estrutura do código*). O que ainda
 falta do protótipo está listado em `docs/SISTEMA.md` — hoje as maiores lacunas são
-a área da equipe, a configuração da categoria pelo painel e a carteirinha com QR.
+a configuração da categoria pelo painel e a carteirinha com QR.
 
 ## Documentação
 
@@ -40,6 +40,7 @@ a área da equipe, a configuração da categoria pelo painel e a carteirinha com
 - `db/13-avanco-mata-mata.sql` — vencedor sobe para a fase seguinte (RF017)
 - `db/14-suspensoes.sql` — suspensão automática por cartões (RF032)
 - `db/15-adm-sistema.sql` — auto-cadastro e as frestas da área do ADM (RF031)
+- `db/16-area-da-equipe.sql` — convite por link e código de acesso da equipe (RF006)
 
 ## Banco de dados
 
@@ -177,6 +178,10 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
 - **A plataforma nunca fica sem ADM ativo**, e ninguém altera o próprio perfil
   ou a própria situação — garantido em `fn_admin_alterna_perfil` /
   `fn_admin_define_situacao`, não só no botão da tela
+- **Na área da equipe são duas credenciais**: o link (slug) só permite
+  *criar* equipe; o código de 6 caracteres permite mexer *naquela* equipe.
+  Toda escrita reconfere o código contra a equipe alvo — equipe nenhuma
+  alcança o elenco de outra
 - **Rotas administrativas são exclusivas do superadmin** — 403 no `SuperadminGuard`
   e reconferência no banco; idem competição de outro dono
 
@@ -274,6 +279,7 @@ apps/api/          NestJS — a única app existente hoje
   src/competicoes/   visibilidade.ts concentra a regra de status
   src/admin/         área do ADM: só frestas SECURITY DEFINER, nunca comOrganizacao
   src/arquivos/      upload e entrega de imagens; tipo detectado pelos bytes
+  src/convite/       área da equipe: rotas abertas, código no cabeçalho
 apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/lib/api.ts     cliente autenticado; token em sessionStorage
   src/lib/dominio.ts vocabulário do protótipo (STATUS, CORES, FASES…)
@@ -283,6 +289,7 @@ apps/portal/       Next.js 16 (App Router) — portal público SSR
   proxy.ts           domínio próprio: host → slug por rewrite (Next 16 renomeou
                      middleware.ts para proxy.ts)
   app/[slug]/        competição · [categoriaId] classificação+jogos · [jogoId] detalhe
+  app/[slug]/inscricao/  área da equipe (client component, noindex)
   AoVivo.tsx         client component: EventSource no feed SSE + router.refresh()
 ```
 
