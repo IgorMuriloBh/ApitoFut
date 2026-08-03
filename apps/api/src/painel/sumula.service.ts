@@ -162,6 +162,62 @@ export class SumulaService {
     });
   }
 
+  /**
+   * Cronologia do jogo — a timeline que o operador vê enquanto lança.
+   *
+   * Sem isto ele registrava às cegas: o retorno do POST trazia só o lance
+   * recém-criado e o placar. Errar o atleta do gol só aparecia depois, na
+   * súmula ou na reclamação da equipe.
+   *
+   * Vem em ordem decrescente: o último lançado é o que ele confere.
+   */
+  cronologia(organizacaoId: string, jogoId: string) {
+    return this.prisma.comOrganizacao(organizacaoId, async (tx) => {
+      const jogo = await this.carregarJogo(tx, jogoId);
+
+      const lances = await tx.jogo_eventos.findMany({
+        where: { jogo_id: jogoId },
+        include: {
+          atletas_jogo_eventos_atleta_idToatletas: {
+            select: { id: true, nome: true },
+          },
+          atletas_jogo_eventos_assistencia_atleta_idToatletas: {
+            select: { id: true, nome: true },
+          },
+          times: { select: { id: true, nome: true } },
+        },
+        orderBy: [{ periodo: 'desc' }, { minuto: 'desc' }, { criado_em: 'desc' }],
+      });
+
+      return {
+        jogo: {
+          id: jogo.id,
+          status: jogo.status,
+          periodo: jogo.periodo,
+          placar: {
+            mandante: jogo.placar_mandante,
+            visitante: jogo.placar_visitante,
+          },
+        },
+        lances: lances.map((l: any) => ({
+          id: l.id,
+          tipo: l.tipo,
+          minuto: l.minuto,
+          periodo: l.periodo,
+          timeId: l.time_id,
+          equipe: l.times?.nome ?? null,
+          atletaId: l.atleta_id,
+          atleta: l.atletas_jogo_eventos_atleta_idToatletas?.nome ?? null,
+          assistenciaAtletaId: l.assistencia_atleta_id,
+          assistencia:
+            l.atletas_jogo_eventos_assistencia_atleta_idToatletas?.nome ?? null,
+          golContra: l.gol_contra,
+          penaltiConvertido: l.penalti_convertido,
+        })),
+      };
+    });
+  }
+
   // -------------------------------------------------- lances
 
   registrar(

@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 334 testes (exige o banco de pé)
+npm test                  # 347 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -271,6 +271,7 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `GET` `POST` | `/painel/categorias/:id/tabela` | Geração automática |
 | `PATCH` | `/painel/jogos/:id/programacao` | Data, hora e campo |
 | `POST` | `/painel/jogos/:id/{iniciar,periodo,encerrar,reabrir}` | Controle da partida |
+| `GET` | `/painel/jogos/:id/lances` | Cronologia para a timeline do operador |
 | `POST` `PATCH` `DELETE` | `/painel/jogos/:id/lances[/:lanceId]` | Súmula |
 
 ### Área do ADM do sistema (`superadmin`)
@@ -382,6 +383,24 @@ documento.
 > Ao testar: `Response.text()` do fetch **remove o BOM** por especificação. Um
 > teste que verifica BOM precisa ler `arrayBuffer()`, senão conclui que ele
 > sumiu quando está lá.
+
+### Timeline da súmula (RF019/RF020)
+
+Enquanto opera, o operador vê a cronologia ao lado dos botões de lance e
+corrige ali mesmo. Antes ele lançava às cegas: o POST devolvia só o lance criado
+e o placar, e um gol atribuído ao atleta errado só aparecia na súmula impressa —
+ou na reclamação da equipe no vestiário.
+
+A correção troca **atleta, equipe e assistência**. Minuto e período são
+imutáveis: o tempo nasce no servidor no instante do registro, e reescrevê-lo
+desfaria a cronologia.
+
+Trocar a equipe de um gol move o placar de lado — quem recalcula é
+`fn_recalcula_placar`, não o cliente, e por isso a tela relê depois de cada
+mudança em vez de manter uma cópia local.
+
+Jogo **encerrado** continua corrigível: é depois do apito que a reclamação
+chega. Agendado não aceita lance nenhum.
 
 ### Configurar fases (RF017)
 

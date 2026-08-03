@@ -1,5 +1,6 @@
 import {
   Body,
+  Get,
   Controller,
   Delete,
   Param,
@@ -50,6 +51,15 @@ export class SumulaController {
     @Param('jogoId', ParseUUIDPipe) jogoId: string,
   ) {
     return this.sumula.reabrir(req.sessao.org, jogoId);
+  }
+
+  /** GET /painel/jogos/:jogoId/lances — cronologia para a timeline. */
+  @Get('lances')
+  cronologia(
+    @Req() req: RequestAutenticado,
+    @Param('jogoId', ParseUUIDPipe) jogoId: string,
+  ) {
+    return this.sumula.cronologia(req.sessao.org, jogoId);
   }
 
   @Post('lances')

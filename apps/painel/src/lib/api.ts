@@ -278,6 +278,31 @@ export interface EstadoDoJogo {
   penaltis: { mandante: number; visitante: number } | null;
 }
 
+export interface LanceDaCronologia {
+  id: string;
+  tipo: string;
+  minuto: number;
+  periodo: number;
+  timeId: string | null;
+  equipe: string | null;
+  atletaId: string | null;
+  atleta: string | null;
+  assistenciaAtletaId: string | null;
+  assistencia: string | null;
+  golContra: boolean | null;
+  penaltiConvertido: boolean | null;
+}
+
+export interface Cronologia {
+  jogo: {
+    id: string;
+    status: string;
+    periodo: number;
+    placar: { mandante: number; visitante: number };
+  };
+  lances: LanceDaCronologia[];
+}
+
 export interface LanceRegistrado {
   lance: {
     id: string;
@@ -813,6 +838,15 @@ export const api = {
     requisitar<LanceRegistrado>(`/painel/jogos/${jogoId}/lances`, {
       metodo: 'POST',
       corpo: lance,
+    }),
+
+  cronologia: (jogoId: string) =>
+    requisitar<Cronologia>(`/painel/jogos/${jogoId}/lances`),
+
+  editarLance: (jogoId: string, lanceId: string, dados: Record<string, unknown>) =>
+    requisitar<LanceRegistrado>(`/painel/jogos/${jogoId}/lances/${lanceId}`, {
+      metodo: 'PATCH',
+      corpo: dados,
     }),
 
   removerLance: (jogoId: string, lanceId: string) =>

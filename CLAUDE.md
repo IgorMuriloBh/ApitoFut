@@ -312,6 +312,7 @@ apps/api/          NestJS — a única app existente hoje
 apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/lib/api.ts     cliente autenticado; token em sessionStorage
   src/lib/dominio.ts vocabulário do protótipo (STATUS, CORES, FASES…)
+  src/componentes/Timeline.tsx     cronologia da súmula, com correção de lance
   src/componentes/MenuLateral.tsx  navegação por seções, como o protótipo
                      (duas: a global da conta e a da competição aberta)
   src/telas/         Login · Painel · Wizard · Competicao (menu lateral) · Admin

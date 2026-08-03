@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Timeline } from '../componentes/Timeline';
 import { Alerta, Botao, Cartao, classeEntrada } from '../componentes/ui';
 import {
   api,
@@ -6,6 +7,7 @@ import {
   type Elenco,
   type EstadoDoJogo,
   type JogoDaTabela,
+  type LanceDaCronologia,
 } from '../lib/api';
 
 /**
@@ -61,11 +63,31 @@ export function Sumula({
   const [erro, setErro] = useState<string | null>(null);
   const [lancando, setLancando] = useState<string | null>(null);
   const [segundos, setSegundos] = useState(0);
+  const [lances, setLances] = useState<LanceDaCronologia[]>([]);
   const desde = useRef<number>(Date.now());
 
   useEffect(() => {
     void api.elenco(categoriaId).then(setElenco).catch(() => undefined);
   }, [categoriaId]);
+
+  /**
+   * Recarrega a cronologia. Chamada a cada lance, correção e exclusão —
+   * reler é mais barato que manter uma cópia local em sincronia, e o
+   * placar vem do trigger, não do cliente.
+   */
+  const recarregarLances = useCallback(async () => {
+    try {
+      const r = await api.cronologia(jogo.id);
+      setLances(r.lances);
+      setEstado((atual) => ({ ...atual, placar: r.jogo.placar }));
+    } catch {
+      /* a timeline é apoio: falhar nela não pode travar a operação */
+    }
+  }, [jogo.id]);
+
+  useEffect(() => {
+    void recarregarLances();
+  }, [recarregarLances]);
 
   // relógio local: só apresentação, ressincroniza a cada resposta da API
   useEffect(() => {
@@ -155,23 +177,57 @@ export function Sumula({
         )}
       </div>
 
-      {emAndamento ? (
-        <Cartao titulo="Registrar lance" sub="O minuto é gravado pelo servidor e não pode ser alterado depois">
-          <div className="p-5 flex flex-wrap gap-2">
-            {LANCES.map(([tipo, icone, rotulo]) => (
-              <Botao key={tipo} variante="neutro" onClick={() => setLancando(tipo)}>
-                {icone} {rotulo}
-              </Botao>
-            ))}
-          </div>
-        </Cartao>
-      ) : (
-        <Alerta tom="aviso">
-          {encerrado
-            ? 'Partida encerrada. Reabra pelo banco para corrigir lances.'
-            : 'Inicie a partida para registrar lances.'}
-        </Alerta>
-      )}
+      {/* Registro à esquerda, cronologia à direita: o operador lança e
+          confere sem trocar de tela — era aqui que o gol no atleta errado
+          passava batido até a súmula impressa. */}
+      <div className="grid lg:grid-cols-[1fr_380px] gap-4 items-start">
+        <div className="space-y-4">
+          {emAndamento ? (
+            <Cartao
+              titulo="Registrar lance"
+              sub="O minuto é gravado pelo servidor e não pode ser alterado depois"
+            >
+              <div className="p-5 flex flex-wrap gap-2">
+                {LANCES.map(([tipo, icone, rotulo]) => (
+                  <Botao
+                    key={tipo}
+                    variante="neutro"
+                    onClick={() => setLancando(tipo)}
+                  >
+                    {icone} {rotulo}
+                  </Botao>
+                ))}
+              </div>
+            </Cartao>
+          ) : (
+            <Alerta tom="aviso">
+              {encerrado
+                ? 'Partida encerrada. Os lances continuam corrigíveis na timeline.'
+                : 'Inicie a partida para registrar lances.'}
+            </Alerta>
+          )}
+        </div>
+
+        {equipeMandante && equipeVisitante && (
+          <Timeline
+            lances={lances}
+            jogoId={jogo.id}
+            mandante={{
+              id: jogo.mandante.id!,
+              nome: jogo.mandante.nome,
+              atletas: equipeMandante.atletas,
+            }}
+            visitante={{
+              id: jogo.visitante.id!,
+              nome: jogo.visitante.nome,
+              atletas: equipeVisitante.atletas,
+            }}
+            // encerrado ainda corrige: é quando a reclamação chega
+            podeEditar={emAndamento || encerrado}
+            aoMudar={recarregarLances}
+          />
+        )}
+      </div>
 
       {lancando && equipeMandante && equipeVisitante && (
         <FormularioDeLance
@@ -183,6 +239,7 @@ export function Sumula({
           aoRegistrar={(novo) => {
             setLancando(null);
             setEstado((atual) => ({ ...atual, placar: novo.placar }));
+            void recarregarLances();
           }}
         />
       )}
