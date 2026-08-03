@@ -16,7 +16,7 @@ ele é a especificação executável.
 
 A API, o painel e o portal já existem e rodam (ver *Estrutura do código*). O que ainda
 falta do protótipo está listado em `docs/SISTEMA.md` — hoje as maiores lacunas são
-domínio próprio no portal, upload de imagens e a área da equipe.
+a área da equipe, a configuração da categoria pelo painel e a carteirinha com QR.
 
 ## Documentação
 
@@ -198,7 +198,10 @@ Ao mexer no portal, verifique as três camadas de proteção que existem no prot
 - Nomes de tabelas e colunas em **português, snake_case, plural nas tabelas**
 - PKs `uuid` com `gen_random_uuid()`
 - Timestamps `timestamptz`, colunas `criado_em` / `atualizado_em`
-- Imagens vão para storage de objetos; o banco guarda só `*_url`
+- Imagens vão para storage de objetos; o banco guarda só o **caminho**
+  (`/uploads/…`), nunca a URL absoluta — trocar o domínio da API não pode
+  invalidar escudo já enviado. `apps/api/src/arquivos/` faz a ida e a volta,
+  e decide o tipo pelos **bytes**, nunca pelo nome ou Content-Type declarado
 - Senhas com **scrypt** do `node:crypto` (`apps/api/src/auth/senha.ts`) — cumpre o
   papel de bcrypt/argon2 (KDF memory-hard, baseline OWASP) sem dependência nativa;
   o formato `scrypt$N$r$p$salt$hash` carrega os parâmetros junto. O seed traz o hash
@@ -270,12 +273,15 @@ apps/api/          NestJS — a única app existente hoje
   src/prisma/        PrismaService com driver adapter (obrigatório no Prisma 7)
   src/competicoes/   visibilidade.ts concentra a regra de status
   src/admin/         área do ADM: só frestas SECURITY DEFINER, nunca comOrganizacao
+  src/arquivos/      upload e entrega de imagens; tipo detectado pelos bytes
 apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/lib/api.ts     cliente autenticado; token em sessionStorage
   src/lib/dominio.ts vocabulário do protótipo (STATUS, CORES, FASES…)
   src/telas/         Login · Painel · Wizard (3 etapas) · Competicao · Admin
 apps/portal/       Next.js 16 (App Router) — portal público SSR
   lib/api.ts         cliente dos endpoints públicos (o portal nunca autentica)
+  proxy.ts           domínio próprio: host → slug por rewrite (Next 16 renomeou
+                     middleware.ts para proxy.ts)
   app/[slug]/        competição · [categoriaId] classificação+jogos · [jogoId] detalhe
   AoVivo.tsx         client component: EventSource no feed SSE + router.refresh()
 ```

@@ -96,6 +96,31 @@ async function requisitar<T>(
   return dados as T;
 }
 
+/**
+ * Envio de imagem: o corpo são os bytes do arquivo, com o Content-Type
+ * dele. Não passa por `requisitar` porque aquele serializa JSON — e não há
+ * multipart aqui, é um arquivo e nada mais.
+ */
+async function enviarArquivo(arquivo: File) {
+  const s = sessao.ler();
+  const r = await fetch(`${BASE}/painel/uploads`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': arquivo.type || 'application/octet-stream',
+      ...(s ? { Authorization: `Bearer ${s.token}` } : {}),
+    },
+    body: arquivo,
+  });
+
+  const dados = await r.json().catch(() => null);
+  if (!r.ok) {
+    const msg =
+      (dados as { message?: string })?.message ?? 'Falha ao enviar a imagem.';
+    throw new ErroDaApi(r.status, msg);
+  }
+  return dados as { caminho: string; url: string; tipo: string; bytes: number };
+}
+
 // ---------------------------------------------------------------- tipos
 
 export interface CompeticaoDoPainel {
@@ -109,6 +134,7 @@ export interface CompeticaoDoPainel {
   estado: string;
   cor: string;
   dominioPersonalizado: string | null;
+  logoUrl: string | null;
   categorias: { id: string; nome: string }[];
   totais: { equipes: number; jogos: number; atletas: number };
 }
@@ -161,6 +187,7 @@ export interface AtletaDaBase {
   apelido: string | null;
   dataNascimento: string | null;
   posicao: string | null;
+  fotoUrl: string | null;
 }
 
 export interface AtletaInscrito {
@@ -171,6 +198,7 @@ export interface AtletaInscrito {
   posicao: string | null;
   numero: number | null;
   dataNascimento: string | null;
+  fotoUrl: string | null;
   /** Aviso de faixa etária — nunca esconde nem impede o atleta. */
   foraDaFaixa: boolean;
 }
@@ -194,6 +222,7 @@ export interface PedidoDeInscricao {
     dataNascimento?: string | null;
     posicao?: string | null;
     apelido?: string | null;
+    fotoUrl?: string | null;
   };
   numeroCamisa?: number | null;
   confirmarFaixaEtaria?: boolean;
@@ -468,6 +497,17 @@ export const api = {
 
   removerLance: (jogoId: string, lanceId: string) =>
     requisitar(`/painel/jogos/${jogoId}/lances/${lanceId}`, { metodo: 'DELETE' }),
+
+  enviarImagem: (arquivo: File) => enviarArquivo(arquivo),
+
+  definirImagens: (
+    id: string,
+    dados: { logoUrl?: string | null; bannerUrl?: string | null },
+  ) =>
+    requisitar<{ id: string; logoUrl: string | null; bannerUrl: string | null }>(
+      `/painel/competicoes/${id}/imagens`,
+      { metodo: 'PUT', corpo: dados },
+    ),
 
   definirDominio: (id: string, dominio: string | null) =>
     requisitar<{ id: string; dominioPersonalizado: string | null }>(

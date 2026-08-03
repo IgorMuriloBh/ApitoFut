@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alerta, Botao, Campo, Cartao, classeEntrada } from '../componentes/ui';
+import { EnvioDeImagem } from '../componentes/EnvioDeImagem';
 import {
   ErroDaApi,
   api,
@@ -172,6 +173,7 @@ function FormularioDeInscricao({
   const [nome, setNome] = useState('');
   const [dataNascimento, setDataNascimento] = useState('');
   const [posicao, setPosicao] = useState('');
+  const [foto, setFoto] = useState<string | null>(null);
   const [numero, setNumero] = useState('');
   const [busca, setBusca] = useState('');
   const [achados, setAchados] = useState<AtletaDaBase[]>([]);
@@ -198,7 +200,14 @@ function FormularioDeInscricao({
         categoriaIds: [categoriaId],
         ...(modo === 'base'
           ? { atletaId }
-          : { atleta: { nome, dataNascimento: dataNascimento || null, posicao: posicao || null } }),
+          : {
+              atleta: {
+                nome,
+                dataNascimento: dataNascimento || null,
+                posicao: posicao || null,
+                fotoUrl: foto,
+              },
+            }),
         numeroCamisa: numero ? Number(numero) : null,
         confirmarFaixaEtaria: confirmando,
       });
@@ -264,6 +273,9 @@ function FormularioDeInscricao({
 
         {modo === 'novo' ? (
           <>
+            <Campo rotulo="Foto" dica="Vai para a ficha e a carteirinha do atleta.">
+              <EnvioDeImagem valor={foto} aoMudar={setFoto} rotulo="Foto" redonda />
+            </Campo>
             <Campo rotulo="Nome do atleta" obrigatorio>
               <input
                 className={classeEntrada}

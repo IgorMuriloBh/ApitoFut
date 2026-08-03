@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { urlPublica } from '../arquivos/armazenamento';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   STATUS_VISIVEIS_NO_PORTAL,
@@ -116,8 +117,10 @@ export class CompeticoesService {
   /**
    * Guard obrigatório de todo endpoint aninhado em uma categoria: além da
    * visibilidade, garante que a categoria é DESTA competição. Sem isso o
-   * categoriaId viraria porta lateral para ler dados de outra organização —
-   * e hoje ainda não há RLS ligado no banco.
+   * categoriaId viraria porta lateral para ler dados de outra organização.
+   * O RLS já barraria (migration 06), mas o endpoint é público e roda sem
+   * contexto de organização — quem separa uma competição da outra aqui é
+   * esta checagem.
    */
   async exigirCategoriaVisivel(slug: string, categoriaId: string) {
     const competicao = await this.exigirCompeticaoVisivel(slug);
@@ -148,8 +151,8 @@ export class CompeticoesService {
       dataInicio: soData(c.data_inicio),
       dataFim: soData(c.data_fim),
       regulamento: c.regulamento,
-      logoUrl: c.logo_url,
-      bannerUrl: c.banner_url,
+      logoUrl: urlPublica(c.logo_url),
+      bannerUrl: urlPublica(c.banner_url),
       local: { pais: c.pais, estado: c.estado, cidade: c.cidade },
       corPrimaria: c.cor_primaria.trim(), // char(7) vem com padding
       status: c.status,

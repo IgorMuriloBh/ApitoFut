@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { paraCaminho, urlPublica } from '../arquivos/armazenamento';
 import { PrismaService } from '../prisma/prisma.service';
 import { avisosDeFaixaEtaria, mensagemDeFaixa } from './faixa-etaria';
 
@@ -32,6 +33,8 @@ export interface DadosDoAtleta {
   email?: string | null;
   responsavelNome?: string | null;
   responsavelContato?: string | null;
+  /** Caminho devolvido por POST /painel/uploads (RF009). */
+  fotoUrl?: string | null;
   /** Diferencia homônimos de mesma data de nascimento (migration 11). */
   desambiguacao?: string | null;
 }
@@ -72,6 +75,7 @@ export class ElencoService {
         apelido: a.apelido,
         dataNascimento: a.data_nascimento?.toISOString().slice(0, 10) ?? null,
         posicao: a.posicao,
+        fotoUrl: urlPublica(a.foto_url),
       }));
     });
   }
@@ -119,6 +123,7 @@ export class ElencoService {
                 nome: i.atletas.nome,
                 apelido: i.atletas.apelido,
                 posicao: i.atletas.posicao,
+                fotoUrl: urlPublica(i.atletas.foto_url),
                 numero: i.numero_camisa,
                 dataNascimento:
                   i.atletas.data_nascimento?.toISOString().slice(0, 10) ?? null,
@@ -274,6 +279,7 @@ export class ElencoService {
               email: d.email ?? null,
               responsavel_nome: d.responsavelNome ?? null,
               responsavel_contato: d.responsavelContato ?? null,
+              foto_url: paraCaminho(d.fotoUrl),
               desambiguacao: d.desambiguacao ?? null,
             },
           });

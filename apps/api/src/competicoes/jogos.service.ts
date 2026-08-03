@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { urlPublica } from '../arquivos/armazenamento';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompeticoesService } from './competicoes.service';
 import {
@@ -303,7 +304,7 @@ export class JogosService {
         definido: true,
         id: time.id,
         nome: time.nome,
-        escudoUrl: time.escudo_url,
+        escudoUrl: urlPublica(time.escudo_url),
       };
     }
 

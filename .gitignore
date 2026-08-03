@@ -11,3 +11,6 @@ build/
 .next/
 next-env.d.ts
 *.tsbuildinfo
+
+# imagens enviadas em desenvolvimento — o storage não é o repositório
+apps/api/uploads/

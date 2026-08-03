@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AdminModule } from './admin/admin.module';
+import { ArquivosModule } from './arquivos/arquivos.module';
 import { AuthModule } from './auth/auth.module';
 import { CompeticoesModule } from './competicoes/competicoes.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -14,6 +15,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     RealtimeModule,
     AuthModule,
     AdminModule,
+    ArquivosModule,
   ],
 })
 export class AppModule {}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { EnvioDeImagem } from '../componentes/EnvioDeImagem';
 import { Alerta, Botao, Cartao, Selo, classeEntrada } from '../componentes/ui';
 import { api, type CompeticaoDoPainel, type JogoDaTabela } from '../lib/api';
 import { STATUS, formataData } from '../lib/dominio';
@@ -37,6 +38,7 @@ export function Competicao({
   const [salvandoDominio, setSalvandoDominio] = useState(false);
   const [dominioSalvo, setDominioSalvo] = useState(false);
   const [erroDominio, setErroDominio] = useState<string | null>(null);
+  const [erroLogo, setErroLogo] = useState<string | null>(null);
 
   const publico = status !== 'em_criacao';
 
@@ -69,6 +71,16 @@ export function Competicao({
       setErroDominio(e instanceof Error ? e.message : 'Falha ao salvar o domínio.');
     } finally {
       setSalvandoDominio(false);
+    }
+  }
+
+  async function salvarLogo(caminho: string | null) {
+    setErroLogo(null);
+    try {
+      await api.definirImagens(competicao.id, { logoUrl: caminho });
+      aoMudar();
+    } catch (e) {
+      setErroLogo(e instanceof Error ? e.message : 'Falha ao salvar o logo.');
     }
   }
 
@@ -232,6 +244,23 @@ export function Competicao({
             >
               {salvando ? 'Salvando…' : 'Salvar status'}
             </Botao>
+          </div>
+        </Cartao>
+
+        <Cartao titulo="Logo" sub="Aparece no portal e na súmula">
+          <div className="p-5">
+            {erroLogo && (
+              <div className="mb-3">
+                <Alerta tom="erro">{erroLogo}</Alerta>
+              </div>
+            )}
+            {/* grava na hora: um botão "salvar" a mais para um campo só
+                seria cerimônia sem ganho */}
+            <EnvioDeImagem
+              valor={competicao.logoUrl}
+              aoMudar={(c) => void salvarLogo(c)}
+              rotulo="Logo da competição"
+            />
           </div>
         </Cartao>
 

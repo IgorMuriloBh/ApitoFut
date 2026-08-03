@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { paraCaminho, urlPublica } from '../arquivos/armazenamento';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -69,7 +70,7 @@ export class EquipesService {
       return times.map((t) => ({
         id: t.id,
         nome: t.nome,
-        escudoUrl: t.escudo_url,
+        escudoUrl: urlPublica(t.escudo_url),
         uniformePrimario: t.uniforme_primario,
         uniformeSecundario: t.uniforme_secundario,
         cidade: t.cidade,
@@ -99,7 +100,7 @@ export class EquipesService {
           data: {
             competicao_id: competicaoId,
             nome: dados.nome!.trim(),
-            escudo_url: dados.escudoUrl ?? null,
+            escudo_url: paraCaminho(dados.escudoUrl),
             uniforme_primario: dados.uniformePrimario ?? null,
             uniforme_secundario: dados.uniformeSecundario ?? null,
             cidade: dados.cidade ?? null,
@@ -136,7 +137,9 @@ export class EquipesService {
         where: { id: timeId },
         data: {
           ...(dados.nome !== undefined && { nome: dados.nome.trim() }),
-          ...(dados.escudoUrl !== undefined && { escudo_url: dados.escudoUrl }),
+          ...(dados.escudoUrl !== undefined && {
+            escudo_url: paraCaminho(dados.escudoUrl),
+          }),
           ...(dados.uniformePrimario !== undefined && {
             uniforme_primario: dados.uniformePrimario,
           }),

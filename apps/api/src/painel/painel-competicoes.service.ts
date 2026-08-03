@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, status_competicao } from '@prisma/client';
+import { paraCaminho, urlPublica } from '../arquivos/armazenamento';
 import { normalizarHost } from '../competicoes/competicoes.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { WizardCompeticao, WizardInvalido, validarWizard } from './wizard';
@@ -161,6 +162,42 @@ export class PainelCompeticoesService {
         }
         throw e;
       }
+    });
+  }
+
+  /**
+   * Logo e banner da competição (RF003). Recebe o caminho devolvido por
+   * `POST /painel/uploads`; `null` limpa. Cada campo é opcional — mandar só
+   * o logo não apaga o banner.
+   */
+  async definirImagens(
+    organizacaoId: string,
+    competicaoId: string,
+    dados: { logoUrl?: string | null; bannerUrl?: string | null },
+  ) {
+    return this.prisma.comOrganizacao(organizacaoId, async (tx) => {
+      const atual = await tx.competicoes.findUnique({
+        where: { id: competicaoId },
+      });
+      if (!atual) throw new NotFoundException('Competição não encontrada.');
+
+      const alterada = await tx.competicoes.update({
+        where: { id: competicaoId },
+        data: {
+          ...(dados.logoUrl !== undefined && {
+            logo_url: paraCaminho(dados.logoUrl),
+          }),
+          ...(dados.bannerUrl !== undefined && {
+            banner_url: paraCaminho(dados.bannerUrl),
+          }),
+        },
+      });
+
+      return {
+        id: alterada.id,
+        logoUrl: urlPublica(alterada.logo_url),
+        bannerUrl: urlPublica(alterada.banner_url),
+      };
     });
   }
 }

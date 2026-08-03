@@ -10,6 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { urlPublica } from '../arquivos/armazenamento';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { PainelCompeticoesService } from './painel-competicoes.service';
@@ -52,6 +53,16 @@ export class PainelController {
     @Body() corpo: { dominio?: string | null },
   ) {
     return this.competicoes.definirDominio(req.sessao.org, id, corpo?.dominio);
+  }
+
+  /** PUT /painel/competicoes/:id/imagens — logo e banner (RF003). */
+  @Put('competicoes/:id/imagens')
+  definirImagens(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() corpo: { logoUrl?: string | null; bannerUrl?: string | null },
+  ) {
+    return this.competicoes.definirImagens(req.sessao.org, id, corpo ?? {});
   }
 
   /** Lista as competições da organização — inclusive as `em_criacao`. */
@@ -108,6 +119,7 @@ export class PainelController {
           estado: c.estado,
           cor: c.cor_primaria,
           dominioPersonalizado: c.dominio_personalizado,
+          logoUrl: urlPublica(c.logo_url),
           categorias: c.categorias,
           totais: {
             equipes: c._count.times,

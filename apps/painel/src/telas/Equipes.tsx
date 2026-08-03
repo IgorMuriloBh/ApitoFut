@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alerta, Botao, Campo, Cartao, classeEntrada } from '../componentes/ui';
+import { EnvioDeImagem } from '../componentes/EnvioDeImagem';
 import { api, type CompeticaoDoPainel, type EquipeDoPainel } from '../lib/api';
 import { CORES, UFS } from '../lib/dominio';
 
@@ -164,6 +165,7 @@ function FormularioDeEquipe({
   const [estado, setEstado] = useState(equipe?.estado ?? '');
   const [responsavel, setResponsavel] = useState(equipe?.responsavel ?? '');
   const [contato, setContato] = useState(equipe?.contato ?? '');
+  const [escudo, setEscudo] = useState<string | null>(equipe?.escudoUrl ?? null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
@@ -177,6 +179,7 @@ function FormularioDeEquipe({
       estado: estado || null,
       responsavel: responsavel || null,
       contato: contato || null,
+      escudoUrl: escudo,
     };
     try {
       if (equipe) await api.editarEquipe(equipe.id, dados);
@@ -196,6 +199,14 @@ function FormularioDeEquipe({
             <Alerta tom="erro">{erro}</Alerta>
           </div>
         )}
+        <Campo rotulo="Escudo">
+          <EnvioDeImagem
+            valor={escudo}
+            aoMudar={setEscudo}
+            rotulo="Escudo da equipe"
+            redonda
+          />
+        </Campo>
         <Campo rotulo="Nome da equipe" obrigatorio>
           <input
             className={classeEntrada}

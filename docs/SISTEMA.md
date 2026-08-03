@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 180 testes (exige o banco de pé)
+npm test                  # 203 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -215,6 +215,7 @@ verificados no banco antes de escrever a migration:
 | `GET` | `/competicoes/:slug/categorias/:catId/jogos` | Grupos por rodada + mata-mata |
 | `GET` | `/competicoes/:slug/categorias/:catId/jogos/:jogoId` | Escalações e lances **só de `em_andamento`** |
 | `SSE` | `.../jogos/:jogoId/ao-vivo` | 403 em `publicada` — recurso de nível 2 |
+| `GET` | `/uploads/:organizacao/:nome` | Imagens; nome é o hash do conteúdo |
 
 Todo endpoint aninhado valida que a categoria é **daquela** competição. Sem
 isso o `categoriaId` seria porta lateral para ler dados de outra organização.
@@ -228,6 +229,8 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `GET` `POST` | `/painel/competicoes` | Lista e wizard de criação |
 | `PATCH` | `/painel/competicoes/:id/status` | Publicação controlada |
 | `PUT` | `/painel/competicoes/:id/dominio` | CNAME próprio; 409 se já usado |
+| `PUT` | `/painel/competicoes/:id/imagens` | Logo e banner |
+| `POST` | `/painel/uploads` | Corpo = bytes da imagem, sem multipart |
 | `GET` `POST` | `/painel/competicoes/:id/times` | Equipes |
 | `PATCH` `DELETE` | `/painel/times/:id` | Exclusão barrada se houver atletas ou jogos |
 | `PUT` `DELETE` | `/painel/categorias/:catId/times/:timeId` | Vínculo com grupo |
@@ -252,6 +255,35 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `POST` | `/admin/voltar` | Desfaz o "assumir" |
 
 O organizador leva **403** em qualquer uma delas (`SuperadminGuard`).
+
+### Imagens (RF003, RF006, RF009)
+
+`src/arquivos/` — escudo de equipe, logo/banner de competição, foto de atleta.
+
+**O tipo sai dos bytes, nunca do nome nem do `Content-Type` declarado.** É o
+que separa um escudo de um XSS armazenado: um arquivo `escudo.png` contendo
+HTML, servido como `text/html`, executaria no domínio que entrega as imagens.
+O formato detectado define a extensão gravada **e** o `Content-Type` da entrega,
+que ainda vai com `nosniff`. SVG não entra — é texto executável, não bitmap.
+
+**Nome do arquivo = SHA-256 do conteúdo.** O mesmo escudo enviado por dez
+equipes ocupa um arquivo só, e o nome não tem nada vindo do cliente: não há
+travessia de caminho possível. A entrega só aceita `^[a-f0-9]{64}\.(png|jpg|webp)$`.
+
+**O banco guarda o caminho (`/uploads/…`), não a URL.** Trocar o domínio da API
+não pode invalidar todo escudo já enviado. `urlPublica` monta a URL na resposta
+e `paraCaminho` desfaz na gravação — sem o par, a segunda edição da mesma equipe
+gravaria a URL absoluta que a tela recebeu.
+
+Sem multer: o corpo chega cru com o `Content-Type` da imagem. Multipart existiria
+para mandar vários campos junto; aqui é um arquivo e nada mais. O teto de 2 MB é
+checado primeiro no `Content-Length` (o navegador sempre envia), e o guarda no
+stream é o reforço para envio em chunks — ele drena em vez de matar a conexão,
+senão o cliente veria "falha de rede" e não descobriria que o problema era o
+tamanho.
+
+Storage hoje é disco local (`ARQUIVOS_DIR`, uma pasta por organização). Trocar
+por S3/R2 mexe só em `guardar()`.
 
 ### Decisões da API que vale conhecer
 
@@ -389,7 +421,6 @@ Em ordem de impacto:
 | Item | Situação |
 |---|---|
 | **Campos e árbitros (RF013/RF014)** | Tabelas existem; sem endpoint e sem tela |
-| **Upload de imagens** | Sem storage nem endpoint; escudo, logo e foto ficam `null` |
 | **Configuração da categoria pelo painel** | As tabelas de configuração existem e são respeitadas, mas só dá para editá-las por SQL |
 | **Estatísticas de atleta (RF022)** | `v_estatisticas_atleta` existe e está correta; nenhuma tela a consome |
 | **Área da equipe** | Auto-cadastro por link de convite (`origem`/`codigo_acesso` já no schema) |

@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { perfil_usuario, situacao_usuario } from '@prisma/client';
+import { urlPublica } from '../arquivos/armazenamento';
 import { traduzirErroDoBanco } from '../erros-do-banco';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -119,7 +120,7 @@ export class AdminService {
       temporada: c.temporada,
       cidade: c.cidade,
       estado: c.estado,
-      logoUrl: c.logo_url,
+      logoUrl: urlPublica(c.logo_url),
       organizacaoId: c.organizacao_id,
       organizacao: c.organizacao,
       dono: c.dono,

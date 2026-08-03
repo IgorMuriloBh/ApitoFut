@@ -13,7 +13,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: c.nome,
     description: `${c.nome} — ${c.local.cidade}/${c.local.estado}. Tabela de jogos, classificação e resultados.`,
-    openGraph: { title: c.nome, type: 'website' },
+    openGraph: {
+      title: c.nome,
+      type: 'website',
+      images: c.logoUrl ? [c.logoUrl] : undefined,
+    },
   };
 }
 
@@ -30,14 +34,36 @@ export default async function PaginaCompeticao({ params }: Props) {
   return (
     <main style={{ ['--cor' as string]: c.corPrimaria }}>
       <header className="faixa">
-        <div className="miolo">
-          <span className="pill">{STATUS_ROTULO[c.status] ?? c.status}</span>
-          <h1 style={{ fontSize: 26, marginTop: 6 }}>{c.nome}</h1>
-          <p style={{ opacity: 0.85, fontSize: 14 }}>
-            {c.local.cidade} / {c.local.estado}
-            {c.dataInicio ? ` · ${formata(c.dataInicio)}` : ''}
-            {c.dataFim ? ` → ${formata(c.dataFim)}` : ''}
-          </p>
+        <div className="miolo" style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          {/* <img> e não next/image: a URL vem da API, e cada organizador
+              pode servir de um host diferente quando o storage sair do
+              disco local — remotePatterns viraria configuração viva */}
+          {c.logoUrl && (
+            <img
+              src={c.logoUrl}
+              alt=""
+              width={64}
+              height={64}
+              style={{
+                width: 64,
+                height: 64,
+                objectFit: 'contain',
+                background: '#fff',
+                borderRadius: 12,
+                padding: 4,
+                flexShrink: 0,
+              }}
+            />
+          )}
+          <div>
+            <span className="pill">{STATUS_ROTULO[c.status] ?? c.status}</span>
+            <h1 style={{ fontSize: 26, marginTop: 6 }}>{c.nome}</h1>
+            <p style={{ opacity: 0.85, fontSize: 14 }}>
+              {c.local.cidade} / {c.local.estado}
+              {c.dataInicio ? ` · ${formata(c.dataInicio)}` : ''}
+              {c.dataFim ? ` → ${formata(c.dataFim)}` : ''}
+            </p>
+          </div>
         </div>
       </header>
 
