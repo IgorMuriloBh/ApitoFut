@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
+import { ClassificacaoService } from '../competicoes/classificacao.service';
 import { EstatisticasService } from './estatisticas.service';
 import {
   EstruturaService,
@@ -38,7 +39,22 @@ export class EstruturaController {
     private readonly estatisticas: EstatisticasService,
     private readonly impressao: ImpressaoService,
     private readonly exportacao: ExportacaoService,
+    private readonly classificacao: ClassificacaoService,
   ) {}
+
+  /**
+   * GET /painel/categorias/:id/classificacao — a mesma tabela do portal,
+   * mas visível ao organizador desde `em_criacao`. A rota pública exige
+   * competição publicada, e é antes de publicar que ele confere se a
+   * classificação ficou como esperava.
+   */
+  @Get('categorias/:id/classificacao')
+  classificacaoDaCategoria(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.classificacao.paraOrganizador(req.sessao.org, id);
+  }
 
   /**
    * As quatro exportações em CSV. Cada uma monta o `Content-Disposition`

@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 297 testes (exige o banco de pé)
+npm test                  # 298 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -248,6 +248,7 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `PUT` | `/painel/jogos/:id/escalacao` | Campo e árbitro do jogo (RF016) |
 | `GET` | `/painel/jogos/:id/sumula.html` | Súmula em branco para a mesa (RF018) |
 | `GET` | `/painel/categorias/:id/sumulas.html?rodada=&data=` | Lote da rodada |
+| `GET` | `/painel/categorias/:id/classificacao` | Mesma tabela do portal, visível desde `em_criacao` |
 | `GET` | `/painel/categorias/:id/estatisticas` | RF022 — os quatro rankings |
 | `GET` | `/painel/ranking` | RF023 — consolidado da conta |
 | `GET` | `/painel/categorias/:id/{inscritos,classificacao,estatisticas,jogos}.csv` | Exportações |
@@ -504,6 +505,12 @@ minoria poluiria a navegação de quem apenas organiza competição.
 Ao abrir a competição de outro organizador, o painel troca o token pelo que a
 API devolve e acende uma **tarja âmbar** com o nome da organização e o botão de
 voltar. Sem a tarja, o ADM editaria a competição alheia achando que é a dele.
+
+**Navegação por menu lateral**, como o protótipo (`NAV_COMP`, linha 797), com
+as seções *Competição* / *Operação* / *Estrutura*. Era uma fila de abas no topo;
+com nove itens ela transbordava e perdia o agrupamento — cadastro, operação e
+estrutura são três momentos diferentes do trabalho. Em tela estreita o menu vira
+faixa rolável: o painel é usado em tablet na beira do campo.
 
 **Token em `sessionStorage`, não `localStorage`** — some ao fechar a aba, que é
 o certo num painel usado em máquina compartilhada de secretaria ou federação.

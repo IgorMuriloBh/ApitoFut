@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { coluna_classificacao } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompeticoesService } from './competicoes.service';
@@ -9,6 +9,19 @@ import { CompeticoesService } from './competicoes.service';
  * são de propósito: `count()` devolve bigint e `round()` devolve numeric —
  * ambos quebram o JSON.stringify se chegarem como BigInt/Decimal.
  */
+/**
+ * O que `montar` precisa do cliente: ou o PrismaService, ou o `tx` de uma
+ * transação com `app.current_org` definido. Tipar pelo que se usa evita
+ * `any` e deixa explícito que os dois caminhos existem.
+ */
+type ClienteDePrisma = Pick<
+  PrismaService,
+  | '$queryRaw'
+  | 'categoria_coluna_classificacao'
+  | 'categoria_criterio_desempate'
+  | 'categoria_regras'
+>;
+
 interface LinhaCrua {
   time_id: string;
   time_nome: string;
@@ -57,22 +70,67 @@ export class ClassificacaoService {
     private readonly competicoes: CompeticoesService,
   ) {}
 
+  /** Portal público: resolve por slug e aplica a regra de visibilidade. */
   async porCategoria(slug: string, categoriaId: string) {
     const { competicao, categoria } = await this.competicoes.exigirCategoriaVisivel(
       slug,
       categoriaId,
     );
 
+    return this.montar(this.prisma, categoriaId, {
+      competicao: { slug: competicao.slug, nome: competicao.nome },
+      categoria: { id: categoria.id, nome: categoria.nome },
+    });
+  }
+
+  /**
+   * Painel do organizador. A rota pública não serve aqui: ela exige
+   * competição visível, e o organizador precisa ver a classificação
+   * enquanto a competição ainda está `em_criacao` — é justamente aí que
+   * ele confere se a tabela ficou como esperava.
+   *
+   * Roda em `comOrganizacao`, então **todas** as consultas usam o `tx`.
+   */
+  async paraOrganizador(organizacaoId: string, categoriaId: string) {
+    return this.prisma.comOrganizacao(organizacaoId, async (tx) => {
+      const categoria = await tx.categorias.findUnique({
+        where: { id: categoriaId },
+        include: { competicoes: true },
+      });
+      if (!categoria) throw new NotFoundException('Categoria não encontrada.');
+
+      return this.montar(tx, categoriaId, {
+        competicao: {
+          slug: categoria.competicoes.slug,
+          nome: categoria.competicoes.nome,
+        },
+        categoria: { id: categoria.id, nome: categoria.nome },
+      });
+    });
+  }
+
+  /**
+   * O cálculo em si, igual para os dois caminhos. Recebe o cliente porque
+   * sob RLS a consulta precisa sair pela transação que tem o contexto.
+   */
+  private async montar(
+    cliente: ClienteDePrisma,
+    categoriaId: string,
+    cabecalho: {
+      competicao: { slug: string; nome: string };
+      categoria: { id: string; nome: string };
+    },
+  ) {
     const [linhas, colunas, criterios, regras] = await Promise.all([
-      this.lerLinhas(categoriaId),
-      this.prisma.categoria_coluna_classificacao.findMany({
+      this.lerLinhas(categoriaId, cliente),
+      cliente.categoria_coluna_classificacao.findMany({
         where: { categoria_id: categoriaId, visivel: true },
       }),
-      this.prisma.categoria_criterio_desempate.findMany({
+      cliente.categoria_criterio_desempate.findMany({
         where: { categoria_id: categoriaId },
         orderBy: { ordem: 'asc' },
       }),
-      this.prisma.categoria_regras.findUnique({
+      cliente.categoria_regras.findUnique({
         where: { categoria_id: categoriaId },
       }),
     ]);
@@ -88,8 +146,7 @@ export class ClassificacaoService {
     );
 
     return {
-      competicao: { slug: competicao.slug, nome: competicao.nome },
-      categoria: { id: categoria.id, nome: categoria.nome },
+      ...cabecalho,
       colunasVisiveis: [...visiveis],
       // Rótulo que o organizador deu à coluna de ajuste manual — o portal
       // precisa dele no cabeçalho; "Coluna Extra" não diz nada ao torcedor.
@@ -103,8 +160,11 @@ export class ClassificacaoService {
     };
   }
 
-  private lerLinhas(categoriaId: string): Promise<LinhaCrua[]> {
-    return this.prisma.$queryRaw<LinhaCrua[]>`
+  private lerLinhas(
+    categoriaId: string,
+    cliente: ClienteDePrisma,
+  ): Promise<LinhaCrua[]> {
+    return cliente.$queryRaw<LinhaCrua[]>`
       SELECT
         vc.time_id::text          AS time_id,
         vc.time_nome              AS time_nome,

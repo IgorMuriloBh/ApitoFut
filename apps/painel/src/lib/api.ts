@@ -354,6 +354,61 @@ async function baixarArquivo(caminho: string) {
   URL.revokeObjectURL(url);
 }
 
+// ------------------------------------------- classificação e disciplina
+
+export interface LinhaDaClassificacao {
+  posicao: number;
+  timeId: string;
+  nome: string;
+  jogos: number;
+  vitorias: number;
+  empates: number;
+  derrotas: number;
+  golsPro: number;
+  golsContra: number;
+  saldoGols: number;
+  pontos: number;
+  porcentagem: number;
+  colunaExtra: number;
+  cartaoAmarelo: number;
+  cartaoVermelho: number;
+  cartaoAzul: number;
+}
+
+export interface ClassificacaoDoPainel {
+  competicao: { slug: string; nome: string };
+  categoria: { id: string; nome: string };
+  /** Só as colunas ligadas na configuração da categoria. */
+  colunasVisiveis: string[];
+  colunaExtraRotulo: string;
+  criteriosDesempate: { ordem: number; criterio: string; direcao: string }[];
+  grupos: { grupo: string | null; times: LinhaDaClassificacao[] }[];
+}
+
+export interface SituacaoDisciplinar {
+  categoria: { id: string; nome: string };
+  regra: {
+    ativa: boolean;
+    numAmarelos: number;
+    jogosPorAmarelo: number;
+    jogosPorVermelho: number;
+    acumulaDoisAmarelos: boolean;
+  } | null;
+  atletas: {
+    atletaId: string;
+    nome: string;
+    timeNome: string;
+    amarelos: number;
+    vermelhos: number;
+    ciclo: number;
+    numAmarelos: number;
+    jogosACumprir: number;
+    suspenso: boolean;
+    /** A um cartão de ser suspenso — o aviso que o técnico precisa. */
+    pendurado: boolean;
+  }[];
+}
+
 // ------------------------- campos, árbitros e estatísticas (RF013/14/22/23)
 
 export interface CampoDoPainel {
@@ -669,6 +724,16 @@ export const api = {
 
   removerLance: (jogoId: string, lanceId: string) =>
     requisitar(`/painel/jogos/${jogoId}/lances/${lanceId}`, { metodo: 'DELETE' }),
+
+  classificacao: (categoriaId: string) =>
+    requisitar<ClassificacaoDoPainel>(
+      `/painel/categorias/${categoriaId}/classificacao`,
+    ),
+
+  disciplina: (categoriaId: string) =>
+    requisitar<SituacaoDisciplinar>(
+      `/painel/categorias/${categoriaId}/disciplina`,
+    ),
 
   campos: (competicaoId: string) =>
     requisitar<CampoDoPainel[]>(`/painel/competicoes/${competicaoId}/campos`),

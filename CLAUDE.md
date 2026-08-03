@@ -302,7 +302,10 @@ apps/api/          NestJS — a única app existente hoje
 apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/lib/api.ts     cliente autenticado; token em sessionStorage
   src/lib/dominio.ts vocabulário do protótipo (STATUS, CORES, FASES…)
-  src/telas/         Login · Painel · Wizard (3 etapas) · Competicao · Admin
+  src/componentes/MenuLateral.tsx  navegação por seções, como o protótipo
+  src/telas/         Login · Painel · Wizard · Competicao (menu lateral) · Admin
+                     Equipes · Atletas · Tabela · Sumula · Classificacao ·
+                     Estatisticas · Suspensoes · Estrutura · Configuracao
 apps/portal/       Next.js 16 (App Router) — portal público SSR
   lib/api.ts         cliente dos endpoints públicos (o portal nunca autentica)
   proxy.ts           domínio próprio: host → slug por rewrite (Next 16 renomeou
