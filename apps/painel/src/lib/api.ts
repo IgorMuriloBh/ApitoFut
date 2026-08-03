@@ -426,6 +426,27 @@ export interface JogoDaCentral {
   placar: { mandante: number; visitante: number };
 }
 
+// --------------------------------------------------------- fases (RF017)
+
+export interface FaseDaCategoria {
+  chave: string;
+  nome: string;
+  tipo: string;
+  numJogos: number | null;
+  /** Quantos jogos ela tem na tabela hoje. */
+  jogos: number;
+  /** Destes, quantos já foram disputados — o que se perde ao excluir. */
+  jogosDisputados: number;
+}
+
+export interface FaseParaSalvar {
+  /** Ausente = fase nova. */
+  chave?: string;
+  nome: string;
+  tipo: string;
+  numJogos?: number;
+}
+
 // ------------------------------------------- classificação e disciplina
 
 export interface LinhaDaClassificacao {
@@ -824,6 +845,32 @@ export const api = {
     requisitar<{ aoVivo: JogoDaCentral[]; agendados: JogoDaCentral[] }>(
       `/painel/competicoes/${competicaoId}/ao-vivo`,
     ),
+
+  fases: (categoriaId: string) =>
+    requisitar<{
+      categoria: { id: string; nome: string };
+      fases: FaseDaCategoria[];
+    }>(`/painel/categorias/${categoriaId}/fases`),
+
+  fasesPadrao: (categoriaId: string) =>
+    requisitar<{ fases: { nome: string; tipo: string; numJogos?: number }[] }>(
+      `/painel/categorias/${categoriaId}/fases/padrao`,
+    ),
+
+  salvarFases: (
+    categoriaId: string,
+    fases: FaseParaSalvar[],
+    confirmarPerda: boolean,
+  ) =>
+    requisitar<{
+      fases: number;
+      fasesRemovidas: number;
+      jogosCriados: number;
+      jogosRemovidos: number;
+    }>(`/painel/categorias/${categoriaId}/fases`, {
+      metodo: 'PUT',
+      corpo: { fases, confirmarPerda },
+    }),
 
   classificacao: (categoriaId: string) =>
     requisitar<ClassificacaoDoPainel>(

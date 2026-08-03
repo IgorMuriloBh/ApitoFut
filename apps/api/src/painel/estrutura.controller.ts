@@ -18,6 +18,7 @@ import type { Response } from 'express';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
 import { ClassificacaoService } from '../competicoes/classificacao.service';
 import { CatalogoService } from './catalogo.service';
+import { FasesService, type FaseDesejada } from './fases.service';
 import { EstatisticasService } from './estatisticas.service';
 import {
   EstruturaService,
@@ -43,7 +44,49 @@ export class EstruturaController {
     private readonly exportacao: ExportacaoService,
     private readonly classificacao: ClassificacaoService,
     private readonly catalogo: CatalogoService,
+    private readonly fases: FasesService,
   ) {}
+
+  // ------------------------------------------------- fases (RF017)
+
+  /** GET /painel/categorias/:id/fases — sequência atual, com contagens. */
+  @Get('categorias/:id/fases')
+  listarFases(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.fases.listar(req.sessao.org, id);
+  }
+
+  /**
+   * PUT /painel/categorias/:id/fases — grava a sequência inteira.
+   *
+   * O corpo é a lista final: o que não vier nela é removido, junto com os
+   * jogos daquela fase. `confirmarPerda` é exigido quando isso atingiria
+   * jogo já disputado.
+   */
+  @Put('categorias/:id/fases')
+  salvarFases(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() corpo: { fases?: FaseDesejada[]; confirmarPerda?: boolean },
+  ) {
+    return this.fases.salvar(
+      req.sessao.org,
+      id,
+      corpo?.fases ?? [],
+      Boolean(corpo?.confirmarPerda),
+    );
+  }
+
+  /** GET .../fases/padrao — o desenho automático, sem gravar nada. */
+  @Get('categorias/:id/fases/padrao')
+  fasesPadrao(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.fases.restaurarPadrao(req.sessao.org, id);
+  }
 
   // -------------------------------------------------------- categorias
 

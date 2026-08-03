@@ -179,6 +179,12 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
   "melhor defesa" nem a "fair play"
 - **CSV do sistema abre no Excel em português**: BOM UTF-8, separador `;` e
   aspas simples em célula que começa com `=`, `+`, `-` ou `@` (fórmula)
+- **A ordem das fases decide o chaveamento**: `trg_avanca_mata_mata` usa
+  `fases.ordem` para saber onde o vencedor entra. E `uq_fase_ordem` não é
+  DEFERRABLE — reordenar exige passar por uma faixa temporária antes de
+  gravar a ordem final
+- **Encolher um mata-mata corta só jogo não disputado**, do fim para o
+  começo; remover fase com resultado exige `confirmarPerda`
 - **Categoria com tabela gerada não muda de estrutura** (formato, grupos,
   nº de equipes) — a tabela ficaria incoerente e só se descobriria na fase
   seguinte. Excluir exige categoria vazia: a cascata apagaria jogos,
@@ -311,7 +317,8 @@ apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/telas/         Login · Painel · Wizard · Competicao (menu lateral) · Admin
                      Equipes · Atletas · Tabela · Sumula · Classificacao ·
                      Estatisticas · Suspensoes · Estrutura · Configuracao ·
-                     Categorias · AoVivo · BaseDeAtletas · RankingGeral
+                     Categorias · AoVivo · BaseDeAtletas · RankingGeral ·
+                     ConfigurarFases (modal da tabela de jogos)
 apps/portal/       Next.js 16 (App Router) — portal público SSR
   lib/api.ts         cliente dos endpoints públicos (o portal nunca autentica)
   proxy.ts           domínio próprio: host → slug por rewrite (Next 16 renomeou

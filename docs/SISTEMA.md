@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 321 testes (exige o banco de pé)
+npm test                  # 334 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -250,6 +250,8 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `PUT` | `/painel/jogos/:id/escalacao` | Campo e árbitro do jogo (RF016) |
 | `GET` | `/painel/jogos/:id/sumula.html` | Súmula em branco para a mesa (RF018) |
 | `GET` | `/painel/categorias/:id/sumulas.html?rodada=&data=` | Lote da rodada |
+| `GET` `PUT` | `/painel/categorias/:id/fases` | Configurar fases (RF017); 409 se atingir jogo disputado |
+| `GET` | `/painel/categorias/:id/fases/padrao` | Desenho automático, sem gravar |
 | `GET` | `/painel/categorias/:id/classificacao` | Mesma tabela do portal, visível desde `em_criacao` |
 | `POST` | `/painel/competicoes/:id/categorias` | Categoria depois do wizard |
 | `PATCH` `DELETE` | `/painel/categorias/:id` | 409 se mudar estrutura com tabela gerada, ou excluir com conteúdo |
@@ -380,6 +382,31 @@ documento.
 > Ao testar: `Response.text()` do fetch **remove o BOM** por especificação. Um
 > teste que verifica BOM precisa ler `arrayBuffer()`, senão conclui que ele
 > sumiu quando está lá.
+
+### Configurar fases (RF017)
+
+`fases.service.ts` — o `modalFases` do protótipo. O organizador monta a
+sequência: quantas fases, de que tipo, em que ordem e com quantos jogos cada
+mata-mata. Antes só existia o que a geração automática criava.
+
+**A ordem não é enfeite.** `trg_avanca_mata_mata` (migration 13) usa
+`fases.ordem` para decidir para onde o vencedor sobe — reordenar aqui muda o
+caminho do chaveamento de verdade.
+
+Três detalhes que o banco impõe:
+
+- `uq_fase_ordem` é UNIQUE (categoria, ordem) e **não é DEFERRABLE**: inverter
+  duas fases colidiria no meio da gravação. A escrita passa por uma faixa
+  temporária (1000+) antes de assentar em 0,1,2.
+- `uq_fase_chave` é por categoria: fase nova ganha slug do nome, sufixado até
+  achar um livre — duas "Repescagem" viram `repescagem` e `repescagem-2`.
+- Encolher um mata-mata remove **só o que ainda não foi disputado**, do fim para
+  o começo. Cortar por índice apagaria uma final já jogada para caber no número
+  menor.
+
+Remover fase ou encolher mata-mata que atinja jogo com resultado responde **409
+pedindo `confirmarPerda`** — mesma guarda da geração da tabela. Reordenar não
+pede nada: não destrói nada.
 
 ### CRUD de categoria, base de atletas e central ao vivo
 

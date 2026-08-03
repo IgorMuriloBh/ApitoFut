@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alerta, Botao, Campo, Cartao, classeEntrada } from '../componentes/ui';
 import { ErroDaApi, api, type CompeticaoDoPainel, type JogoDaTabela } from '../lib/api';
 import { formataData } from '../lib/dominio';
+import { ConfigurarFases } from './ConfigurarFases';
 
 /**
  * Tabela de jogos da categoria (RF015/RF017): geração automática e
@@ -15,6 +16,7 @@ export function Tabela({
   aoOperar: (jogo: JogoDaTabela, categoriaId: string) => void;
 }) {
   const [categoriaId, setCategoriaId] = useState(competicao.categorias[0]?.id ?? '');
+  const [configurandoFases, setConfigurandoFases] = useState(false);
   const [jogos, setJogos] = useState<JogoDaTabela[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [gerando, setGerando] = useState(false);
@@ -40,9 +42,20 @@ export function Tabela({
 
   const porBloco = agrupar(jogos ?? []);
 
+  const categoriaAtual = competicao.categorias.find((k) => k.id === categoriaId);
+
   return (
     <div className="space-y-4">
       {erro && <Alerta tom="erro">{erro}</Alerta>}
+
+      {configurandoFases && categoriaAtual && (
+        <ConfigurarFases
+          categoriaId={categoriaId}
+          categoriaNome={categoriaAtual.nome}
+          aoFechar={() => setConfigurandoFases(false)}
+          aoSalvar={() => void carregar(categoriaId)}
+        />
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         {competicao.categorias.map((k) => (
@@ -80,7 +93,17 @@ export function Tabela({
             ? `${jogos.length} jogo(s) · ${jogos.filter((j) => !j.data).length} sem data`
             : 'carregando…'
         }
-        acao={<Botao onClick={() => setGerando(true)}>⚙ Gerar tabela</Botao>}
+        acao={
+          <span className="flex gap-2">
+            {/* configurar fases fica ao lado de gerar: são as duas coisas
+                que mudam a forma da tabela, e o organizador chega nelas
+                pelo mesmo caminho */}
+            <Botao variante="neutro" onClick={() => setConfigurandoFases(true)}>
+              🗂 Configurar fases
+            </Botao>
+            <Botao onClick={() => setGerando(true)}>⚙ Gerar tabela</Botao>
+          </span>
+        }
       >
         {jogos === null ? (
           <p className="p-8 text-center text-sm text-slate-500">Carregando…</p>
