@@ -10,13 +10,21 @@ Existe um **protótipo funcional validado** em `prototipo/ApitoFut.html` — arq
 sem servidor, dados em `localStorage`. Todas as telas e regras de negócio foram testadas
 ali com o cliente.
 
-O trabalho agora é reimplementar o protótipo como aplicação real, preservando as regras
-já validadas. **Antes de decidir o comportamento de qualquer tela, consulte o protótipo** —
-ele é a especificação executável.
+**O protótipo já foi reimplementado por inteiro.** As 23 telas dele têm equivalente
+na API, no painel e no portal, com 368 testes automatizados. O protótipo continua
+sendo a **especificação executável**: antes de decidir o comportamento de uma tela,
+consulte-o — várias regras deste sistema só existem porque foram lidas de lá, não da
+documentação. Use as âncoras do *Mapa do protótipo*, abaixo.
 
-A API, o painel e o portal já existem e rodam (ver *Estrutura do código*). O que ainda
-falta do protótipo está listado em `docs/SISTEMA.md`. Tudo o que o protótipo
-fazia já está de pé.
+Em vários pontos o sistema foi **deliberadamente além** do protótipo, sempre com
+teste e comentário explicando o porquê. Os principais: premiação empatada volta como
+empate em vez de escolher pela ordem do array; equipe que não jogou não concorre a
+prêmio de equipe; a carteirinha pública não mostra documento; cidade sai do cadastro
+do IBGE em vez de campo livre. `docs/SISTEMA.md` §11 registra cada uma.
+
+Antes de trabalhar aqui, leia **`docs/SISTEMA.md` §8 — Trabalhando neste repositório**:
+o shell volta ao Node antigo, o projeto não tem config de prettier, e falha de
+instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecidos.
 
 ## Documentação
 

@@ -6,7 +6,8 @@ Retrato do que existe hoje, por que existe assim, e o que falta.
 regras que não podem quebrar — leia-o primeiro, sempre. Este arquivo é o
 complemento: consulte-o ao voltar a um trecho depois de um tempo, ao decidir
 onde encaixar código novo, ou antes de refazer uma escolha que já foi feita.
-As duas primeiras seções respondem a maioria das perguntas.
+As duas primeiras seções respondem a maioria das perguntas; a 8 é sobre o
+ambiente de desenvolvimento, e evita repetir tropeços conhecidos.
 
 > Convenção deste documento: quando uma decisão tem alternativa óbvia que foi
 > descartada, o porquê está registrado. Sem isso, alguém "corrige" no futuro o
@@ -657,8 +658,8 @@ se a tela e o servidor divergirem por um segundo, vale o servidor.
 
 ## 7. Testes
 
-147 testes, ~4s, **sem nenhuma dependência de teste**. Runner nativo do Node 24
-e `fetch` global.
+368 testes em 30 arquivos, ~17s, **sem nenhuma dependência de teste**. Runner
+nativo do Node 24 e `fetch` global.
 
 ```bash
 npm test    # exige docker compose up -d
@@ -668,28 +669,109 @@ Serializada (`--test-concurrency=1`): os arquivos e2e alternam o status da mesma
 competição no banco compartilhado e, em paralelo, um corrompia o cenário do
 outro — falhava de verdade, com corrida real.
 
+**Puros** (sem banco, rodam em milissegundos):
+
 | Arquivo | Cobre |
 |---|---|
-| `competicoes/visibilidade.spec.ts` | As três regras puras, exaustivas sobre os enums |
+| `competicoes/visibilidade.spec.ts` | As três regras de visibilidade, exaustivas sobre os enums |
+| `competicoes/dominio.spec.ts` | Normalização de host para o white-label |
 | `painel/chaveamento.spec.ts` | Sorteio: ninguém joga 2× na rodada, folga com ímpar |
 | `painel/faixa-etaria.spec.ts` | Sub-N por temporada |
 | `painel/wizard.spec.ts` | Validação e saneamento da criação |
+| `painel/premiacoes.spec.ts` | RF024, sobretudo o empate |
+| `painel/csv.spec.ts` | BOM, separador, CSV injection |
+| `arquivos/armazenamento.spec.ts` | Detecção de formato pelos bytes |
 | `auth/auth.spec.ts` | scrypt, HMAC, guardas do segredo |
+
+**e2e** (exigem `docker compose up -d`):
+
+| Arquivo | Cobre |
+|---|---|
 | `portal.e2e.spec.ts` | Matriz de visibilidade + **varredura antivazamento** |
+| `portal-extra.e2e.spec.ts` | Estatísticas e elencos públicos, nível 2 |
 | `auth.e2e.spec.ts` | Login e o lado do painel do RLS |
+| `admin.e2e.spec.ts` | Área do ADM, fronteira do organizador, "assumir" |
+| `convite.e2e.spec.ts` | Área da equipe: link cria, código edita |
+| `carteirinha.e2e.spec.ts` | Credencial por QR, sem documento |
 | `elenco.e2e.spec.ts` | RF010, limite, faixa etária, isolamento |
+| `catalogo.e2e.spec.ts` | CRUD de categoria, base de atletas, central ao vivo |
+| `configuracao.e2e.spec.ts` | RF005; **só desempata por coluna visível** |
+| `estrutura.e2e.spec.ts` | Campos, árbitros, súmula impressa, ranking |
 | `tabela.e2e.spec.ts` | Geração e programação |
+| `fases.e2e.spec.ts` | Reordenar, criar, excluir fase |
 | `sumula.e2e.spec.ts` | Operação + ciclo completo com o SSE |
-| `mata-mata.e2e.spec.ts` | Avanço do vencedor, correção de resultado, limites |
-| `suspensoes.e2e.spec.ts` | Acúmulo, vermelho, cumprimento, bloqueio, manual |
+| `cronologia.e2e.spec.ts` | Timeline e correção de lance |
+| `mata-mata.e2e.spec.ts` | Avanço do vencedor, correção de resultado |
+| `suspensoes.e2e.spec.ts` | Acúmulo, vermelho, cumprimento, bloqueio |
+| `uploads.e2e.spec.ts` | Envio, entrega, travessia de caminho |
+| `escudo.e2e.spec.ts` | O escudo saindo em **toda** rota que expõe equipe |
+| `exportacao.e2e.spec.ts` | CSVs e premiações |
+| `dominio.e2e.spec.ts` | CNAME não fura a visibilidade |
+| `localidades.e2e.spec.ts` | IBGE + logo no wizard |
 
 Os unitários são **exaustivos sobre os enums** de propósito: acrescentar um
 status novo ao banco quebra o teste e obriga a decidir conscientemente o que ele
 expõe, em vez de herdar comportamento por acidente.
 
+### Armadilhas ao escrever teste aqui
+
+Todas já custaram tempo pelo menos uma vez:
+
+- **Falha de instanciação do Nest deixa a suíte INTEIRA muda.** Zero linhas de
+  saída, exit 1, inclusive em arquivos que passavam. Foi um provider esquecido no
+  módulo. Quando isso acontecer, suba a API (`npm run api:dev`) e leia o log —
+  a mensagem está lá, não no runner.
+- **O seed é compartilhado.** Teste que altera configuração de categoria do seed,
+  ou cria equipe, quebra outra suíte. Crie a competição da própria suíte e limpe
+  no `after`. Se algo já poluiu: `npm run db:reset`.
+- **Filtrar por `chave` sem `categoria_id`** pega a fase homônima de qualquer
+  outra competição da base.
+- **`ck_adversarios`**: equipe não joga contra si mesma. Precisa de duas.
+- **Assertion por substring mente.** Procurar `"atleta"` no corpo casa
+  `maxAtletas`. Confira a **forma** (as chaves) quando o ponto é o recorte.
+- **`Response.text()` remove o BOM** por especificação do Fetch. Testar BOM exige
+  ler `arrayBuffer()`.
+- **Contar marcador de layout pega o CSS junto** — `page-break-after` aparece
+  três vezes no `<style>` da página de impressão. Conte algo semântico.
+
 ---
 
-## 8. Antes de qualquer deploy
+## 8. Trabalhando neste repositório
+
+Coisas que não se deduzem lendo o código, e que já custaram tempo.
+
+**O shell volta ao Node antigo.** A máquina tem um Node de sistema anterior ao 24
+e o projeto usa nvm. Todo terminal novo precisa de:
+
+```bash
+export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24
+```
+
+Sem isso o `npm` resolve para a versão 6 e falha com `missing script: start:dev`
+em `npm run api:dev` — a mensagem não diz nada sobre versão de Node.
+
+**Não há config de prettier no projeto.** Rodar `npx prettier --write` sem
+argumento reformata o arquivo inteiro para aspas duplas, que destoa do resto. Se
+precisar formatar: `npx prettier --single-quote`.
+
+**Os três serviços rodam juntos** e o painel pega outra porta se a 5173 estiver
+ocupada — o log diz qual. Ao reiniciar, mate as portas antes:
+
+```bash
+for p in 3000 3001 5173; do kill $(lsof -ti:$p) 2>/dev/null; done
+```
+
+**Verificar tela por DOM é mais barato e mais preciso que screenshot.** Para
+conferir se um elemento existe, ler `document.querySelector(...)` responde sem
+ambiguidade; screenshot serve para julgar layout, não para verificar dado.
+
+**A API só recompila o que o `tsc --watch` viu.** Depois de mudar o schema
+(`db/*.sql`), rode `npm run db:pull` antes de compilar, senão os tipos do Prisma
+ficam para trás e o erro aponta para o lugar errado.
+
+---
+
+## 9. Antes de qualquer deploy
 
 - [ ] **Segredos**: definir `POSTGRES_PASSWORD`, `APITOFUT_APP_PASSWORD` e
       `AUTH_SEGREDO` por ambiente. A API **recusa subir** em produção com o
@@ -698,20 +780,35 @@ expõe, em vez de herdar comportamento por acidente.
 - [ ] **Nunca** versionar `.env` com credencial real.
 - [ ] Medir o RLS com `EXPLAIN` em competição grande — as políticas em cascata
       são legíveis, mas podem pedir `organizacao_id` materializado nas netas.
-- [ ] Storage de objetos para imagens (o banco só guarda `*_url`).
+- [ ] Trocar o storage de imagens do **disco local** por S3/R2. A troca mexe só
+      em `guardar()`: o resto do sistema conhece caminhos, e `urlPublica` os
+      resolve. Definir `ARQUIVOS_DIR` para um volume persistente enquanto isso.
+- [ ] `PLATAFORMA_HOSTS` e `API_URL` no portal, `ARQUIVOS_BASE_URL` e
+      `PORTAL_URL` na API — todos têm padrão de desenvolvimento embutido.
 
 ---
 
-## 9. O que falta
+## 10. O que falta
 
-Em ordem de impacto:
+**Nenhuma funcionalidade do protótipo.** As 23 telas dele têm equivalente, e
+vários pontos foram além (premiações com empate explícito, exportações, cadastro
+de municípios). O que resta é operacional — seção 8.
 
-| Item | Situação |
+### Deixado de fora de propósito
+
+Não são pendências; são decisões, e refazê-las sem motivo seria retrabalho:
+
+| Item | Por quê |
 |---|---|
+| Abas Notícias, Fotos e Vídeos no portal | São **placeholders vazios no próprio protótipo** — sem schema, sem dado. Virariam aba oca |
+| Preview do portal dentro do painel | Hoje é link "Ver portal" que abre em outra aba. Embutir um iframe do próprio site é pior que abrir o site |
+| Migrar as cidades já gravadas em texto para o cadastro do IBGE | Só há dado de desenvolvimento. Se entrar dado real antes disso, escrever migration que case os nomes e relate o que não casar |
+| Reordenar categorias | `categorias.ordem` existe e é gravada; falta só a interação de arrastar |
+| Edição de atleta pela área da equipe | `permite_editar` é respeitado no back; a tela da equipe só inscreve e remove |
 
 ---
 
-## 10. Histórico das decisões
+## 11. Histórico das decisões
 
 Registro do que foi decidido e **por quê** — para não refazer a discussão.
 
@@ -732,4 +829,17 @@ Registro do que foi decidido e **por quê** — para não refazer a discussão.
 | Suspensão persistida, não derivada | Calcular `floor(amarelos/N)` a cada consulta, como o protótipo | Derivada, a suspensão nunca termina: nada marca o cumprimento e o atleta fica suspenso para sempre |
 | `acumular_dois_amarelos` com efeito real | Manter só no rótulo, como o protótipo | Opção configurável que não muda nada é armadilha para quem a liga esperando resultado |
 | Avanço do mata-mata por trigger | Lógica na API | Encerrar um jogo pode vir do endpoint, de um W.O. lançado direto ou de correção por SQL; no banco vale em todos os casos |
+| Menu lateral em duas camadas | Uma fila de abas no topo | Com onze itens a fila transborda e perde o agrupamento; a lateral da conta some dentro da competição para não competir com a dela |
+| Portal em uma página com `?aba=` | Estado de cliente ou drill-down | Cada aba vira URL compartilhável e renderizada no servidor — é o que justifica esta camada ser Next |
+| Aba bloqueada aparece com cadeado | Sumir da barra | O visitante vê que há mais conteúdo quando a competição começar, em vez de achar que o portal é só aquilo |
+| Empate de premiação volta como empate | `sort(...)[0]`, como o protótipo | Troféu decidido por ordem de array não se defende na reunião do conselho |
+| Equipe que não jogou não concorre a prêmio de equipe | Seguir o protótipo | Ela ganharia "melhor defesa" com zero gols sofridos de quem se defendeu o campeonato inteiro |
+| Municípios do IBGE versionados em migration | Buscar da API do IBGE ao subir | Migration não pode depender de rede para o banco subir |
+| `unaccent_simples()` por `translate` | Extensão `unaccent` | A da extensão não é IMMUTABLE (lê dicionário do disco) e não entra em índice sem um wrapper que mentiria |
+| Ordenar município pelo nome sem acento | `ORDER BY nome` | O collation compara byte: "Mâncio Lima" cairia depois de "Marechal Thaumaturgo" |
+| Escudo ausente vira iniciais coloridas | Espaço vazio ou ícone genérico | Vazio faz a lista pular entre linhas; ícone genérico sugere que a equipe tem escudo |
+| Correção de lance não mexe em minuto/período | Deixar tudo editável | O tempo nasce no servidor no instante do registro; reescrevê-lo desfaz a cronologia |
+| Reordenar fase passa por faixa temporária | Update direto | `uq_fase_ordem` não é DEFERRABLE: inverter duas colidiria no meio |
+| CSV com BOM e `;` | UTF-8 puro com vírgula | O destino é o Excel em português, onde sem BOM o acento quebra e a vírgula é separador decimal |
+| `qrcode-svg` | `qrcode` clássico | Zero dependências transitivas; o clássico arrasta yargs@15 |
 | Regras curadas em `.claude/settings.json` | Commitar `settings.local.json` | O arquivo local é reescrito pelo próprio Claude Code a cada permissão — versioná-lo geraria diff toda sessão |
