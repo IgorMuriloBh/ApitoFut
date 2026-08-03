@@ -40,6 +40,7 @@ export class PainelCompeticoesService {
       tx.competicoes.create({
         data: {
           ...dados.competicao,
+          logo_url: paraCaminho(dados.competicao.logo_url),
           organizacao_id: organizacaoId,
           criado_por: usuarioId,
           // slug fica por conta do trg_competicao_slug
@@ -58,6 +59,7 @@ export class PainelCompeticoesService {
       slug: criada.slug,
       status: criada.status,
       cor: criada.cor_primaria,
+      logoUrl: urlPublica(criada.logo_url),
       categorias: criada.categorias.map((k) => ({
         id: k.id,
         nome: k.nome,

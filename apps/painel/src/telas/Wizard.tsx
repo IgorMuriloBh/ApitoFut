@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { EnvioDeImagem } from '../componentes/EnvioDeImagem';
+import { SeletorDeCidade } from '../componentes/SeletorDeCidade';
 import { Alerta, Botao, Campo, Cartao, classeEntrada } from '../componentes/ui';
-import { api } from '../lib/api';
+import { api, type Estado } from '../lib/api';
 import {
-  CORES, FASES, FORMATOS, GENEROS, MODALIDADES, PAISES, TIPOS, UFS,
+  CORES, FASES, FORMATOS, GENEROS, MODALIDADES, PAISES, TIPOS,
   categoriaPadrao, iniciais, type CategoriaBase,
 } from '../lib/dominio';
 
@@ -26,6 +28,13 @@ export function Wizard({
   const [pais, setPais] = useState('Brasil');
   const [estado, setEstado] = useState('');
   const [cidade, setCidade] = useState('');
+  const [estados, setEstados] = useState<Estado[]>([]);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  // as UFs vêm do cadastro do IBGE (migration 18), não de uma lista fixa
+  useEffect(() => {
+    void api.estados().then(setEstados).catch(() => undefined);
+  }, []);
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [regulamento, setRegulamento] = useState('');
@@ -70,7 +79,7 @@ export function Wizard({
     setEnviando(true);
     try {
       await api.criarCompeticao({
-        nome, pais, estado, cidade, dataInicio,
+        nome, pais, estado, cidade, dataInicio, logoUrl,
         dataFim: dataFim || null,
         regulamento: regulamento || null,
         cor, possuiCategorias, categorias,
@@ -138,6 +147,17 @@ export function Wizard({
                 />
               </Campo>
 
+              <Campo
+                rotulo="Logo do campeonato"
+                dica="PNG, JPEG ou WebP. Aparece ao lado do nome em todas as telas e no portal."
+              >
+                <EnvioDeImagem
+                  valor={logoUrl}
+                  aoMudar={setLogoUrl}
+                  rotulo="Logo do campeonato"
+                />
+              </Campo>
+
               <div className="grid grid-cols-3 gap-3">
                 <Campo rotulo="País">
                   <select className={classeEntrada} value={pais} onChange={(e) => setPais(e.target.value)}>
@@ -145,13 +165,25 @@ export function Wizard({
                   </select>
                 </Campo>
                 <Campo rotulo="Estado" obrigatorio>
-                  <select className={classeEntrada} value={estado} onChange={(e) => setEstado(e.target.value)}>
+                  <select
+                    className={classeEntrada}
+                    value={estado}
+                    onChange={(e) => {
+                      setEstado(e.target.value);
+                      // a cidade escolhida era de outra UF: some junto
+                      setCidade('');
+                    }}
+                  >
                     <option value="">Selecione…</option>
-                    {UFS.map((u) => <option key={u}>{u}</option>)}
+                    {estados.map((u) => (
+                      <option key={u.sigla} value={u.sigla}>
+                        {u.sigla} — {u.nome}
+                      </option>
+                    ))}
                   </select>
                 </Campo>
                 <Campo rotulo="Cidade" obrigatorio>
-                  <input className={classeEntrada} value={cidade} onChange={(e) => setCidade(e.target.value)} />
+                  <SeletorDeCidade uf={estado} valor={cidade} aoMudar={setCidade} />
                 </Campo>
               </div>
 

@@ -509,6 +509,24 @@ model categoria_coluna_extra {
   @@id([categoria_id, time_id])
 }
 
+model estados {
+  sigla      String       @id @db.Char(2)
+  codigo     Int          @unique
+  nome       String
+  regiao     String       @db.Char(2)
+  municipios municipios[]
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model municipios {
+  codigo  Int     @id
+  uf      String  @db.Char(2)
+  nome    String
+  estados estados @relation(fields: [uf], references: [sigla], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([uf, nome], map: "idx_municipios_uf")
+}
+
 enum campo_atleta {
   apelido
   foto

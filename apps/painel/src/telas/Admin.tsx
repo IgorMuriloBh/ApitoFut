@@ -267,7 +267,14 @@ export function Admin({
               <Tabela colunas={['Competição', 'Organizador', 'Status']}>
                 {competicoes.slice(0, 8).map((c) => (
                   <tr key={c.id}>
-                    <td className="px-4 py-2 font-medium">{c.nome}</td>
+                    <td className="px-4 py-2 font-medium">
+                      <span className="flex items-center gap-2">
+                        {c.logoUrl && (
+                          <img src={c.logoUrl} alt="" className="w-6 h-6 object-contain" />
+                        )}
+                        {c.nome}
+                      </span>
+                    </td>
                     <td className="px-4 py-2 text-slate-600">{c.dono ?? '—'}</td>
                     <td className="px-4 py-2">
                       <Selo status={c.status} />
@@ -477,8 +484,17 @@ export function Admin({
               .map((c) => (
                 <tr key={c.id}>
                   <td className="px-4 py-2">
-                    <div className="font-medium">{c.nome}</div>
-                    <div className="text-xs text-slate-500">{c.organizacao}</div>
+                    <span className="flex items-center gap-2">
+                      {c.logoUrl && (
+                        <img src={c.logoUrl} alt="" className="w-7 h-7 object-contain shrink-0" />
+                      )}
+                      <span>
+                        <span className="block font-medium">{c.nome}</span>
+                        <span className="block text-xs text-slate-500">
+                          {c.organizacao}
+                        </span>
+                      </span>
+                    </span>
                   </td>
                   <td className="px-4 py-2 text-slate-600">{c.dono ?? '—'}</td>
                   <td className="px-4 py-2 text-slate-600 whitespace-nowrap">

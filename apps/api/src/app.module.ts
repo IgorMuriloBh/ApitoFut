@@ -6,6 +6,7 @@ import { CarteirinhaModule } from './carteirinha/carteirinha.module';
 import { AuthModule } from './auth/auth.module';
 import { CompeticoesModule } from './competicoes/competicoes.module';
 import { ConviteModule } from './convite/convite.module';
+import { LocalidadesModule } from './localidades/localidades.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RealtimeModule } from './realtime/realtime.module';
 
@@ -20,6 +21,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     ArquivosModule,
     ConviteModule,
     CarteirinhaModule,
+    LocalidadesModule,
   ],
 })
 export class AppModule {}

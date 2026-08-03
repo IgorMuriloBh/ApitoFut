@@ -153,6 +153,7 @@ export interface CategoriaDoWizard {
 
 export interface NovaCompeticao {
   nome: string;
+  logoUrl?: string | null;
   pais: string;
   estado: string;
   cidade: string;
@@ -451,6 +452,20 @@ export interface JogoDaCentral {
   placar: { mandante: number; visitante: number };
 }
 
+// ------------------------------------------- estados e municípios (IBGE)
+
+export interface Estado {
+  sigla: string;
+  nome: string;
+  regiao: string;
+}
+
+export interface Municipio {
+  /** Código IBGE de 7 dígitos. */
+  codigo: number;
+  nome: string;
+}
+
 // --------------------------------------------------------- fases (RF017)
 
 export interface FaseDaCategoria {
@@ -659,6 +674,7 @@ export interface CompeticaoDaPlataforma {
   temporada: number | null;
   cidade: string;
   estado: string;
+  logoUrl: string | null;
   organizacaoId: string;
   organizacao: string;
   dono: string | null;
@@ -879,6 +895,14 @@ export const api = {
     requisitar<{ aoVivo: JogoDaCentral[]; agendados: JogoDaCentral[] }>(
       `/painel/competicoes/${competicaoId}/ao-vivo`,
     ),
+
+  /** Dado público do IBGE: rota aberta, sem token. */
+  estados: () => requisitar<Estado[]>('/localidades/estados', { autenticado: false }),
+
+  municipios: (uf: string) =>
+    requisitar<Municipio[]>(`/localidades/estados/${uf}/municipios`, {
+      autenticado: false,
+    }),
 
   fases: (categoriaId: string) =>
     requisitar<{

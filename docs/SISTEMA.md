@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 347 testes (exige o banco de pé)
+npm test                  # 359 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -121,7 +121,7 @@ propósito faz 5 testes falharem.
 
 ## 4. Banco de dados
 
-17 migrations, aplicadas em ordem alfabética **na primeira subida do volume**.
+18 migrations, aplicadas em ordem alfabética **na primeira subida do volume**.
 Estado atual do schema: **28 tabelas, 4 views, 16 enums, 28 políticas de RLS**.
 Mudou o schema? Nova migration. Nunca editar as antigas, nunca `prisma migrate dev`.
 Depois, `npm run db:pull` para regenerar os tipos.
@@ -145,6 +145,7 @@ Depois, `npm run db:pull` para regenerar os tipos.
 | `15-adm-sistema.sql` | Auto-cadastro, primeira conta vira ADM e as frestas da área do ADM (RF031) |
 | `16-area-da-equipe.sql` | Convite por link: código de acesso e frestas de leitura (RF006/RF007) |
 | `17-carteirinha.sql` | Credencial do atleta para a arbitragem, sem documento (RF029) |
+| `18-municipios.sql` | 27 UFs e 5.571 municípios do IBGE, com busca sem acento |
 
 ### Triggers — onde as regras realmente moram
 
@@ -220,6 +221,8 @@ verificados no banco antes de escrever a migration:
 | `GET` | `.../categorias/:catId/elencos` | Escalações por equipe — nível 2 |
 | `SSE` | `.../jogos/:jogoId/ao-vivo` | 403 em `publicada` — recurso de nível 2 |
 | `GET` | `/uploads/:organizacao/:nome` | Imagens; nome é o hash do conteúdo |
+| `GET` | `/localidades/estados` | 27 UFs — dado público do IBGE |
+| `GET` | `/localidades/estados/:uf/municipios?busca=` | Municípios da UF, busca sem acento |
 | `GET` | `/convite/:slug` | Área da equipe: competição e categorias abertas |
 | `POST` | `/convite/:slug/equipes` | Auto-cadastro; devolve o código de acesso |
 | `GET` `PATCH` | `/convite/:slug/equipe` | Painel da equipe — exige `X-Codigo-Equipe` |
@@ -480,6 +483,31 @@ bloqueia; faixa etária é aviso, como em todo o resto do sistema.
 O SVG do QR é gerado no servidor (`qrcode-svg`, zero dependências transitivas —
 o `qrcode` clássico arrastaria yargs@15). Painel e portal só precisam de uma
 `<img>`.
+
+### Estados e municípios (migration 18)
+
+A cidade era campo livre no wizard: "Belo Horizonte", "belo horizonte" e "BH"
+viravam três cidades, e nenhum filtro por praça funcionava depois. Agora a
+cidade só sai da lista do IBGE, depois de escolhida a UF.
+
+Os ids são os **códigos oficiais do IBGE**, não gerados aqui — é o que permite
+cruzar com qualquer outra base pública depois.
+
+Dado da **plataforma**, não de organização: sem RLS, rota aberta e resposta
+cacheável por um dia. Uma cidade não pertence a ninguém, e exigir token
+atrapalharia o auto-cadastro de equipe, que também precisa da lista.
+
+`unaccent_simples()` é um `translate` IMMUTABLE, não a extensão `unaccent` — a
+da extensão não é IMMUTABLE (carrega dicionário do disco) e não entra em índice
+sem um wrapper que mentiria sobre isso.
+
+**A ordenação é pelo nome sem acento.** Ordenar pelo nome cru joga "Mâncio Lima"
+depois de "Marechal Thaumaturgo": o collation compara o byte do 'â', não a
+letra. O teste de ordem alfabética pegou isso.
+
+Regenerar quando o IBGE mudar a divisão municipal:
+`db/ferramentas/gerar-municipios.sh`. O arquivo é versionado de propósito —
+migration não pode depender de rede para subir o banco.
 
 ### Imagens (RF003, RF006, RF009)
 

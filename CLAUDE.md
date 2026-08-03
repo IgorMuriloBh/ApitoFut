@@ -42,6 +42,7 @@ fazia já está de pé.
 - `db/15-adm-sistema.sql` — auto-cadastro e as frestas da área do ADM (RF031)
 - `db/16-area-da-equipe.sql` — convite por link e código de acesso da equipe (RF006)
 - `db/17-carteirinha.sql` — credencial do atleta para a arbitragem (RF029)
+- `db/18-municipios.sql` — UFs e municípios do IBGE; regerar com `db/ferramentas/`
 
 ## Banco de dados
 
@@ -194,6 +195,9 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
 - **Escalar campo/árbitro exige mesma competição**: duas competições da
   mesma organização passam igual pelo RLS, e sem a checagem o id de outra
   entraria pela porta lateral
+- **Cidade sai do cadastro do IBGE, nunca de campo livre** — e a ordenação
+  é pelo nome sem acento, senão "Mâncio Lima" cai depois de "Marechal
+  Thaumaturgo" (o collation compara byte, não letra)
 - **A carteirinha pública não mostra documento.** O protótipo exibe o CPF
   na validação por QR; aqui não. A arbitragem precisa saber quem é e se
   pode jogar, e a página é pública com dado de menor de idade

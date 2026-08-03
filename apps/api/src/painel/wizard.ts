@@ -36,6 +36,8 @@ export interface WizardCompeticao {
   temporada?: number;
   possuiCategorias?: boolean;
   categorias?: WizardCategoria[];
+  /** Caminho devolvido por POST /painel/uploads. */
+  logoUrl?: string | null;
 }
 
 export interface CategoriaSaneada {
@@ -115,6 +117,7 @@ export function validarWizard(w: WizardCompeticao): {
     data_fim: Date | null;
     regulamento: string | null;
     cor_primaria: string;
+    logo_url: string | null;
     temporada: number | null;
     possui_categorias: boolean;
   };
@@ -163,6 +166,8 @@ export function validarWizard(w: WizardCompeticao): {
       data_fim: w.dataFim ? new Date(`${w.dataFim}T00:00:00Z`) : null,
       regulamento: w.regulamento?.trim() || null,
       cor_primaria: cor.toUpperCase(),
+      // o caminho vem de POST /painel/uploads; o serviço normaliza
+      logo_url: w.logoUrl ?? null,
       temporada: w.temporada ?? new Date(w.dataInicio).getUTCFullYear(),
       possui_categorias: possuiCategorias,
     },

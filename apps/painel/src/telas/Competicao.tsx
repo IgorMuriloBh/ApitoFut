@@ -165,7 +165,16 @@ export function Competicao({
             <p className="text-[10px] uppercase tracking-wider text-slate-400 mt-2">
               Competição ativa
             </p>
-            <p className="font-bold leading-tight">{competicao.nome}</p>
+            <span className="flex items-center gap-2">
+              {competicao.logoUrl && (
+                <img
+                  src={competicao.logoUrl}
+                  alt=""
+                  className="w-8 h-8 object-contain shrink-0"
+                />
+              )}
+              <span className="font-bold leading-tight">{competicao.nome}</span>
+            </span>
             <p className="text-xs text-slate-500 mt-0.5">
               {competicao.cidade} / {competicao.estado}
             </p>

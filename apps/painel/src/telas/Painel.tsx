@@ -99,9 +99,19 @@ export function Painel({ aoCriar, aoAbrir, recarregarEm }: Props) {
                     background: `linear-gradient(120deg, ${c.cor}, ${c.cor}cc)`,
                   }}
                 >
-                  <span className="bg-white text-sm font-bold rounded-lg w-10 h-10 grid place-items-center shadow">
-                    {iniciais(c.nome)}
-                  </span>
+                  {/* a logo entra no lugar das iniciais: elas eram o
+                      substituto de quem não tinha imagem, não o padrão */}
+                  {c.logoUrl ? (
+                    <img
+                      src={c.logoUrl}
+                      alt=""
+                      className="bg-white rounded-lg w-10 h-10 object-contain p-1 shadow"
+                    />
+                  ) : (
+                    <span className="bg-white text-sm font-bold rounded-lg w-10 h-10 grid place-items-center shadow">
+                      {iniciais(c.nome)}
+                    </span>
+                  )}
                 </div>
                 <div className="p-3">
                   <p className="font-semibold text-sm">{c.nome}</p>
