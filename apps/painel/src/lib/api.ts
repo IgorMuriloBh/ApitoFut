@@ -292,6 +292,104 @@ export interface LanceRegistrado {
   status: string;
 }
 
+/**
+ * Abre uma página de impressão numa aba nova.
+ *
+ * Não dá para usar um `<a href>` simples: a rota é autenticada e o token
+ * vive em `sessionStorage`, fora do alcance de uma navegação comum. Então
+ * buscamos com o cabeçalho, viramos Blob e abrimos — a aba recebe o HTML
+ * já pronto para o Ctrl+P.
+ */
+async function abrirImpressao(caminho: string) {
+  const s = sessao.ler();
+  const r = await fetch(`${BASE}${caminho}`, {
+    headers: s ? { Authorization: `Bearer ${s.token}` } : {},
+  });
+
+  if (!r.ok) {
+    const dados = await r.json().catch(() => null);
+    throw new ErroDaApi(
+      r.status,
+      (dados as { message?: string })?.message ?? 'Não foi possível gerar a súmula.',
+    );
+  }
+
+  const url = URL.createObjectURL(
+    new Blob([await r.text()], { type: 'text/html' }),
+  );
+  const aba = window.open(url, '_blank');
+  if (!aba) {
+    URL.revokeObjectURL(url);
+    throw new Error('Permita pop-ups para imprimir a súmula.');
+  }
+  // o Blob fica vivo enquanto a aba carrega; soltar na hora quebraria
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+// ------------------------- campos, árbitros e estatísticas (RF013/14/22/23)
+
+export interface CampoDoPainel {
+  id: string;
+  nome: string;
+  endereco: string | null;
+  tipoPiso: string | null;
+  capacidade: number | null;
+  observacoes: string | null;
+  fotos: { id: string; url: string | null }[];
+  jogos: number;
+}
+
+export interface ArbitroDoPainel {
+  id: string;
+  nome: string;
+  federacao: string | null;
+  funcao: string;
+  contato: string | null;
+  fotoUrl: string | null;
+  temCpf: boolean;
+  jogos: number;
+}
+
+export interface AtletaNoRanking {
+  atletaId: string;
+  nome: string;
+  apelido: string | null;
+  posicao: string | null;
+  fotoUrl: string | null;
+  equipe: string;
+  categoria: string;
+  competicao: string;
+  jogos: number;
+  gols: number;
+  assistencias: number;
+  cartoesAmarelos: number;
+  cartoesVermelhos: number;
+  defesas: number;
+  competicoes?: number;
+}
+
+export interface EstatisticasDaCategoria {
+  categoria: { id: string; nome: string };
+  resumo: {
+    jogosEncerrados: number;
+    gols: number;
+    mediaGolsPorJogo: number;
+    cartoes: number;
+    atletasComParticipacao: number;
+  };
+  atletas: AtletaNoRanking[];
+}
+
+export interface RankingGeral {
+  resumo: {
+    competicoes: number;
+    atletas: number;
+    gols: number;
+    cartoes: number;
+  };
+  atletas: AtletaNoRanking[];
+}
+
 // ---------------------------------------- configuração da categoria (RF005)
 
 export interface ConfiguracaoDaCategoria {
@@ -533,6 +631,60 @@ export const api = {
 
   removerLance: (jogoId: string, lanceId: string) =>
     requisitar(`/painel/jogos/${jogoId}/lances/${lanceId}`, { metodo: 'DELETE' }),
+
+  campos: (competicaoId: string) =>
+    requisitar<CampoDoPainel[]>(`/painel/competicoes/${competicaoId}/campos`),
+
+  criarCampo: (competicaoId: string, dados: Record<string, unknown>) =>
+    requisitar<{ id: string; nome: string }>(
+      `/painel/competicoes/${competicaoId}/campos`,
+      { metodo: 'POST', corpo: dados },
+    ),
+
+  editarCampo: (campoId: string, dados: Record<string, unknown>) =>
+    requisitar(`/painel/campos/${campoId}`, { metodo: 'PATCH', corpo: dados }),
+
+  removerCampo: (campoId: string) =>
+    requisitar(`/painel/campos/${campoId}`, { metodo: 'DELETE' }),
+
+  arbitros: (competicaoId: string) =>
+    requisitar<ArbitroDoPainel[]>(`/painel/competicoes/${competicaoId}/arbitros`),
+
+  criarArbitro: (competicaoId: string, dados: Record<string, unknown>) =>
+    requisitar<{ id: string; nome: string }>(
+      `/painel/competicoes/${competicaoId}/arbitros`,
+      { metodo: 'POST', corpo: dados },
+    ),
+
+  editarArbitro: (arbitroId: string, dados: Record<string, unknown>) =>
+    requisitar(`/painel/arbitros/${arbitroId}`, { metodo: 'PATCH', corpo: dados }),
+
+  removerArbitro: (arbitroId: string) =>
+    requisitar(`/painel/arbitros/${arbitroId}`, { metodo: 'DELETE' }),
+
+  escalarJogo: (
+    jogoId: string,
+    dados: { campoId?: string | null; arbitroId?: string | null },
+  ) =>
+    requisitar<{ id: string; campoId: string | null; arbitroId: string | null }>(
+      `/painel/jogos/${jogoId}/escalacao`,
+      { metodo: 'PUT', corpo: dados },
+    ),
+
+  estatisticas: (categoriaId: string) =>
+    requisitar<EstatisticasDaCategoria>(
+      `/painel/categorias/${categoriaId}/estatisticas`,
+    ),
+
+  ranking: () => requisitar<RankingGeral>('/painel/ranking'),
+
+  imprimirSumula: (jogoId: string) =>
+    abrirImpressao(`/painel/jogos/${jogoId}/sumula.html`),
+
+  imprimirSumulasDaRodada: (categoriaId: string, rodada: number) =>
+    abrirImpressao(
+      `/painel/categorias/${categoriaId}/sumulas.html?rodada=${rodada}`,
+    ),
 
   configuracao: (categoriaId: string) =>
     requisitar<ConfiguracaoDaCategoria>(

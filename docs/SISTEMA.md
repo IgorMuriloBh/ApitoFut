@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 250 testes (exige o banco de pé)
+npm test                  # 265 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -241,6 +241,15 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `PUT` | `/painel/competicoes/:id/imagens` | Logo e banner |
 | `GET` `PUT` | `/painel/categorias/:id/configuracao` | RF005 inteiro; envio parcial aceito |
 | `POST` | `/painel/categorias/:id/configuracao/replicar` | Copia para as categorias irmãs |
+| `GET` `POST` | `/painel/competicoes/:id/campos` | Locais de jogo (RF013) |
+| `PATCH` `DELETE` | `/painel/campos/:id` | 409 se o campo estiver em jogo |
+| `GET` `POST` | `/painel/competicoes/:id/arbitros` | Arbitragem (RF014) |
+| `PATCH` `DELETE` | `/painel/arbitros/:id` | 409 se estiver escalado |
+| `PUT` | `/painel/jogos/:id/escalacao` | Campo e árbitro do jogo (RF016) |
+| `GET` | `/painel/jogos/:id/sumula.html` | Súmula em branco para a mesa (RF018) |
+| `GET` | `/painel/categorias/:id/sumulas.html?rodada=&data=` | Lote da rodada |
+| `GET` | `/painel/categorias/:id/estatisticas` | RF022 — os quatro rankings |
+| `GET` | `/painel/ranking` | RF023 — consolidado da conta |
 | `POST` | `/painel/uploads` | Corpo = bytes da imagem, sem multipart |
 | `GET` `POST` | `/painel/competicoes/:id/times` | Equipes |
 | `PATCH` `DELETE` | `/painel/times/:id` | Exclusão barrada se houver atletas ou jogos |
@@ -290,6 +299,36 @@ log de proxy, no `Referer` e no histórico da máquina compartilhada do clube.
 Quem manda no que a equipe pode fazer é a **configuração da categoria**
 (`permite_inscrever`, `permite_remover`, `inscricoes_abertas`, `max_atletas`,
 `max_comissao`) — conferida no serviço e no banco, nunca só na tela.
+
+### Campos, árbitros e súmula impressa (RF013, RF014, RF016, RF018)
+
+`campos` e `arbitros` existiam no schema e nada as preenchia — `jogos.campo_id`
+e `jogos.arbitro_id` eram sempre nulos, e a súmula saía com "Local a definir".
+
+**Excluir campo ou árbitro em uso responde 409.** As FKs são `SET NULL`: o banco
+deixaria, e o jogo ficaria sem local sem ninguém perceber até a hora de imprimir.
+
+**Escalar exige mesma competição.** Duas competições da mesma organização passam
+igual pelo RLS; sem a checagem explícita, um id de outra entraria pela porta
+lateral.
+
+A súmula impressa é HTML puro em `sumula-impressa.ts`, que **não conhece
+Prisma** — dá para testá-lo sem banco. Quase tudo nela é espaço em branco: é o
+papel que a arbitragem preenche à mão, e depois alguém digita na súmula online.
+Uma folha A4 paisagem por jogo; concatenar as folhas é o que faz a impressão em
+lote da rodada funcionar. Todo dado vindo do banco é escapado — tem teste com
+`<script>` no nome da equipe.
+
+### Estatísticas e ranking (RF022, RF023)
+
+`v_estatisticas_atleta` existia e nenhuma tela a consumia. Duas coisas que ela
+não resolve, e por isso ficam no serviço:
+
+- **Jogos contam escalação**, não inscrição: quem nunca entrou em campo aparece
+  zerado, e continua na lista.
+- **O ranking geral soma o mesmo atleta entre competições.** A base de atletas é
+  única e global (RF008): o mesmo nome em três campeonatos é uma linha só. A view
+  devolve uma linha por categoria; a soma acontece aqui.
 
 ### Configuração da categoria (RF005)
 
@@ -490,9 +529,6 @@ Em ordem de impacto:
 
 | Item | Situação |
 |---|---|
-| **Campos e árbitros (RF013/RF014)** | Tabelas existem; sem endpoint e sem tela |
-| **Estatísticas de atleta (RF022)** | `v_estatisticas_atleta` existe e está correta; nenhuma tela a consome |
-| **Súmula impressa (RF018)** | `sumulaHTML()` no protótipo (linha 3351); sem equivalente |
 
 ---
 

@@ -15,8 +15,8 @@ já validadas. **Antes de decidir o comportamento de qualquer tela, consulte o p
 ele é a especificação executável.
 
 A API, o painel e o portal já existem e rodam (ver *Estrutura do código*). O que ainda
-falta do protótipo está listado em `docs/SISTEMA.md` — hoje as maiores lacunas são
-a súmula impressa (RF018), campos e árbitros (RF013/RF014) e o ranking geral.
+falta do protótipo está listado em `docs/SISTEMA.md`. O grosso já está de pé; o
+que sobra são refinamentos (premiações automáticas RF024, exportações).
 
 ## Documentação
 
@@ -174,6 +174,11 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
 - **Só desempata por coluna visível**: esconder uma coluna da classificação
   também a remove dos critérios de desempate — garantido na gravação da
   configuração, não só na tela
+- **Campo ou árbitro em uso não é excluído** — as FKs são `SET NULL` e o
+  banco deixaria, esvaziando o local de jogos já programados sem aviso
+- **Escalar campo/árbitro exige mesma competição**: duas competições da
+  mesma organização passam igual pelo RLS, e sem a checagem o id de outra
+  entraria pela porta lateral
 - **A carteirinha pública não mostra documento.** O protótipo exibe o CPF
   na validação por QR; aqui não. A arbitragem precisa saber quem é e se
   pode jogar, e a página é pública com dado de menor de idade
@@ -286,6 +291,7 @@ apps/api/          NestJS — a única app existente hoje
   src/arquivos/      upload e entrega de imagens; tipo detectado pelos bytes
   src/convite/       área da equipe: rotas abertas, código no cabeçalho
   src/carteirinha/   credencial da arbitragem por QR; nunca devolve documento
+  src/painel/sumula-impressa.ts  HTML da súmula em branco; não conhece Prisma
 apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/lib/api.ts     cliente autenticado; token em sessionStorage
   src/lib/dominio.ts vocabulário do protótipo (STATUS, CORES, FASES…)

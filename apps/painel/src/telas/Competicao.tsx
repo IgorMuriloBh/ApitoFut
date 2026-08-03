@@ -5,17 +5,28 @@ import { api, type CompeticaoDoPainel, type JogoDaTabela } from '../lib/api';
 import { STATUS, formataData } from '../lib/dominio';
 import { Atletas } from './Atletas';
 import { Configuracao } from './Configuracao';
+import { Estatisticas } from './Estatisticas';
+import { Estrutura } from './Estrutura';
 import { Equipes } from './Equipes';
 import { Sumula } from './Sumula';
 import { Tabela } from './Tabela';
 
-type Aba = 'visao' | 'equipes' | 'atletas' | 'tabela' | 'config';
+type Aba =
+  | 'visao'
+  | 'equipes'
+  | 'atletas'
+  | 'tabela'
+  | 'estrutura'
+  | 'estatisticas'
+  | 'config';
 
 const ABAS: [Aba, string][] = [
   ['visao', 'Visão geral'],
   ['equipes', 'Equipes'],
   ['atletas', 'Atletas'],
   ['tabela', 'Tabela de jogos'],
+  ['estrutura', 'Campos e árbitros'],
+  ['estatisticas', 'Estatísticas'],
   ['config', 'Configuração'],
 ];
 
@@ -154,6 +165,8 @@ export function Competicao({
 
       {aba === 'equipes' && <Equipes competicao={competicao} />}
       {aba === 'atletas' && <Atletas competicao={competicao} />}
+      {aba === 'estrutura' && <Estrutura competicao={competicao} />}
+      {aba === 'estatisticas' && <Estatisticas competicao={competicao} />}
       {aba === 'config' && <Configuracao competicao={competicao} />}
       {aba === 'tabela' && (
         <Tabela

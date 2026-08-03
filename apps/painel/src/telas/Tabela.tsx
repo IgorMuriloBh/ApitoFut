@@ -95,8 +95,23 @@ export function Tabela({
           <div>
             {porBloco.map(({ titulo, lista }) => (
               <div key={titulo}>
-                <div className="px-5 py-1.5 bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
-                  {titulo}
+                <div className="px-5 py-1.5 bg-slate-50 text-xs uppercase tracking-wide text-slate-600 flex items-center gap-2">
+                  <span className="flex-1">{titulo}</span>
+                  {/* o uso real da secretaria é imprimir a rodada inteira na
+                      véspera, não jogo a jogo */}
+                  {lista[0]?.rodada != null && (
+                    <button
+                      onClick={() =>
+                        void api
+                          .imprimirSumulasDaRodada(categoriaId, lista[0].rodada!)
+                          .catch(() => {})
+                      }
+                      className="normal-case tracking-normal text-slate-500 hover:text-slate-900"
+                      title="Imprimir as súmulas desta rodada"
+                    >
+                      🖨 imprimir rodada
+                    </button>
+                  )}
                 </div>
                 {lista.map((j) => (
                   <LinhaDeJogo
@@ -178,6 +193,15 @@ function LinhaDeJogo({
           className="text-xs text-slate-500 hover:text-slate-900"
         >
           programar
+        </button>
+        {/* a súmula em branco é o papel que vai para a mesa (RF018); a
+            "operar súmula" é a digitação depois do jogo */}
+        <button
+          onClick={() => void api.imprimirSumula(j.id).catch(() => {})}
+          className="text-xs text-slate-500 hover:text-slate-900"
+          title="Imprimir súmula em branco"
+        >
+          🖨 súmula
         </button>
         {podeOperar && (
           <button onClick={aoOperar} className="text-xs text-marca font-medium">
