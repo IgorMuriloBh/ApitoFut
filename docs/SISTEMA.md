@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 265 testes (exige o banco de pé)
+npm test                  # 297 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -250,6 +250,7 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `GET` | `/painel/categorias/:id/sumulas.html?rodada=&data=` | Lote da rodada |
 | `GET` | `/painel/categorias/:id/estatisticas` | RF022 — os quatro rankings |
 | `GET` | `/painel/ranking` | RF023 — consolidado da conta |
+| `GET` | `/painel/categorias/:id/{inscritos,classificacao,estatisticas,jogos}.csv` | Exportações |
 | `POST` | `/painel/uploads` | Corpo = bytes da imagem, sem multipart |
 | `GET` `POST` | `/painel/competicoes/:id/times` | Equipes |
 | `PATCH` `DELETE` | `/painel/times/:id` | Exclusão barrada se houver atletas ou jogos |
@@ -329,6 +330,48 @@ não resolve, e por isso ficam no serviço:
 - **O ranking geral soma o mesmo atleta entre competições.** A base de atletas é
   única e global (RF008): o mesmo nome em três campeonatos é uma linha só. A view
   devolve uma linha por categoria; a soma acontece aqui.
+
+### Premiações automáticas (RF024)
+
+`premiacoes.ts` — módulo puro, sem Prisma. Cinco prêmios: artilheiro, melhor
+goleiro, melhor jogador, melhor defesa e fair play (vermelho vale 3 amarelos).
+
+**Duas diferenças deliberadas em relação ao protótipo**, ambas com teste:
+
+- **Empate volta como empate.** Lá cada prêmio é `sort(...)[0]`, então com dois
+  artilheiros de cinco gols o troféu sai por ordem de inscrição. Aqui a lista
+  traz todos os empatados e a tela avisa — a decisão volta ao regulamento.
+- **Equipe que não jogou não concorre.** Sem esse filtro ela ganha "melhor
+  defesa" com zero gols sofridos e "fair play" com zero cartões, de quem passou o
+  campeonato inteiro se defendendo bem. Apareceu ao rodar contra o seed.
+
+Zero não premia quando "maior é melhor" (artilheiro com 0 gols seria linha errada
+num quadro de honra), mas premia quando "menor é melhor" — zero gol sofrido é o
+melhor resultado possível.
+
+### Exportações em CSV
+
+`csv.ts` (puro) + `exportacao.service.ts`. Quatro arquivos: inscritos,
+classificação, estatísticas e tabela de jogos.
+
+Três decisões existem por causa do **Excel em português**, que é onde o arquivo
+vai abrir:
+
+- **BOM UTF-8**, senão "São Gonçalo" vira "SÃ£o GonÃ§alo";
+- **separador `;`**, porque com locale pt-BR a vírgula é separador decimal e o
+  arquivo abriria com tudo numa coluna só;
+- **CRLF**, como o RFC 4180.
+
+Célula começando com `=`, `+`, `-` ou `@` ganha aspas simples: o Excel trataria
+como fórmula, e um nome de equipe viraria execução ao abrir o arquivo.
+
+O CPF **sai** no arquivo de inscritos — é download autenticado do organizador e é
+o que a federação exige. Diferente da carteirinha pública, que nunca mostra
+documento.
+
+> Ao testar: `Response.text()` do fetch **remove o BOM** por especificação. Um
+> teste que verifica BOM precisa ler `arrayBuffer()`, senão conclui que ele
+> sumiu quando está lá.
 
 ### Configuração da categoria (RF005)
 

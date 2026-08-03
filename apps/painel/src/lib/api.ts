@@ -326,6 +326,34 @@ async function abrirImpressao(caminho: string) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+/** Baixa um arquivo autenticado, disparando o download no navegador. */
+async function baixarArquivo(caminho: string) {
+  const s = sessao.ler();
+  const r = await fetch(`${BASE}${caminho}`, {
+    headers: s ? { Authorization: `Bearer ${s.token}` } : {},
+  });
+
+  if (!r.ok) {
+    const dados = await r.json().catch(() => null);
+    throw new ErroDaApi(
+      r.status,
+      (dados as { message?: string })?.message ?? 'Não foi possível exportar.',
+    );
+  }
+
+  // o nome vem do Content-Disposition: é ele que diz de qual competição é
+  // o arquivo, e a secretaria baixa vários de uma vez
+  const disposicao = r.headers.get('content-disposition') ?? '';
+  const nome = /filename="([^"]+)"/.exec(disposicao)?.[1] ?? 'exportacao.csv';
+
+  const url = URL.createObjectURL(await r.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nome;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 // ------------------------- campos, árbitros e estatísticas (RF013/14/22/23)
 
 export interface CampoDoPainel {
@@ -368,8 +396,18 @@ export interface AtletaNoRanking {
   competicoes?: number;
 }
 
+export interface Premio {
+  chave: string;
+  titulo: string;
+  criterio: string;
+  vencedores: { nome: string; detalhe: string; equipe: string | null }[];
+  /** Mais de um no topo: a decisão volta ao regulamento. */
+  empate: boolean;
+}
+
 export interface EstatisticasDaCategoria {
   categoria: { id: string; nome: string };
+  premiacoes: Premio[];
   resumo: {
     jogosEncerrados: number;
     gols: number;
@@ -677,6 +715,15 @@ export const api = {
     ),
 
   ranking: () => requisitar<RankingGeral>('/painel/ranking'),
+
+  /**
+   * Exportações em CSV. Como a súmula impressa, a rota é autenticada — o
+   * arquivo é buscado com o cabeçalho e entregue por um link temporário.
+   */
+  exportar: (
+    categoriaId: string,
+    arquivo: 'inscritos' | 'classificacao' | 'estatisticas' | 'jogos',
+  ) => baixarArquivo(`/painel/categorias/${categoriaId}/${arquivo}.csv`),
 
   imprimirSumula: (jogoId: string) =>
     abrirImpressao(`/painel/jogos/${jogoId}/sumula.html`),

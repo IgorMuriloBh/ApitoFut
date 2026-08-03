@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { urlPublica } from '../arquivos/armazenamento';
 import { PrismaService } from '../prisma/prisma.service';
+import { calcularPremiacoes, type EquipePremiavel } from './premiacoes';
 
 /**
  * Estatísticas de atleta e rankings (RF022, RF023).
@@ -79,8 +80,37 @@ export class EstatisticasService {
       const gols =
         (placar._sum.placar_mandante ?? 0) + (placar._sum.placar_visitante ?? 0);
 
+      // premiações (RF024) precisam da classificação: "melhor defesa" e
+      // "fair play" são de equipe, não de atleta
+      const equipes = await tx.$queryRaw<any[]>`
+        SELECT time_id, time_nome, jogos, gols_contra, cartao_amarelo, cartao_vermelho
+          FROM v_classificacao
+         WHERE categoria_id = ${categoriaId}::uuid
+      `;
+
+      const paraPremio: EquipePremiavel[] = equipes.map((e) => ({
+        timeId: e.time_id,
+        nome: e.time_nome,
+        jogos: Number(e.jogos),
+        golsContra: Number(e.gols_contra),
+        cartoesAmarelos: Number(e.cartao_amarelo),
+        cartoesVermelhos: Number(e.cartao_vermelho),
+      }));
+
       return {
         categoria: { id: categoria.id, nome: categoria.nome },
+        premiacoes: calcularPremiacoes(
+          linhas.map((l) => ({
+            atletaId: l.atleta_id,
+            nome: l.nome,
+            posicao: l.posicao,
+            equipe: l.time_nome,
+            gols: n(l.gols),
+            assistencias: n(l.assistencias),
+            defesas: n(l.defesas),
+          })),
+          paraPremio,
+        ),
         resumo: {
           jogosEncerrados: jogos,
           gols,

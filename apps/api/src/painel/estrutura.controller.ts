@@ -11,8 +11,10 @@ import {
   Put,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
 import { EstatisticasService } from './estatisticas.service';
 import {
@@ -20,6 +22,8 @@ import {
   type DadosDoArbitro,
   type DadosDoCampo,
 } from './estrutura.service';
+import { cabecalhoDeDownload } from './csv';
+import { ExportacaoService } from './exportacao.service';
 import { ImpressaoService } from './impressao.service';
 
 /**
@@ -33,7 +37,57 @@ export class EstruturaController {
     private readonly estrutura: EstruturaService,
     private readonly estatisticas: EstatisticasService,
     private readonly impressao: ImpressaoService,
+    private readonly exportacao: ExportacaoService,
   ) {}
+
+  /**
+   * As quatro exportações em CSV. Cada uma monta o `Content-Disposition`
+   * com o nome da competição — a secretaria baixa vários arquivos e
+   * precisa saber qual é qual sem abrir.
+   */
+  private async baixar(
+    res: Response,
+    gerar: Promise<{ nome: string; conteudo: string }>,
+  ) {
+    const { nome, conteudo } = await gerar;
+    res.set(cabecalhoDeDownload(nome)).send(conteudo);
+  }
+
+  @Get('categorias/:id/inscritos.csv')
+  inscritosCsv(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() res: Response,
+  ) {
+    return this.baixar(res, this.exportacao.inscritos(req.sessao.org, id));
+  }
+
+  @Get('categorias/:id/classificacao.csv')
+  classificacaoCsv(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() res: Response,
+  ) {
+    return this.baixar(res, this.exportacao.classificacao(req.sessao.org, id));
+  }
+
+  @Get('categorias/:id/estatisticas.csv')
+  estatisticasCsv(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() res: Response,
+  ) {
+    return this.baixar(res, this.exportacao.estatisticas(req.sessao.org, id));
+  }
+
+  @Get('categorias/:id/jogos.csv')
+  jogosCsv(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() res: Response,
+  ) {
+    return this.baixar(res, this.exportacao.jogos(req.sessao.org, id));
+  }
 
   // ------------------------------------------------------------- campos
 

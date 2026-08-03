@@ -5,6 +5,7 @@ import {
   type AtletaNoRanking,
   type CompeticaoDoPainel,
   type EstatisticasDaCategoria,
+  type Premio,
   type RankingGeral,
 } from '../lib/api';
 
@@ -77,6 +78,109 @@ function Ranking({
           </tbody>
         </table>
       )}
+    </Cartao>
+  );
+}
+
+/**
+ * Quadro de premiações (RF024).
+ *
+ * O empate aparece na tela em vez de ser escondido: com dois artilheiros
+ * de cinco gols, o organizador precisa saber que existe empate para
+ * aplicar o critério do regulamento — e não descobrir na entrega do
+ * troféu que o sistema escolheu sozinho.
+ */
+function Premiacoes({ premios }: { premios: Premio[] }) {
+  return (
+    <Cartao
+      titulo="🏆 Premiações automáticas"
+      sub="RF024 — calculadas a partir das estatísticas"
+    >
+      <div className="p-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {premios.map((p) => (
+          <div
+            key={p.chave}
+            className="border border-slate-200 rounded-xl p-4 bg-slate-50/50"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+              {p.titulo}
+            </p>
+
+            {p.vencedores.length === 0 ? (
+              <p className="mt-1.5 text-sm text-slate-400">
+                Sem dados ainda
+              </p>
+            ) : (
+              p.vencedores.map((v) => (
+                <div key={v.nome} className="mt-1.5">
+                  <p className="font-bold text-sm leading-tight">{v.nome}</p>
+                  <p className="text-xs text-slate-500">
+                    {v.detalhe}
+                    {v.equipe ? ` · ${v.equipe}` : ''}
+                  </p>
+                </div>
+              ))
+            )}
+
+            {p.empate && (
+              <p className="mt-2 text-[11px] font-medium text-amber-700">
+                ⚖️ Empate — decida pelo critério do regulamento
+              </p>
+            )}
+            <p className="mt-2 text-[11px] text-slate-400">{p.criterio}</p>
+          </div>
+        ))}
+      </div>
+    </Cartao>
+  );
+}
+
+/** Um botão por arquivo — a secretaria baixa o que precisa entregar. */
+function Exportacoes({
+  categoriaId,
+  aoFalhar,
+}: {
+  categoriaId: string;
+  aoFalhar: (mensagem: string) => void;
+}) {
+  const [baixando, setBaixando] = useState<string | null>(null);
+
+  const arquivos: [
+    'inscritos' | 'classificacao' | 'estatisticas' | 'jogos',
+    string,
+  ][] = [
+    ['inscritos', 'Inscritos'],
+    ['classificacao', 'Classificação'],
+    ['estatisticas', 'Estatísticas'],
+    ['jogos', 'Tabela de jogos'],
+  ];
+
+  return (
+    <Cartao
+      titulo="⤓ Exportar"
+      sub="CSV pronto para Excel — o arquivo que sai do sistema"
+    >
+      <div className="p-5 flex flex-wrap gap-2">
+        {arquivos.map(([chave, rotulo]) => (
+          <button
+            key={chave}
+            disabled={baixando !== null}
+            onClick={async () => {
+              setBaixando(chave);
+              try {
+                await api.exportar(categoriaId, chave);
+              } catch (e) {
+                aoFalhar(e instanceof Error ? e.message : 'Falha ao exportar.');
+              } finally {
+                setBaixando(null);
+              }
+            }}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-50"
+          >
+            {baixando === chave ? 'Gerando…' : `⤓ ${rotulo}`}
+          </button>
+        ))}
+      </div>
     </Cartao>
   );
 }
@@ -192,6 +296,11 @@ export function Estatisticas({ competicao }: { competicao: CompeticaoDoPainel })
             nota="amarelos + vermelhos"
           />
         </div>
+      )}
+
+      {daCategoria && <Premiacoes premios={daCategoria.premiacoes} />}
+      {daCategoria && (
+        <Exportacoes categoriaId={daCategoria.categoria.id} aoFalhar={setErro} />
       )}
 
       {dados && (

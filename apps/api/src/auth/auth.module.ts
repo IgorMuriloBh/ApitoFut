@@ -6,6 +6,7 @@ import { ElencoService } from '../painel/elenco.service';
 import { EquipesService } from '../painel/equipes.service';
 import { ConfiguracaoService } from '../painel/configuracao.service';
 import { EstatisticasService } from '../painel/estatisticas.service';
+import { ExportacaoService } from '../painel/exportacao.service';
 import { EstruturaController } from '../painel/estrutura.controller';
 import { EstruturaService } from '../painel/estrutura.service';
 import { ImpressaoService } from '../painel/impressao.service';
@@ -36,6 +37,7 @@ import { AuthService } from './auth.service';
     ConfiguracaoService,
     EstruturaService,
     EstatisticasService,
+    ExportacaoService,
     ImpressaoService,
     SumulaService,
     EquipesService,
