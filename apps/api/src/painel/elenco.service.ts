@@ -95,7 +95,7 @@ export class ElencoService {
       const [vinculos, inscricoes] = await Promise.all([
         tx.categoria_times.findMany({
           where: { categoria_id: categoriaId },
-          include: { times: { select: { id: true, nome: true } } },
+          include: { times: { select: { id: true, nome: true, escudo_url: true } } },
         }),
         tx.inscricoes.findMany({
           where: { categoria_id: categoriaId },
@@ -116,6 +116,7 @@ export class ElencoService {
             return {
               id: v.times.id,
               nome: v.times.nome,
+              escudoUrl: urlPublica(v.times.escudo_url),
               vagas: max === null ? null : max - doTime.length,
               atletas: doTime.map((i) => ({
                 inscricaoId: i.id,

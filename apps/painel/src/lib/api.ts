@@ -210,6 +210,7 @@ export interface Elenco {
   equipes: {
     id: string;
     nome: string;
+    escudoUrl: string | null;
     vagas: number | null;
     atletas: AtletaInscrito[];
   }[];
@@ -248,8 +249,8 @@ export interface JogoDaTabela {
   hora: string | null;
   campo: { id: string; nome: string } | null;
   status: string;
-  mandante: { id: string | null; nome: string };
-  visitante: { id: string | null; nome: string };
+  mandante: { id: string | null; nome: string; escudoUrl?: string | null };
+  visitante: { id: string | null; nome: string; escudoUrl?: string | null };
   placar: { mandante: number; visitante: number } | null;
 }
 
@@ -447,8 +448,8 @@ export interface JogoDaCentral {
   campo: string | null;
   status: string;
   periodo: number;
-  mandante: { id: string | null; nome: string };
-  visitante: { id: string | null; nome: string };
+  mandante: { id: string | null; nome: string; escudoUrl?: string | null };
+  visitante: { id: string | null; nome: string; escudoUrl?: string | null };
   placar: { mandante: number; visitante: number };
 }
 
@@ -493,6 +494,7 @@ export interface LinhaDaClassificacao {
   posicao: number;
   timeId: string;
   nome: string;
+  escudoUrl: string | null;
   jogos: number;
   vitorias: number;
   empates: number;

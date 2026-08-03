@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alerta, Botao, Campo, Cartao, classeEntrada } from '../componentes/ui';
 import { EnvioDeImagem } from '../componentes/EnvioDeImagem';
+import { Escudo } from '../componentes/Escudo';
 import {
   ErroDaApi,
   api,
@@ -107,7 +108,8 @@ export function Atletas({ competicao }: { competicao: CompeticaoDoPainel }) {
                 {elenco.equipes.map((e) => (
                   <div key={e.id}>
                     <div className="flex items-center gap-2 px-5 py-2 bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
-                      <b className="text-slate-800">{e.nome}</b>
+                      <Escudo nome={e.nome} url={e.escudoUrl} tamanho="sm" />
+                      <b className="text-slate-800 normal-case">{e.nome}</b>
                       <span>· {e.atletas.length} atleta(s)</span>
                       {e.vagas !== null && <span>· {e.vagas} vaga(s)</span>}
                     </div>

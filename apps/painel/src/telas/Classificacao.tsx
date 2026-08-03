@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { EquipeComEscudo } from '../componentes/Escudo';
 import { Alerta, Cartao, classeEntrada } from '../componentes/ui';
 import { api, type ClassificacaoDoPainel, type CompeticaoDoPainel } from '../lib/api';
 
@@ -162,7 +163,9 @@ export function Classificacao({ competicao }: { competicao: CompeticaoDoPainel }
                     <td className="px-3 py-2 text-slate-400 text-xs">
                       {linha.posicao}º
                     </td>
-                    <td className="px-2 py-2 font-medium">{linha.nome}</td>
+                    <td className="px-2 py-2 font-medium">
+                      <EquipeComEscudo nome={linha.nome} url={linha.escudoUrl} />
+                    </td>
                     {colunas.map((c) => (
                       <td
                         key={c}

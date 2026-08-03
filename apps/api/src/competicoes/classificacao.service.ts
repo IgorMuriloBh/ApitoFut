@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { coluna_classificacao } from '@prisma/client';
+import { urlPublica } from '../arquivos/armazenamento';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompeticoesService } from './competicoes.service';
 
@@ -25,6 +26,7 @@ type ClienteDePrisma = Pick<
 interface LinhaCrua {
   time_id: string;
   time_nome: string;
+  escudo_url: string | null;
   grupo_id: string | null;
   grupo_nome: string | null;
   jogos: number;
@@ -168,6 +170,7 @@ export class ClassificacaoService {
       SELECT
         vc.time_id::text          AS time_id,
         vc.time_nome              AS time_nome,
+        t.escudo_url              AS escudo_url,
         vc.grupo_id::text         AS grupo_id,
         -- grupos.nome é char(2) e vem preenchido com espaço à direita
         btrim(g.nome)             AS grupo_nome,
@@ -186,6 +189,7 @@ export class ClassificacaoService {
         vc.cartao_azul::int       AS cartao_azul
       FROM v_classificacao vc
       LEFT JOIN grupos g ON g.id = vc.grupo_id
+      LEFT JOIN times  t ON t.id = vc.time_id
       WHERE vc.categoria_id = ${categoriaId}::uuid
     `;
   }
@@ -225,6 +229,7 @@ export class ClassificacaoService {
           posicao: i + 1,
           timeId: t.time_id,
           nome: t.time_nome,
+          escudoUrl: urlPublica(t.escudo_url),
           jogos: t.jogos,
           vitorias: t.vitorias,
           empates: t.empates,

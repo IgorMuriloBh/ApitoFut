@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alerta, Botao, Campo, Cartao, classeEntrada } from '../componentes/ui';
 import { ErroDaApi, api, type CompeticaoDoPainel, type JogoDaTabela } from '../lib/api';
 import { formataData } from '../lib/dominio';
+import { EquipeComEscudo } from '../componentes/Escudo';
 import { ConfigurarFases } from './ConfigurarFases';
 
 /**
@@ -197,7 +198,11 @@ function LinhaDeJogo({
   return (
     <div className="px-5 py-2.5 border-t border-slate-100 text-sm">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="flex-1 min-w-52 text-right">{j.mandante.nome}</span>
+        <EquipeComEscudo
+          nome={j.mandante.nome}
+          url={j.mandante.escudoUrl}
+          className="flex-1 min-w-52 justify-end text-right"
+        />
         <span
           className={`px-2.5 py-0.5 rounded-lg font-bold text-xs ${
             j.placar ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'
@@ -205,7 +210,11 @@ function LinhaDeJogo({
         >
           {j.placar ? `${j.placar.mandante} × ${j.placar.visitante}` : (j.hora ?? '—')}
         </span>
-        <span className="flex-1 min-w-52">{j.visitante.nome}</span>
+        <EquipeComEscudo
+          nome={j.visitante.nome}
+          url={j.visitante.escudoUrl}
+          className="flex-1 min-w-52"
+        />
 
         <span className="text-xs text-slate-500 w-28 text-right">
           {j.data ? formataData(j.data) : 'sem data'}

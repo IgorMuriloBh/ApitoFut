@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { urlPublica } from '../arquivos/armazenamento';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   FaseMata,
@@ -276,8 +277,12 @@ export class TabelaService {
           fases: true,
           grupos: true,
           campos: { select: { id: true, nome: true } },
-          times_jogos_mandante_idTotimes: { select: { id: true, nome: true } },
-          times_jogos_visitante_idTotimes: { select: { id: true, nome: true } },
+          times_jogos_mandante_idTotimes: {
+            select: { id: true, nome: true, escudo_url: true },
+          },
+          times_jogos_visitante_idTotimes: {
+            select: { id: true, nome: true, escudo_url: true },
+          },
         },
         orderBy: [{ rodada: 'asc' }, { ordem: 'asc' }],
       });
@@ -292,12 +297,16 @@ export class TabelaService {
         hora: j.hora ? j.hora.toISOString().slice(11, 16) : null,
         campo: j.campos,
         status: j.status,
-        mandante:
-          j.times_jogos_mandante_idTotimes ??
-          ({ id: null, nome: j.mandante_rotulo ?? 'A definir' } as const),
-        visitante:
-          j.times_jogos_visitante_idTotimes ??
-          ({ id: null, nome: j.visitante_rotulo ?? 'A definir' } as const),
+        // o escudo acompanha o nome em toda tela que mostra equipe; a vaga
+        // do mata-mata ainda sem dono não tem escudo nenhum
+        mandante: ladoDoJogo(
+          j.times_jogos_mandante_idTotimes,
+          j.mandante_rotulo,
+        ),
+        visitante: ladoDoJogo(
+          j.times_jogos_visitante_idTotimes,
+          j.visitante_rotulo,
+        ),
         placar:
           j.status === 'encerrado' || j.status === 'ao_vivo' || j.status === 'wo'
             ? { mandante: j.placar_mandante, visitante: j.placar_visitante }
@@ -344,4 +353,19 @@ export class TabelaService {
       };
     });
   }
+}
+
+/** Equipe definida, ou o rótulo da vaga quando o chaveamento ainda não subiu. */
+function ladoDoJogo(
+  time: { id: string; nome: string; escudo_url: string | null } | null,
+  rotulo: string | null,
+) {
+  if (!time) {
+    return { id: null, nome: rotulo ?? 'A definir', escudoUrl: null };
+  }
+  return {
+    id: time.id,
+    nome: time.nome,
+    escudoUrl: urlPublica(time.escudo_url),
+  };
 }

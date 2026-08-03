@@ -234,3 +234,18 @@ button:disabled {
   color: #fff;
   animation: pulsa 1.4s infinite;
 }
+
+/* escudo ao lado do nome da equipe na linha do jogo */
+.jogo .lado {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.jogo .lado.fora { justify-content: flex-start; }
+.jogo .escudo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+}

@@ -65,6 +65,7 @@ export interface Competicao {
 }
 
 export interface LinhaClassificacao {
+  escudoUrl?: string | null;
   posicao: number;
   timeId: string;
   nome: string;

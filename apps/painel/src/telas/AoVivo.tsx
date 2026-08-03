@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { EquipeComEscudo } from '../componentes/Escudo';
 import { Alerta, Botao, Cartao } from '../componentes/ui';
 import {
   api,
@@ -41,7 +42,11 @@ function LinhaDoJogo({
       </div>
 
       <div className="flex-1 min-w-0 flex items-center gap-2">
-        <span className="flex-1 text-right truncate">{jogo.mandante.nome}</span>
+        <EquipeComEscudo
+          nome={jogo.mandante.nome}
+          url={jogo.mandante.escudoUrl}
+          className="flex-1 justify-end text-right"
+        />
         {vivo ? (
           <span className="px-2.5 py-1 rounded-lg bg-red-600 text-white font-bold tabular-nums">
             {jogo.placar.mandante} × {jogo.placar.visitante}
@@ -51,7 +56,11 @@ function LinhaDoJogo({
             {jogo.hora ?? '—'}
           </span>
         )}
-        <span className="flex-1 truncate">{jogo.visitante.nome}</span>
+        <EquipeComEscudo
+          nome={jogo.visitante.nome}
+          url={jogo.visitante.escudoUrl}
+          className="flex-1"
+        />
       </div>
 
       <div className="w-32 shrink-0 text-right">

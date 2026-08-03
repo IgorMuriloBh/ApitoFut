@@ -45,7 +45,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 359 testes (exige o banco de pé)
+npm test                  # 368 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -483,6 +483,21 @@ bloqueia; faixa etária é aviso, como em todo o resto do sistema.
 O SVG do QR é gerado no servidor (`qrcode-svg`, zero dependências transitivas —
 o `qrcode` clássico arrastaria yargs@15). Painel e portal só precisam de uma
 `<img>`.
+
+### Escudo da equipe
+
+`times.escudo_url` existia e o formulário de equipe já a preenchia — mas quase
+nenhum endpoint devolvia o campo, então nenhuma tela mostrava. Agora sai em
+tabela de jogos, central ao vivo, classificação (painel e portal), elenco,
+súmula e lista de equipes.
+
+Sem escudo, o componente `Escudo` desenha as iniciais sobre uma cor derivada do
+nome — a mesma ideia do `crest()` do protótipo. Espaço vazio faria as listas
+pularem entre linhas com e sem imagem, e um ícone genérico daria a entender que
+a equipe tem escudo quando não tem.
+
+`escudo.e2e.spec.ts` existe para o campo não sumir de novo: verifica cada rota
+que expõe equipe, e cobre os dois casos — com e sem escudo.
 
 ### Estados e municípios (migration 18)
 

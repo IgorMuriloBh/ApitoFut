@@ -317,8 +317,12 @@ export class CatalogoService {
           categorias: { select: { id: true, nome: true } },
           fases: { select: { nome: true } },
           campos: { select: { nome: true } },
-          times_jogos_mandante_idTotimes: { select: { id: true, nome: true } },
-          times_jogos_visitante_idTotimes: { select: { id: true, nome: true } },
+          times_jogos_mandante_idTotimes: {
+            select: { id: true, nome: true, escudo_url: true },
+          },
+          times_jogos_visitante_idTotimes: {
+            select: { id: true, nome: true, escudo_url: true },
+          },
         },
         orderBy: [{ data: 'asc' }, { hora: 'asc' }, { ordem: 'asc' }],
       });
@@ -340,6 +344,9 @@ export class CatalogoService {
             j.times_jogos_mandante_idTotimes?.nome ??
             j.mandante_rotulo ??
             'A definir',
+          escudoUrl: urlPublica(
+            j.times_jogos_mandante_idTotimes?.escudo_url ?? null,
+          ),
         },
         visitante: {
           id: j.visitante_id,
@@ -347,6 +354,9 @@ export class CatalogoService {
             j.times_jogos_visitante_idTotimes?.nome ??
             j.visitante_rotulo ??
             'A definir',
+          escudoUrl: urlPublica(
+            j.times_jogos_visitante_idTotimes?.escudo_url ?? null,
+          ),
         },
         placar: { mandante: j.placar_mandante, visitante: j.placar_visitante },
       });

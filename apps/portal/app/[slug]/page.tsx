@@ -210,7 +210,24 @@ async function Conteudo({
                   <tr key={t.timeId}>
                     <td>{t.posicao}</td>
                     <td>
-                      <b>{t.nome}</b>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 8,
+                        }}
+                      >
+                        {t.escudoUrl && (
+                          <img
+                            src={t.escudoUrl}
+                            alt=""
+                            width={22}
+                            height={22}
+                            style={{ width: 22, height: 22, objectFit: 'contain' }}
+                          />
+                        )}
+                        <b>{t.nome}</b>
+                      </span>
                     </td>
                     <td>
                       <b>{t.pontos}</b>
@@ -444,7 +461,12 @@ function Jogo({
 }) {
   return (
     <Link href={`/${slug}/${categoriaId}/${jogo.id}`} className="jogo">
-      <span className="lado">{jogo.mandante.nome}</span>
+      <span className="lado">
+        {jogo.mandante.nome}
+        {jogo.mandante.escudoUrl && (
+          <img src={jogo.mandante.escudoUrl} alt="" className="escudo" />
+        )}
+      </span>
       <span
         className={`placar ${jogo.placar ? '' : 'pendente'} ${
           jogo.status === 'ao_vivo' ? 'vivo' : ''
@@ -454,7 +476,12 @@ function Jogo({
           ? `${jogo.placar.mandante} × ${jogo.placar.visitante}`
           : (jogo.hora ?? '—')}
       </span>
-      <span className="lado fora">{jogo.visitante.nome}</span>
+      <span className="lado fora">
+        {jogo.visitante.escudoUrl && (
+          <img src={jogo.visitante.escudoUrl} alt="" className="escudo" />
+        )}
+        {jogo.visitante.nome}
+      </span>
     </Link>
   );
 }

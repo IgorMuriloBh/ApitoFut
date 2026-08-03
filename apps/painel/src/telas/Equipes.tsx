@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alerta, Botao, Campo, Cartao, classeEntrada } from '../componentes/ui';
 import { EnvioDeImagem } from '../componentes/EnvioDeImagem';
+import { Escudo } from '../componentes/Escudo';
 import { api, type CompeticaoDoPainel, type EquipeDoPainel } from '../lib/api';
 import { CORES, UFS } from '../lib/dominio';
 
@@ -94,8 +95,11 @@ export function Equipes({ competicao }: { competicao: CompeticaoDoPainel }) {
                 <tr key={t.id} className="border-b border-slate-100 last:border-0">
                   <td className="px-5 py-3">
                     <span className="flex items-center gap-2">
+                      <Escudo nome={t.nome} url={t.escudoUrl} />
+                      {/* a faixa do uniforme continua: é outra informação,
+                          e é o que a arbitragem confere no vestiário */}
                       <span
-                        className="w-3 h-6 rounded"
+                        className="w-2 h-6 rounded shrink-0"
                         style={{ background: t.uniformePrimario ?? '#cbd5e1' }}
                       />
                       <span>

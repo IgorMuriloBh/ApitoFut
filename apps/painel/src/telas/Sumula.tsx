@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Escudo } from '../componentes/Escudo';
 import { Timeline } from '../componentes/Timeline';
 import { Alerta, Botao, Cartao, classeEntrada } from '../componentes/ui';
 import {
@@ -127,11 +128,17 @@ export function Sumula({
 
       <header className="bg-slate-900 text-white rounded-xl p-5 mt-3 text-center">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-          <strong className="text-right">{jogo.mandante.nome}</strong>
+          <strong className="flex items-center justify-end gap-2 text-right">
+            <Escudo nome={jogo.mandante.nome} url={jogo.mandante.escudoUrl} tamanho="lg" />
+            {jogo.mandante.nome}
+          </strong>
           <span className="text-4xl font-bold tabular-nums">
             {placar.mandante} × {placar.visitante}
           </span>
-          <strong className="text-left">{jogo.visitante.nome}</strong>
+          <strong className="flex items-center gap-2 text-left">
+            {jogo.visitante.nome}
+            <Escudo nome={jogo.visitante.nome} url={jogo.visitante.escudoUrl} tamanho="lg" />
+          </strong>
         </div>
         <p className="mt-3 text-3xl font-mono tabular-nums">{formataCrono(segundos)}</p>
         <p className="text-xs text-white/70 mt-1">
