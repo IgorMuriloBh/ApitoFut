@@ -1,16 +1,34 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
+  Prisma,
+  campo_atleta,
   genero_categoria,
   modalidade,
   status_competicao,
   tipo_categoria,
 } from '@prisma/client';
 import { paraCaminho, urlPublica } from '../arquivos/armazenamento';
+import {
+  CARGOS_COMISSAO,
+  type ConfigDaFicha,
+  type FichaDoAtleta,
+  colunasDoAtleta,
+  dataDeNascimento,
+  exigirNumeroCamisa,
+  exigirObrigatorios,
+  fichaConfigurada,
+} from '../painel/ficha-atleta';
+import {
+  anoEsperadoDaCategoria,
+  avisosDeFaixaEtaria,
+  mensagemDeFaixa,
+} from '../painel/faixa-etaria';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -33,6 +51,11 @@ import { PrismaService } from '../prisma/prisma.service';
  *     rota de escrita reconfere o código contra a equipe alvo;
  *   - o que o link expõe é o que já é público na competição: nome, cores,
  *     categorias abertas e vagas. Nunca atleta, nunca outra equipe.
+ *
+ * A ÁREA É POR CATEGORIA, não por equipe. Elenco, comissão técnica, ficha
+ * do atleta e limites vêm todos da configuração da categoria — uma equipe
+ * que disputa Sub-13 e Sub-15 tem duas listas de tudo, e a tela abre em
+ * abas por isso.
  */
 
 interface LinhaCompeticao {
@@ -73,7 +96,36 @@ export interface DadosDaEquipe {
   escudoUrl?: string | null;
 }
 
+export interface PedidoDeAtleta {
+  categoriaId?: string;
+  /** Reaproveita alguém da base global (RF008)… */
+  atletaId?: string;
+  /** …ou preenche a ficha do zero. */
+  nome?: string;
+  numeroCamisa?: number | null;
+  confirmarFaixaEtaria?: boolean;
+  ficha?: FichaDoAtleta;
+}
+
+export interface PedidoDeComissao {
+  categoriaId?: string;
+  nome?: string;
+  cargo?: string;
+  contato?: string | null;
+}
+
 const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+
+/** Configuração da ficha no formato do módulo puro. */
+function configDaFicha(
+  linhas: { campo: campo_atleta; pedir: boolean; obrigatorio: boolean }[],
+): ConfigDaFicha {
+  const cfg: ConfigDaFicha = {};
+  for (const l of linhas) {
+    cfg[l.campo] = { pedir: l.pedir, obrigatorio: l.obrigatorio };
+  }
+  return cfg;
+}
 
 @Injectable()
 export class ConviteService {
@@ -148,10 +200,16 @@ export class ConviteService {
       throw new NotFoundException('Código não encontrado nesta competição.');
     }
 
-    return { competicao: c, equipeId: equipe.id };
+    return { competicao: c, equipeId: equipe.id, equipeNome: equipe.nome };
   }
 
-  /** Painel da equipe: dados, categorias, elenco e comissão. */
+  /** A organização dona da competição — o upload precisa dela e nada mais. */
+  async organizacaoDaEquipe(slug: string, codigo: string): Promise<string> {
+    const { competicao } = await this.exigirEquipe(slug, codigo);
+    return competicao.organizacao_id;
+  }
+
+  /** Painel da equipe: dados, e por categoria o elenco e a comissão. */
   async painelDaEquipe(slug: string, codigo: string) {
     const { competicao, equipeId } = await this.exigirEquipe(slug, codigo);
 
@@ -160,9 +218,15 @@ export class ConviteService {
         where: { id: equipeId },
         include: {
           comissao_tecnica: { orderBy: { nome: 'asc' } },
+          competicoes: { select: { temporada: true } },
           categoria_times: {
             include: {
-              categorias: { include: { categoria_inscricao_config: true } },
+              categorias: {
+                include: {
+                  categoria_inscricao_config: true,
+                  categoria_campo_atleta: true,
+                },
+              },
             },
           },
         },
@@ -170,9 +234,16 @@ export class ConviteService {
 
       const inscricoes = await tx.inscricoes.findMany({
         where: { time_id: equipeId },
-        include: { atletas: true },
+        include: { atletas: { include: { atleta_documentos: true } } },
         orderBy: [{ numero_camisa: 'asc' }],
       });
+
+      const temporada = time.competicoes.temporada;
+      const ordenadas = [...time.categoria_times].sort(
+        (a, b) =>
+          a.categorias.ordem - b.categorias.ordem ||
+          a.categorias.nome.localeCompare(b.categorias.nome),
+      );
 
       return {
         equipe: {
@@ -188,20 +259,20 @@ export class ConviteService {
           email: time.email,
           codigoAcesso: time.codigo_acesso?.trim() ?? null,
         },
-        comissao: time.comissao_tecnica.map((m) => ({
-          id: m.id,
-          nome: m.nome,
-          cargo: m.cargo,
-          contato: m.contato,
-        })),
-        categorias: time.categoria_times.map((ct) => {
-          const cfg = ct.categorias.categoria_inscricao_config;
-          const doElenco = inscricoes.filter(
-            (i) => i.categoria_id === ct.categoria_id,
-          );
+        /** Vocabulário fechado do cargo (RF007): a tela monta o select com isto. */
+        cargosComissao: CARGOS_COMISSAO,
+        categorias: ordenadas.map((ct) => {
+          const k = ct.categorias;
+          const cfg = k.categoria_inscricao_config;
+          const campos = configDaFicha(k.categoria_campo_atleta);
+          const doElenco = inscricoes.filter((i) => i.categoria_id === k.id);
+
           return {
-            id: ct.categoria_id,
-            nome: ct.categorias.nome,
+            id: k.id,
+            nome: k.nome,
+            modalidade: k.modalidade,
+            tipo: k.tipo,
+            genero: k.genero,
             maxAtletas: cfg?.max_atletas ?? null,
             maxComissao: cfg?.max_comissao ?? 3,
             // as três permissões da configuração da categoria: é o
@@ -210,18 +281,119 @@ export class ConviteService {
             permiteEditar: cfg?.permite_editar ?? false,
             permiteRemover: cfg?.permite_remover ?? false,
             inscricoesAbertas: cfg?.inscricoes_abertas ?? false,
+            /** Sub-N: ano esperado. `null` em categoria adulta. */
+            anoEsperado: anoEsperadoDaCategoria(k.nome, temporada),
+            /** Exatamente os campos que esta categoria pede (RF005 · 2.4). */
+            campos: fichaConfigurada(k.categoria_campo_atleta),
+            comissao: time.comissao_tecnica
+              .filter((m) => m.categoria_id === k.id)
+              .map((m) => ({
+                id: m.id,
+                nome: m.nome,
+                cargo: m.cargo,
+                contato: m.contato,
+              })),
             atletas: doElenco.map((i) => ({
               inscricaoId: i.id,
               atletaId: i.atleta_id,
               nome: i.atletas.nome,
               numero: i.numero_camisa,
-              posicao: i.atletas.posicao,
-              dataNascimento:
-                i.atletas.data_nascimento?.toISOString().slice(0, 10) ?? null,
-              fotoUrl: urlPublica(i.atletas.foto_url),
+              foraDaFaixa:
+                avisosDeFaixaEtaria([k], temporada, i.atletas.data_nascimento)
+                  .length > 0,
+              // só o que a categoria pede volta para a tela: o elenco não
+              // precisa ver o CPF que outra categoria coletou
+              ficha: fichaDoAtleta(campos, i.atletas),
             })),
           };
         }),
+        /**
+         * Membros gravados antes da migration 19, quando a comissão era da
+         * equipe inteira. Aparecem uma vez só, fora das abas — some quando
+         * a equipe recadastrar por categoria.
+         */
+        comissaoSemCategoria: time.comissao_tecnica
+          .filter((m) => m.categoria_id === null)
+          .map((m) => ({
+            id: m.id,
+            nome: m.nome,
+            cargo: m.cargo,
+            contato: m.contato,
+          })),
+      };
+    });
+  }
+
+  /**
+   * Base única de atletas (RF008) vista pela equipe.
+   *
+   * O que ela alcança: atletas que já foram inscritos numa equipe **de
+   * mesmo nome**, em qualquer competição visível. É o caso real — a mesma
+   * escolinha se inscreve na copa de todo ano e não quer redigitar o
+   * elenco inteiro.
+   *
+   * O que ela NÃO alcança: elenco de outra equipe. O nome da equipe é a
+   * chave, e o RLS ainda recorta pelas competições da organização — a
+   * consulta roda dentro de `comOrganizacao`, não numa fresta.
+   */
+  async buscarNaBase(
+    slug: string,
+    codigo: string,
+    categoriaId: string | undefined,
+    busca: string,
+  ) {
+    const { competicao, equipeId, equipeNome } = await this.exigirEquipe(
+      slug,
+      codigo,
+    );
+    const termo = texto(busca);
+
+    return this.prisma.comOrganizacao(competicao.organizacao_id, async (tx) => {
+      const linhas = await tx.$queryRaw<
+        {
+          id: string;
+          nome: string;
+          apelido: string | null;
+          data_nascimento: Date | null;
+          posicao: string | null;
+          foto_url: string | null;
+          competicoes: string | null;
+        }[]
+      >`
+        SELECT a.id, a.nome, a.apelido, a.data_nascimento, a.posicao, a.foto_url,
+               string_agg(DISTINCT c.nome, ', ' ORDER BY c.nome) AS competicoes
+          FROM atletas a
+          JOIN inscricoes  i ON i.atleta_id  = a.id
+          JOIN times       t ON t.id         = i.time_id
+          JOIN categorias  k ON k.id         = i.categoria_id
+          JOIN competicoes c ON c.id         = k.competicao_id
+         WHERE lower(t.nome) = lower(${equipeNome})
+           AND c.excluida_em IS NULL
+           AND (${termo} = '' OR a.nome ILIKE ${'%' + termo + '%'})
+           -- quem já está nesta categoria não é candidato: já está no elenco
+           AND NOT EXISTS (
+             SELECT 1 FROM inscricoes j
+              WHERE j.atleta_id = a.id
+                AND j.time_id   = ${equipeId}::uuid
+                AND (${categoriaId ?? null}::uuid IS NULL
+                     OR j.categoria_id = ${categoriaId ?? null}::uuid)
+           )
+         GROUP BY a.id
+         ORDER BY a.nome
+         LIMIT 30
+      `;
+
+      return {
+        equipe: equipeNome,
+        atletas: linhas.map((a) => ({
+          id: a.id,
+          nome: a.nome,
+          apelido: a.apelido,
+          dataNascimento: a.data_nascimento?.toISOString().slice(0, 10) ?? null,
+          posicao: a.posicao,
+          fotoUrl: urlPublica(a.foto_url),
+          competicoes: a.competicoes,
+        })),
       };
     });
   }
@@ -353,80 +525,328 @@ export class ConviteService {
   }
 
   /**
-   * Inscreve um atleta no elenco. As três checagens que o organizador
-   * controla — inscrições abertas, permissão de inscrever e limite de
-   * elenco — são conferidas aqui e também no banco (trigger de limite).
+   * Resolve a categoria da equipe e a permissão pedida, ou explica por quê
+   * não. Toda escrita de elenco e de comissão passa por aqui.
    */
-  async inscreverAtleta(
-    slug: string,
-    codigo: string,
-    pedido: {
-      categoriaId?: string;
-      nome?: string;
-      dataNascimento?: string | null;
-      posicao?: string | null;
-      numeroCamisa?: number | null;
-      fotoUrl?: string | null;
-    },
+  private async categoriaDaEquipe(
+    tx: Prisma.TransactionClient,
+    equipeId: string,
+    categoriaId: string | undefined,
+    permissao: 'permite_inscrever' | 'permite_editar' | 'permite_remover' | null,
   ) {
-    const { competicao, equipeId } = await this.exigirEquipe(slug, codigo);
-    const nome = texto(pedido.nome);
-    if (!nome) throw new BadRequestException('Informe o nome do atleta.');
-    if (!pedido.categoriaId) {
-      throw new BadRequestException('Informe a categoria.');
+    if (!categoriaId) throw new BadRequestException('Informe a categoria.');
+
+    const vinculo = await tx.categoria_times.findFirst({
+      where: { categoria_id: categoriaId, time_id: equipeId },
+      include: {
+        categorias: {
+          include: {
+            categoria_inscricao_config: true,
+            categoria_campo_atleta: true,
+            competicoes: { select: { temporada: true } },
+          },
+        },
+      },
+    });
+    if (!vinculo) {
+      throw new ForbiddenException('Sua equipe não disputa esta categoria.');
     }
 
-    return this.prisma.comOrganizacao(competicao.organizacao_id, async (tx) => {
-      const vinculo = await tx.categoria_times.findFirst({
-        where: { categoria_id: pedido.categoriaId, time_id: equipeId },
-        include: {
-          categorias: { include: { categoria_inscricao_config: true } },
-        },
-      });
-      if (!vinculo) {
-        throw new ForbiddenException('Sua equipe não disputa esta categoria.');
-      }
+    const categoria = vinculo.categorias;
+    const cfg = categoria.categoria_inscricao_config;
 
-      const cfg = vinculo.categorias.categoria_inscricao_config;
+    if (permissao) {
       if (!cfg?.inscricoes_abertas) {
-        throw new ForbiddenException('As inscrições desta categoria estão fechadas.');
-      }
-      if (!cfg.permite_inscrever) {
         throw new ForbiddenException(
-          'O organizador não liberou a inscrição de atletas pela equipe.',
+          'As inscrições desta categoria estão fechadas.',
         );
       }
+      if (!cfg[permissao]) {
+        const oQue = {
+          permite_inscrever: 'a inscrição',
+          permite_editar: 'a edição',
+          permite_remover: 'a remoção',
+        }[permissao];
+        throw new ForbiddenException(
+          `O organizador não liberou ${oQue} de atletas pela equipe.`,
+        );
+      }
+    }
+
+    return {
+      categoria,
+      cfg,
+      campos: configDaFicha(categoria.categoria_campo_atleta),
+      temporada: categoria.competicoes.temporada,
+    };
+  }
+
+  /**
+   * Inscreve um atleta no elenco de UMA categoria — a aba aberta na tela.
+   *
+   * O atleta vem da base global (`atletaId`) ou da ficha preenchida na
+   * hora; a ficha grava só os campos que a categoria pede (RF005 · 2.4).
+   * A faixa etária é aviso: 409 e o cliente reenvia com
+   * `confirmarFaixaEtaria`, como no resto do sistema.
+   */
+  async inscreverAtleta(slug: string, codigo: string, pedido: PedidoDeAtleta) {
+    const { competicao, equipeId } = await this.exigirEquipe(slug, codigo);
+
+    return this.prisma.comOrganizacao(competicao.organizacao_id, async (tx) => {
+      const { categoria, cfg, campos, temporada } = await this.categoriaDaEquipe(
+        tx,
+        equipeId,
+        pedido.categoriaId,
+        'permite_inscrever',
+      );
 
       const elenco = await tx.inscricoes.count({
-        where: { categoria_id: pedido.categoriaId, time_id: equipeId },
+        where: { categoria_id: categoria.id, time_id: equipeId },
       });
-      if (elenco >= cfg.max_atletas) {
+      if (cfg && elenco >= cfg.max_atletas) {
         throw new ForbiddenException(
           `Limite de ${cfg.max_atletas} atletas atingido nesta categoria.`,
         );
       }
 
-      const atleta = await tx.atletas.create({
-        data: {
+      const numeroCamisa = exigirNumeroCamisa(campos, pedido.numeroCamisa);
+
+      // --- atleta: da base ou novo -------------------------------------
+      let atletaId = texto(pedido.atletaId) || null;
+      let nascimento: Date | null = null;
+      let nome = texto(pedido.nome) || texto(pedido.ficha?.nome);
+
+      if (atletaId) {
+        const a = await tx.atletas.findUnique({ where: { id: atletaId } });
+        if (!a) throw new NotFoundException('Atleta não encontrado na base.');
+        nascimento = a.data_nascimento;
+        nome = a.nome;
+
+        // RF010 vem ANTES de "já está nesta categoria": se o atleta é de
+        // outra equipe, dizer que ele já está na categoria esconde o
+        // motivo real — ele não está no elenco de quem pediu, está no de
+        // outra equipe, e é isso que precisa ser resolvido
+        const outra = await tx.inscricoes.findFirst({
+          where: {
+            atleta_id: atletaId,
+            time_id: { not: equipeId },
+            categorias: { competicao_id: competicao.id },
+          },
+          include: { times: { select: { nome: true } } },
+        });
+        if (outra) {
+          throw new ConflictException(
+            `Este atleta já está inscrito pela equipe ${outra.times.nome} nesta competição.`,
+          );
+        }
+
+        const jaAqui = await tx.inscricoes.findFirst({
+          where: {
+            atleta_id: atletaId,
+            categoria_id: categoria.id,
+            time_id: equipeId,
+          },
+        });
+        if (jaAqui) {
+          throw new ConflictException('Este atleta já está nesta categoria.');
+        }
+      } else {
+        if (!nome) throw new BadRequestException('Informe o nome do atleta.');
+        exigirObrigatorios(campos, { ...pedido.ficha, nome });
+        nascimento = dataDeNascimento(pedido.ficha?.dataNascimento);
+      }
+
+      // --- faixa etária: AVISO, com segunda confirmação -----------------
+      const avisos = avisosDeFaixaEtaria([categoria], temporada, nascimento);
+      if (avisos.length > 0 && !pedido.confirmarFaixaEtaria) {
+        throw new ConflictException({
+          statusCode: 409,
+          erro: 'faixa_etaria',
+          message: mensagemDeFaixa(avisos),
+          avisos,
+        });
+      }
+
+      if (!atletaId) {
+        atletaId = await this.criarAtleta(tx, campos, {
+          ...pedido.ficha,
           nome,
-          data_nascimento: pedido.dataNascimento
-            ? new Date(pedido.dataNascimento)
-            : null,
-          posicao: pedido.posicao || null,
-          foto_url: paraCaminho(pedido.fotoUrl),
-        },
-      });
+        });
+      }
 
-      const inscricao = await tx.inscricoes.create({
+      try {
+        const inscricao = await tx.inscricoes.create({
+          data: {
+            categoria_id: categoria.id,
+            time_id: equipeId,
+            atleta_id: atletaId,
+            numero_camisa: numeroCamisa,
+          },
+        });
+        return { inscricaoId: inscricao.id, atletaId, nome };
+      } catch (e) {
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+          throw new ConflictException(
+            'Já existe atleta com este Nº da Camisa nesta categoria.',
+          );
+        }
+        throw e;
+      }
+    });
+  }
+
+  /** Cria o atleta na base global, traduzindo o P2002 da migration 11. */
+  private async criarAtleta(
+    tx: Prisma.TransactionClient,
+    campos: ConfigDaFicha,
+    ficha: FichaDoAtleta,
+  ): Promise<string> {
+    try {
+      const novo = await tx.atletas.create({
         data: {
-          categoria_id: pedido.categoriaId!,
-          time_id: equipeId,
-          atleta_id: atleta.id,
-          numero_camisa: pedido.numeroCamisa ?? null,
-        },
+          nome: texto(ficha.nome),
+          ...colunasDoAtleta(campos, ficha),
+          ...(campos.foto?.pedir && { foto_url: paraCaminho(ficha.fotoUrl) }),
+        } as Prisma.atletasCreateInput,
       });
 
-      return { inscricaoId: inscricao.id, atletaId: atleta.id, nome };
+      await this.gravarDocumentos(tx, novo.id, campos, ficha);
+      return novo.id;
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        // migration 11: mesmo nome + data de nascimento é a mesma pessoa.
+        // Aqui não se oferece "usar o existente" às cegas: pode ser atleta
+        // de outra equipe, e a equipe não tem o direito de descobrir isso.
+        throw new ConflictException(
+          'Já existe um atleta com este nome e data de nascimento na base. ' +
+            'Procure-o na busca da base de atletas, ou fale com o organizador.',
+        );
+      }
+      throw e;
+    }
+  }
+
+  private async gravarDocumentos(
+    tx: Prisma.TransactionClient,
+    atletaId: string,
+    campos: ConfigDaFicha,
+    ficha: FichaDoAtleta,
+  ) {
+    if (!campos.documentos_anexo?.pedir) return;
+    const anexos = (ficha.documentos ?? [])
+      .map((d) => ({ tipo: texto(d?.tipo) || 'Documento', url: paraCaminho(d?.url) }))
+      .filter((d): d is { tipo: string; url: string } => !!d.url);
+    if (!anexos.length) return;
+
+    // a edição reenvia a lista inteira, inclusive o que já está gravado —
+    // sem isto cada "Salvar" duplicaria os anexos existentes
+    const jaTem = new Set(
+      (
+        await tx.atleta_documentos.findMany({
+          where: { atleta_id: atletaId },
+          select: { arquivo_url: true },
+        })
+      ).map((d) => d.arquivo_url),
+    );
+    const novos = anexos.filter((d) => !jaTem.has(d.url));
+    if (!novos.length) return;
+
+    await tx.atleta_documentos.createMany({
+      data: novos.map((d) => ({
+        atleta_id: atletaId,
+        tipo: d.tipo,
+        arquivo_url: d.url,
+      })),
+    });
+  }
+
+  /**
+   * Edita atleta já inscrito — `permite_editar` na configuração (RF005 · 2.3).
+   * Só os campos que a categoria pede são tocados: o que outra categoria
+   * coletou continua onde está.
+   */
+  async atualizarAtleta(
+    slug: string,
+    codigo: string,
+    inscricaoId: string,
+    pedido: PedidoDeAtleta,
+  ) {
+    const { competicao, equipeId } = await this.exigirEquipe(slug, codigo);
+
+    return this.prisma.comOrganizacao(competicao.organizacao_id, async (tx) => {
+      const inscricao = await tx.inscricoes.findUnique({
+        where: { id: inscricaoId },
+      });
+      // a inscrição precisa ser DESTA equipe: o código não dá acesso ao
+      // elenco alheio, mesmo dentro da mesma competição
+      if (!inscricao || inscricao.time_id !== equipeId) {
+        throw new NotFoundException('Inscrição não encontrada nesta equipe.');
+      }
+
+      const { categoria, campos, temporada } = await this.categoriaDaEquipe(
+        tx,
+        equipeId,
+        inscricao.categoria_id,
+        'permite_editar',
+      );
+
+      const nome = texto(pedido.nome) || texto(pedido.ficha?.nome);
+      if (!nome) throw new BadRequestException('Informe o nome do atleta.');
+      exigirObrigatorios(campos, { ...pedido.ficha, nome });
+
+      const colunas = colunasDoAtleta(campos, pedido.ficha ?? {});
+      const nascimento = campos.data_nascimento?.pedir
+        ? ((colunas.data_nascimento as Date | null) ?? null)
+        : null;
+
+      if (campos.data_nascimento?.pedir) {
+        const avisos = avisosDeFaixaEtaria([categoria], temporada, nascimento);
+        if (avisos.length > 0 && !pedido.confirmarFaixaEtaria) {
+          throw new ConflictException({
+            statusCode: 409,
+            erro: 'faixa_etaria',
+            message: mensagemDeFaixa(avisos),
+            avisos,
+          });
+        }
+      }
+
+      const numeroCamisa = exigirNumeroCamisa(campos, pedido.numeroCamisa);
+
+      try {
+        await tx.atletas.update({
+          where: { id: inscricao.atleta_id },
+          data: {
+            nome,
+            ...colunas,
+            ...(campos.foto?.pedir &&
+              pedido.ficha?.fotoUrl !== undefined && {
+                foto_url: paraCaminho(pedido.ficha.fotoUrl),
+              }),
+            atualizado_em: new Date(),
+          } as Prisma.atletasUpdateInput,
+        });
+        await this.gravarDocumentos(
+          tx,
+          inscricao.atleta_id,
+          campos,
+          pedido.ficha ?? {},
+        );
+
+        await tx.inscricoes.update({
+          where: { id: inscricaoId },
+          data: { numero_camisa: numeroCamisa },
+        });
+      } catch (e) {
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+          throw new ConflictException(
+            'Já existe atleta com este Nº da Camisa, CPF ou identidade na base.',
+          );
+        }
+        throw e;
+      }
+
+      return { inscricaoId, atletaId: inscricao.atleta_id, nome };
     });
   }
 
@@ -442,8 +862,6 @@ export class ConviteService {
         },
       });
 
-      // a inscrição precisa ser DESTA equipe: o código não dá acesso ao
-      // elenco alheio, mesmo dentro da mesma competição
       if (!inscricao || inscricao.time_id !== equipeId) {
         throw new NotFoundException('Inscrição não encontrada nesta equipe.');
       }
@@ -453,50 +871,62 @@ export class ConviteService {
         );
       }
 
+      // o atleta segue na base global: só o vínculo é desfeito
       await tx.inscricoes.delete({ where: { id: inscricaoId } });
       return { removido: inscricaoId };
     });
   }
 
-  /** Comissão técnica: o limite é o maior `max_comissao` entre as categorias. */
-  async adicionarComissao(
-    slug: string,
-    codigo: string,
-    dados: { nome?: string; cargo?: string; contato?: string | null },
-  ) {
+  /**
+   * Comissão técnica **da categoria** (migration 19). O limite é o
+   * `max_comissao` daquela categoria — não mais o maior da equipe, que
+   * deixava a categoria mais restritiva estourar em silêncio.
+   */
+  async adicionarComissao(slug: string, codigo: string, dados: PedidoDeComissao) {
     const { competicao, equipeId } = await this.exigirEquipe(slug, codigo);
     const nome = texto(dados.nome);
     if (!nome) throw new BadRequestException('Informe o nome do membro.');
 
-    return this.prisma.comOrganizacao(competicao.organizacao_id, async (tx) => {
-      const vinculos = await tx.categoria_times.findMany({
-        where: { time_id: equipeId },
-        include: {
-          categorias: { include: { categoria_inscricao_config: true } },
-        },
-      });
-
-      const limite = vinculos.reduce(
-        (maior, v) =>
-          Math.max(maior, v.categorias.categoria_inscricao_config?.max_comissao ?? 0),
-        0,
+    const cargo = texto(dados.cargo);
+    if (!CARGOS_COMISSAO.includes(cargo as (typeof CARGOS_COMISSAO)[number])) {
+      throw new BadRequestException(
+        `Cargo inválido. Escolha entre: ${CARGOS_COMISSAO.join(', ')}.`,
       );
-      const atual = await tx.comissao_tecnica.count({ where: { time_id: equipeId } });
+    }
+
+    return this.prisma.comOrganizacao(competicao.organizacao_id, async (tx) => {
+      const { categoria, cfg } = await this.categoriaDaEquipe(
+        tx,
+        equipeId,
+        dados.categoriaId,
+        null,
+      );
+
+      const limite = cfg?.max_comissao ?? 0;
+      const atual = await tx.comissao_tecnica.count({
+        where: { time_id: equipeId, categoria_id: categoria.id },
+      });
       if (atual >= limite) {
         throw new ForbiddenException(
-          `Limite de ${limite} membros na comissão técnica.`,
+          `Limite de ${limite} membros na comissão técnica de ${categoria.nome}.`,
         );
       }
 
       const membro = await tx.comissao_tecnica.create({
         data: {
           time_id: equipeId,
+          categoria_id: categoria.id,
           nome,
-          cargo: texto(dados.cargo) || 'Técnico',
+          cargo,
           contato: dados.contato || null,
         },
       });
-      return { id: membro.id, nome: membro.nome, cargo: membro.cargo };
+      return {
+        id: membro.id,
+        nome: membro.nome,
+        cargo: membro.cargo,
+        categoriaId: membro.categoria_id,
+      };
     });
   }
 
@@ -514,4 +944,64 @@ export class ConviteService {
       return { removido: membroId };
     });
   }
+}
+
+/**
+ * Devolve, para a tela, só os campos da ficha que a categoria pede.
+ *
+ * Fora deste recorte a área da equipe viraria um leitor do cadastro
+ * inteiro: o atleta é global, e passou por competições cuja ficha pedia
+ * outras coisas.
+ */
+function fichaDoAtleta(
+  campos: ConfigDaFicha,
+  a: {
+    apelido: string | null;
+    foto_url: string | null;
+    cpf: string | null;
+    rg: string | null;
+    certidao_nascimento: string | null;
+    data_nascimento: Date | null;
+    posicao: string | null;
+    celular: string | null;
+    email: string | null;
+    passaporte: string | null;
+    titulo_eleitor: string | null;
+    genero: string | null;
+    nacionalidade: string | null;
+    responsavel_nome: string | null;
+    responsavel_contato: string | null;
+    atleta_documentos?: { id: string; tipo: string; arquivo_url: string }[];
+  },
+): Record<string, unknown> {
+  const pede = (c: campo_atleta) => campos[c]?.pedir === true;
+  const f: Record<string, unknown> = {};
+
+  if (pede('apelido')) f.apelido = a.apelido;
+  if (pede('foto')) f.fotoUrl = urlPublica(a.foto_url);
+  if (pede('cpf')) f.cpf = a.cpf;
+  if (pede('rg')) f.rg = a.rg;
+  if (pede('certidao_nascimento')) f.certidaoNascimento = a.certidao_nascimento;
+  if (pede('data_nascimento')) {
+    f.dataNascimento = a.data_nascimento?.toISOString().slice(0, 10) ?? null;
+  }
+  if (pede('posicao')) f.posicao = a.posicao;
+  if (pede('celular')) f.celular = a.celular;
+  if (pede('email')) f.email = a.email;
+  if (pede('passaporte')) f.passaporte = a.passaporte;
+  if (pede('titulo_eleitor')) f.tituloEleitor = a.titulo_eleitor;
+  if (pede('genero')) f.genero = a.genero;
+  if (pede('nacionalidade')) f.nacionalidade = a.nacionalidade;
+  if (pede('responsavel')) {
+    f.responsavelNome = a.responsavel_nome;
+    f.responsavelContato = a.responsavel_contato;
+  }
+  if (pede('documentos_anexo')) {
+    f.documentos = (a.atleta_documentos ?? []).map((d) => ({
+      id: d.id,
+      tipo: d.tipo,
+      url: urlPublica(d.arquivo_url),
+    }));
+  }
+  return f;
 }

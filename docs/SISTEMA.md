@@ -147,6 +147,7 @@ Depois, `npm run db:pull` para regenerar os tipos.
 | `16-area-da-equipe.sql` | Convite por link: código de acesso e frestas de leitura (RF006/RF007) |
 | `17-carteirinha.sql` | Credencial do atleta para a arbitragem, sem documento (RF029) |
 | `18-municipios.sql` | 27 UFs e 5.571 municípios do IBGE, com busca sem acento |
+| `19-comissao-por-categoria.sql` | Comissão técnica passa a ser da categoria, com o limite dela (RF007) |
 
 ### Triggers — onde as regras realmente moram
 
@@ -227,8 +228,10 @@ verificados no banco antes de escrever a migration:
 | `GET` | `/convite/:slug` | Área da equipe: competição e categorias abertas |
 | `POST` | `/convite/:slug/equipes` | Auto-cadastro; devolve o código de acesso |
 | `GET` `PATCH` | `/convite/:slug/equipe` | Painel da equipe — exige `X-Codigo-Equipe` |
-| `POST` `DELETE` | `/convite/:slug/equipe/atletas[/:id]` | Elenco, sujeito às permissões da categoria |
-| `POST` `DELETE` | `/convite/:slug/equipe/comissao[/:id]` | Comissão técnica |
+| `GET` | `/convite/:slug/equipe/base?busca=&categoriaId=` | Base única, recortada pela equipe de mesmo nome |
+| `POST` `PATCH` `DELETE` | `/convite/:slug/equipe/atletas[/:id]` | Elenco, sujeito às permissões da categoria |
+| `POST` `DELETE` | `/convite/:slug/equipe/comissao[/:id]` | Comissão técnica **da categoria** |
+| `POST` | `/convite/:slug/equipe/uploads` | Foto e escudo; credencial é o código, não o token |
 | `GET` | `/carteirinha/:competicaoId/:atletaId` | Credencial para a arbitragem |
 | `GET` | `/carteirinha/:competicaoId/:atletaId/qr.svg` | QR impresso na carteirinha |
 
@@ -313,8 +316,40 @@ O código viaja em `X-Codigo-Equipe`, não na URL: em query string apareceria em
 log de proxy, no `Referer` e no histórico da máquina compartilhada do clube.
 
 Quem manda no que a equipe pode fazer é a **configuração da categoria**
-(`permite_inscrever`, `permite_remover`, `inscricoes_abertas`, `max_atletas`,
-`max_comissao`) — conferida no serviço e no banco, nunca só na tela.
+(`permite_inscrever`, `permite_editar`, `permite_remover`, `inscricoes_abertas`,
+`max_atletas`, `max_comissao`) — conferida no serviço e no banco, nunca só na
+tela.
+
+**A área é por categoria, não por equipe.** Uma equipe que disputa Sub-13 e
+Sub-15 tem duas listas de tudo: elenco, comissão técnica, limites e ficha do
+atleta saem da configuração de cada categoria. A tela abre em abas por isso
+(`apps/portal/app/[slug]/inscricao/`), e o serviço devolve o painel já
+agrupado. Quatro consequências que valem registrar:
+
+- **A ficha do atleta é a que a categoria configurou** (RF005 · 2.4). A tela
+  desenha `categorias[].campos`, e o serviço grava **só** o que veio marcado
+  como `pedir` — CPF mandado numa categoria que não pede CPF não entra. A
+  regra vive em `src/painel/ficha-atleta.ts`, módulo puro compartilhado.
+- **Comissão técnica é da categoria** (migration 19). Antes o limite era o
+  maior `max_comissao` entre as categorias da equipe, e a categoria mais
+  restritiva estourava em silêncio. O `cargo` virou lista fechada
+  (`CARGOS_COMISSAO`): campo livre produzia "Tecnico", "TÉCNICO" e "Prof."
+  na mesma competição, e a súmula imprime o que estiver gravado. Linhas
+  anteriores à migration ficam com `categoria_id NULL` e continuam aparecendo.
+- **Base única pela equipe** (RF008). `GET /equipe/base` só alcança atleta que
+  já jogou por uma equipe de **mesmo nome**, em competição visível pelo RLS —
+  a consulta roda dentro de `comOrganizacao`, não numa fresta. É o caso real da
+  escolinha que se inscreve todo ano; elenco de outra equipe continua invisível.
+- **Ano de nascimento é validado no servidor.** `<input type="date">` aceita
+  0218 sem reclamar, e `date` do Postgres também. Quem barra é
+  `dataDeNascimento()`: ano entre 1900 e o corrente, data que existe, não no
+  futuro. O `min`/`max` no campo é conveniência, não validação.
+
+O upload da equipe (`POST /equipe/uploads`) existe porque `POST /painel/uploads`
+exige `AuthGuard` e quem preenche a ficha não tem conta. A credencial é o
+código; ele resolve a organização, e é ela — nunca o cliente — que decide onde
+grava. A leitura do corpo cru é a mesma dos dois lados
+(`src/arquivos/corpo-cru.ts`).
 
 ### Campos, árbitros e súmula impressa (RF013, RF014, RF016, RF018)
 
@@ -691,7 +726,7 @@ outro — falhava de verdade, com corrida real.
 | `portal-extra.e2e.spec.ts` | Estatísticas e elencos públicos, nível 2 |
 | `auth.e2e.spec.ts` | Login e o lado do painel do RLS |
 | `admin.e2e.spec.ts` | Área do ADM, fronteira do organizador, "assumir" |
-| `convite.e2e.spec.ts` | Área da equipe: link cria, código edita |
+| `convite.e2e.spec.ts` | Área da equipe: link cria, código edita; ficha por categoria, base única, ano de nascimento, cargo fechado |
 | `carteirinha.e2e.spec.ts` | Credencial por QR, sem documento |
 | `elenco.e2e.spec.ts` | RF010, limite, faixa etária, isolamento |
 | `catalogo.e2e.spec.ts` | CRUD de categoria, base de atletas, central ao vivo |

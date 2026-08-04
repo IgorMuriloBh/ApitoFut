@@ -235,6 +235,155 @@ button:disabled {
   animation: pulsa 1.4s infinite;
 }
 
+/* ---------------------------------------------------------------------
+   Área da equipe (/{slug}/inscricao) — abas por categoria.
+
+   Uma equipe que disputa Sub-13 e Sub-15 tem elenco, comissão técnica,
+   limites e ficha de inscrição DIFERENTES em cada uma. Empilhar tudo numa
+   página só fazia o responsável rolar procurando qual formulário era de
+   qual categoria; a aba diz onde ele está.
+   --------------------------------------------------------------------- */
+.abas-equipe {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid var(--linha);
+  border-radius: 12px;
+  padding: 4px;
+  margin: 16px 0;
+  scrollbar-width: none;
+}
+.abas-equipe::-webkit-scrollbar { display: none; }
+
+.abas-equipe button {
+  background: transparent;
+  color: var(--tinta2);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.abas-equipe button.ativa {
+  background: color-mix(in srgb, var(--cor, #16a34a) 12%, transparent);
+  color: var(--cor, #16a34a);
+}
+
+.campo { display: block; margin-bottom: 12px; }
+.campo > span {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.campo .req { color: #dc2626; }
+
+.grade2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+@media (max-width: 560px) { .grade2 { grid-template-columns: 1fr; } }
+
+/* Escudo da equipe ao lado do nome — sem imagem, iniciais sobre cor
+   estável derivada do nome. Espaço vazio faria a linha "pular". */
+.brasao {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--linha);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.vazio {
+  text-align: center;
+  padding: 26px 16px;
+  color: var(--tinta2);
+  font-size: 13.5px;
+}
+
+.etiqueta {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 9px;
+  background: #f1f5f9;
+  color: var(--tinta2);
+}
+.etiqueta.alerta { background: #fef3c7; color: #92400e; }
+.etiqueta.erro { background: #fee2e2; color: #991b1b; }
+.etiqueta.ok { background: #dcfce7; color: #166534; }
+
+.perigo { background: #dc2626; }
+.neutro { background: #64748b; }
+
+/* Modal — o cadastro do atleta tem campos demais para caber numa linha
+   embaixo da tabela, que era como a tela fazia antes. */
+.cortina {
+  position: fixed;
+  inset: 0;
+  background: #0f172acc;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 12px;
+  overflow-y: auto;
+  z-index: 20;
+}
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 620px;
+  overflow: hidden;
+}
+.modal > header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--linha);
+}
+.modal > header h3 { font-size: 15px; }
+.modal > header p { font-size: 12.5px; color: var(--tinta2); }
+.modal .corpo { padding: 16px 18px; }
+.modal > footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 12px 18px;
+  border-top: 1px solid var(--linha);
+  background: #f8fafc;
+}
+
+.alerta-caixa {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  border-radius: 10px;
+  padding: 11px 13px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.linha-base {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: #fff;
+  color: inherit;
+  border: 1px solid var(--linha);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-weight: 400;
+  margin-bottom: 6px;
+}
+.linha-base:hover { border-color: var(--cor, #16a34a); }
+
 /* escudo ao lado do nome da equipe na linha do jogo */
 .jogo .lado {
   display: flex;

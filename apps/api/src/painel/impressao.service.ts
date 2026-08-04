@@ -136,8 +136,14 @@ export class ImpressaoService {
         include: { atletas: true },
         orderBy: [{ numero_camisa: 'asc' }],
       }),
+      // a comissão é da CATEGORIA desde a migration 19: a súmula do Sub-13
+      // não pode listar o técnico do Sub-15. `categoria_id: null` é o
+      // registro antigo, que continua valendo para a equipe inteira.
       tx.comissao_tecnica.findMany({
-        where: { time_id: timeId },
+        where: {
+          time_id: timeId,
+          OR: [{ categoria_id: categoriaId }, { categoria_id: null }],
+        },
         orderBy: { nome: 'asc' },
       }),
     ]);

@@ -339,7 +339,7 @@ describe('o organizador manda nas permissões', () => {
     req(`/convite/${SLUG}/equipe/atletas`, {
       metodo: 'POST',
       codigo,
-      corpo: { categoriaId, nome, dataNascimento: '2013-03-02' },
+      corpo: { categoriaId, nome, ficha: { dataNascimento: '2013-03-02' } },
     });
 
   test('permite_inscrever desligado bloqueia a equipe', async () => {
@@ -386,20 +386,398 @@ describe('o organizador manda nas permissões', () => {
     assert.equal(await db.inscricoes.findUnique({ where: { id: alvo } }), null);
   });
 
-  test('comissão técnica respeita max_comissao', async () => {
+  test('comissão técnica respeita max_comissao da categoria', async () => {
     const primeiro = await req(`/convite/${SLUG}/equipe/comissao`, {
       metodo: 'POST',
       codigo,
-      corpo: { nome: 'E2E Técnico', cargo: 'Técnico' },
+      corpo: { categoriaId, nome: 'E2E Técnico', cargo: 'Treinador' },
     });
     assert.equal(primeiro.code, 201);
+    assert.equal(primeiro.corpo.categoriaId, categoriaId, 'gravou na categoria');
 
     const segundo = await req(`/convite/${SLUG}/equipe/comissao`, {
       metodo: 'POST',
       codigo,
-      corpo: { nome: 'E2E Auxiliar' },
+      corpo: { categoriaId, nome: 'E2E Auxiliar', cargo: 'Diretoria' },
     });
     assert.equal(segundo.code, 403, 'max_comissao = 1');
+  });
+
+  test('cargo fora da lista é recusado', async () => {
+    const r = await req(`/convite/${SLUG}/equipe/comissao`, {
+      metodo: 'POST',
+      codigo,
+      corpo: { categoriaId, nome: 'E2E Cargo Livre', cargo: 'Roupeiro' },
+    });
+    assert.equal(r.code, 400);
+    assert.match(r.corpo.message, /cargo inválido/i);
+  });
+
+  test('comissão sem categoria não é aceita', async () => {
+    const r = await req(`/convite/${SLUG}/equipe/comissao`, {
+      metodo: 'POST',
+      codigo,
+      corpo: { nome: 'E2E Sem Categoria', cargo: 'Treinador' },
+    });
+    assert.equal(r.code, 400);
+  });
+
+  test('categoria alheia não recebe comissão pela porta lateral', async () => {
+    const alheia = await db.categorias.findFirstOrThrow({
+      where: { competicao_id: { not: competicaoId } },
+    });
+    const r = await req(`/convite/${SLUG}/equipe/comissao`, {
+      metodo: 'POST',
+      codigo,
+      corpo: { categoriaId: alheia.id, nome: 'E2E Intruso', cargo: 'Treinador' },
+    });
+    assert.equal(r.code, 403);
+  });
+});
+
+/**
+ * RF005 · 2.4 — a ficha do atleta é a que a CATEGORIA configurou. Antes a
+ * área da equipe pedia nome, número e nascimento fixos: quem tinha ligado
+ * "foto" nunca via o campo, e quem tinha desligado "posição" via mesmo
+ * assim.
+ */
+describe('a ficha vem da configuração da categoria', () => {
+  let codigo: string;
+
+  const configurarCampo = (
+    campo: string,
+    dados: { pedir: boolean; obrigatorio?: boolean },
+  ) =>
+    db.categoria_campo_atleta.upsert({
+      where: { categoria_id_campo: { categoria_id: categoriaId, campo: campo as never } },
+      create: {
+        categoria_id: categoriaId,
+        campo: campo as never,
+        pedir: dados.pedir,
+        obrigatorio: dados.obrigatorio ?? false,
+      },
+      update: { pedir: dados.pedir, obrigatorio: dados.obrigatorio ?? false },
+    });
+
+  before(async () => {
+    const t = await db.times.findFirstOrThrow({
+      where: { competicao_id: competicaoId, nome: 'E2E Beta FC' },
+    });
+    codigo = t.codigo_acesso!.trim();
+    await configurar({ max_atletas: 20, permite_editar: true, permite_remover: true });
+  });
+
+  test('o painel devolve os campos pedidos, com os obrigatórios marcados', async () => {
+    await configurarCampo('foto', { pedir: true });
+    await configurarCampo('posicao', { pedir: true, obrigatorio: true });
+    await configurarCampo('cpf', { pedir: false });
+
+    const r = await req(`/convite/${SLUG}/equipe`, { codigo });
+    const campos = r.corpo.categorias[0].campos as {
+      campo: string;
+      rotulo: string;
+      obrigatorio: boolean;
+      opcoes?: string[];
+    }[];
+
+    const foto = campos.find((c) => c.campo === 'foto');
+    const posicao = campos.find((c) => c.campo === 'posicao');
+    assert.ok(foto, 'foto configurada aparece na ficha');
+    assert.equal(posicao?.obrigatorio, true);
+    assert.ok(posicao?.opcoes?.includes('Goleiro'), 'seleção traz as opções');
+    assert.equal(
+      campos.find((c) => c.campo === 'cpf'),
+      undefined,
+      'campo desligado não aparece',
+    );
+  });
+
+  test('campo obrigatório em branco é recusado, com o nome do campo', async () => {
+    const r = await req(`/convite/${SLUG}/equipe/atletas`, {
+      metodo: 'POST',
+      codigo,
+      corpo: {
+        categoriaId,
+        nome: `E2E Sem Posicao ${sufixo}`,
+        ficha: { dataNascimento: '2013-01-01' },
+      },
+    });
+    assert.equal(r.code, 400);
+    assert.match(r.corpo.message, /Posição/);
+  });
+
+  test('campo que a categoria não pede não é gravado', async () => {
+    const r = await req(`/convite/${SLUG}/equipe/atletas`, {
+      metodo: 'POST',
+      codigo,
+      corpo: {
+        categoriaId,
+        nome: `E2E Ficha ${sufixo}`,
+        confirmarFaixaEtaria: true,
+        ficha: {
+          dataNascimento: '2013-04-10',
+          posicao: 'Goleiro',
+          // CPF está desligado nesta categoria: mandar não pode gravar
+          cpf: '12345678901',
+        },
+      },
+    });
+    assert.equal(r.code, 201);
+
+    const a = await db.atletas.findUniqueOrThrow({
+      where: { id: r.corpo.atletaId },
+    });
+    assert.equal(a.posicao, 'Goleiro');
+    assert.equal(a.cpf, null, 'campo não pedido não entra');
+  });
+
+  test('opção fora da lista da seleção é recusada', async () => {
+    const r = await req(`/convite/${SLUG}/equipe/atletas`, {
+      metodo: 'POST',
+      codigo,
+      corpo: {
+        categoriaId,
+        nome: `E2E Posicao Torta ${sufixo}`,
+        confirmarFaixaEtaria: true,
+        ficha: { dataNascimento: '2013-04-10', posicao: 'Ponta esquerda' },
+      },
+    });
+    assert.equal(r.code, 400);
+  });
+
+  test('a edição respeita permite_editar e mantém o que não foi pedido', async () => {
+    const painel = await req(`/convite/${SLUG}/equipe`, { codigo });
+    const alvo = painel.corpo.categorias[0].atletas.find(
+      (a: any) => a.nome === `E2E Ficha ${sufixo}`,
+    );
+
+    await configurar({ permite_editar: false });
+    const negado = await req(`/convite/${SLUG}/equipe/atletas/${alvo.inscricaoId}`, {
+      metodo: 'PATCH',
+      codigo,
+      corpo: {
+        nome: `E2E Ficha ${sufixo}`,
+        confirmarFaixaEtaria: true,
+        ficha: { dataNascimento: '2013-04-10', posicao: 'Atacante' },
+      },
+    });
+    assert.equal(negado.code, 403);
+
+    await configurar({ permite_editar: true });
+    const ok = await req(`/convite/${SLUG}/equipe/atletas/${alvo.inscricaoId}`, {
+      metodo: 'PATCH',
+      codigo,
+      corpo: {
+        nome: `E2E Ficha ${sufixo}`,
+        confirmarFaixaEtaria: true,
+        ficha: { dataNascimento: '2013-04-10', posicao: 'Atacante' },
+      },
+    });
+    assert.equal(ok.code, 200);
+
+    const a = await db.atletas.findUniqueOrThrow({ where: { id: alvo.atletaId } });
+    assert.equal(a.posicao, 'Atacante');
+  });
+});
+
+/** 3.6 — `<input type="date">` aceita o ano 0218; o banco também. */
+describe('ano de nascimento inválido', () => {
+  let codigo: string;
+
+  before(async () => {
+    const t = await db.times.findFirstOrThrow({
+      where: { competicao_id: competicaoId, nome: 'E2E Beta FC' },
+    });
+    codigo = t.codigo_acesso!.trim();
+  });
+
+  const inscrever = (dataNascimento: string) =>
+    req(`/convite/${SLUG}/equipe/atletas`, {
+      metodo: 'POST',
+      codigo,
+      corpo: {
+        categoriaId,
+        nome: `E2E Data ${dataNascimento}`,
+        confirmarFaixaEtaria: true,
+        ficha: { dataNascimento, posicao: 'Meia' },
+      },
+    });
+
+  test('ano de quatro dígitos mas absurdo é recusado', async () => {
+    const r = await inscrever('0218-05-04');
+    assert.equal(r.code, 400);
+    assert.match(r.corpo.message, /ano de nascimento inválido/i);
+  });
+
+  test('data no futuro é recusada', async () => {
+    const proximo = new Date().getUTCFullYear() + 1;
+    const r = await inscrever(`${proximo}-01-01`);
+    assert.equal(r.code, 400);
+  });
+
+  test('dia que não existe é recusado', async () => {
+    const r = await inscrever('2013-02-31');
+    assert.equal(r.code, 400);
+    assert.match(r.corpo.message, /inválida/i);
+  });
+});
+
+/**
+ * RF008 — base única. A equipe reaproveita o atleta que já jogou por ela
+ * em outra competição; o elenco de OUTRA equipe continua invisível.
+ */
+describe('base única de atletas', () => {
+  let codigo: string;
+  let outraCompeticao: string;
+  let atletaVeterano: string;
+
+  before(async () => {
+    const beta = await db.times.findFirstOrThrow({
+      where: { competicao_id: competicaoId, nome: 'E2E Beta FC' },
+    });
+    codigo = beta.codigo_acesso!.trim();
+
+    // competição anterior, mesma organização, equipe de MESMO NOME
+    const anterior = await db.competicoes.create({
+      data: {
+        nome: `E2E Anterior ${sufixo}`,
+        slug: `e2e-anterior-${sufixo}`,
+        organizacao_id: ORG,
+        criado_por: DONO,
+        data_inicio: new Date('2025-03-01'),
+        estado: 'MG',
+        cidade: 'Belo Horizonte',
+        status: 'encerrada',
+        categorias: {
+          create: [
+            {
+              nome: 'Sub-12 E2E',
+              tipo: 'infanto_juvenil',
+              genero: 'masculino',
+              modalidade: 'fut11',
+              formato: 'grupos_mata',
+              num_times: 4,
+              num_grupos: 1,
+              fase_mata_mata: 'final',
+              ordem: 0,
+            },
+          ],
+        },
+      },
+      include: { categorias: true },
+    });
+    outraCompeticao = anterior.id;
+    const categoriaAnterior = anterior.categorias[0].id;
+
+    const mesmoNome = await db.times.create({
+      data: { competicao_id: anterior.id, nome: 'E2E Beta FC' },
+    });
+    const rival = await db.times.create({
+      data: { competicao_id: anterior.id, nome: 'E2E Rival FC' },
+    });
+    await db.categoria_times.createMany({
+      data: [
+        { categoria_id: categoriaAnterior, time_id: mesmoNome.id },
+        { categoria_id: categoriaAnterior, time_id: rival.id },
+      ],
+    });
+
+    const veterano = await db.atletas.create({
+      data: {
+        nome: `E2E Veterano ${sufixo}`,
+        data_nascimento: new Date('2013-07-07'),
+      },
+    });
+    atletaVeterano = veterano.id;
+    const doRival = await db.atletas.create({
+      data: { nome: `E2E Do Rival ${sufixo}`, data_nascimento: new Date('2013-08-08') },
+    });
+
+    await db.inscricoes.createMany({
+      data: [
+        {
+          categoria_id: categoriaAnterior,
+          time_id: mesmoNome.id,
+          atleta_id: veterano.id,
+        },
+        {
+          categoria_id: categoriaAnterior,
+          time_id: rival.id,
+          atleta_id: doRival.id,
+        },
+      ],
+    });
+  });
+
+  after(async () => {
+    await db.competicoes.deleteMany({ where: { id: outraCompeticao } });
+  });
+
+  test('acha quem jogou pela equipe de mesmo nome, e só ele', async () => {
+    const r = await req(
+      `/convite/${SLUG}/equipe/base?categoriaId=${categoriaId}&busca=E2E`,
+      { codigo },
+    );
+    assert.equal(r.code, 200);
+
+    const nomes = r.corpo.atletas.map((a: any) => a.nome);
+    assert.ok(
+      nomes.includes(`E2E Veterano ${sufixo}`),
+      'o atleta da mesma equipe aparece',
+    );
+    assert.ok(
+      !nomes.some((n: string) => n.includes('Do Rival')),
+      'elenco de outra equipe não vaza',
+    );
+  });
+
+  test('reaproveita o atleta em vez de duplicar', async () => {
+    const r = await req(`/convite/${SLUG}/equipe/atletas`, {
+      metodo: 'POST',
+      codigo,
+      corpo: {
+        categoriaId,
+        atletaId: atletaVeterano,
+        numeroCamisa: 77,
+        confirmarFaixaEtaria: true,
+      },
+    });
+    assert.equal(r.code, 201);
+    assert.equal(r.corpo.atletaId, atletaVeterano, 'é o mesmo cadastro');
+
+    assert.equal(
+      await db.atletas.count({ where: { nome: `E2E Veterano ${sufixo}` } }),
+      1,
+      'não criou um segundo atleta',
+    );
+  });
+
+  test('quem já está na categoria some da busca', async () => {
+    const r = await req(
+      `/convite/${SLUG}/equipe/base?categoriaId=${categoriaId}&busca=Veterano`,
+      { codigo },
+    );
+    assert.equal(r.corpo.atletas.length, 0);
+  });
+
+  test('atleta de outra equipe da mesma competição é barrado (RF010)', async () => {
+    const alfa = await db.times.findFirstOrThrow({
+      where: { competicao_id: competicaoId, nome: 'E2E Alfa FC' },
+    });
+    const preso = await db.atletas.create({
+      data: { nome: `E2E Preso ${sufixo}`, data_nascimento: new Date('2013-09-09') },
+    });
+    await db.inscricoes.create({
+      data: { categoria_id: categoriaId, time_id: alfa.id, atleta_id: preso.id },
+    });
+
+    const r = await req(`/convite/${SLUG}/equipe/atletas`, {
+      metodo: 'POST',
+      codigo,
+      corpo: { categoriaId, atletaId: preso.id, confirmarFaixaEtaria: true },
+    });
+    assert.equal(r.code, 409);
+    assert.match(r.corpo.message, /E2E Alfa FC/);
   });
 });
 

@@ -196,6 +196,7 @@ model categorias {
   categoria_regras               categoria_regras?
   categoria_times                categoria_times[]
   competicoes                    competicoes                      @relation(fields: [competicao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  comissao_tecnica               comissao_tecnica[]
   fases                          fases[]
   grupos                         grupos[]
   inscricoes                     inscricoes[]
@@ -207,15 +208,18 @@ model categorias {
 }
 
 model comissao_tecnica {
-  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  time_id   String  @db.Uuid
-  nome      String
-  cargo     String  @default("Técnico")
-  documento String?
-  contato   String?
-  times     times   @relation(fields: [time_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  time_id      String      @db.Uuid
+  nome         String
+  cargo        String      @default("Técnico")
+  documento    String?
+  contato      String?
+  categoria_id String?     @db.Uuid
+  categorias   categorias? @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  times        times       @relation(fields: [time_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([time_id], map: "idx_comissao_time")
+  @@index([categoria_id], map: "idx_comissao_categoria")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

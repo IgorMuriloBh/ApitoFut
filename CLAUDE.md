@@ -51,6 +51,7 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
 - `db/16-area-da-equipe.sql` — convite por link e código de acesso da equipe (RF006)
 - `db/17-carteirinha.sql` — credencial do atleta para a arbitragem (RF029)
 - `db/18-municipios.sql` — UFs e municípios do IBGE; regerar com `db/ferramentas/`
+- `db/19-comissao-por-categoria.sql` — comissão técnica é da categoria, não da equipe (RF007)
 
 ## Banco de dados
 
@@ -219,6 +220,20 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
   *criar* equipe; o código de 6 caracteres permite mexer *naquela* equipe.
   Toda escrita reconfere o código contra a equipe alvo — equipe nenhuma
   alcança o elenco de outra
+- **Tudo na área da equipe é por categoria**: elenco, comissão técnica,
+  limites e a ficha do atleta. A comissão tem `categoria_id` (migration
+  19) e o limite é o `max_comissao` daquela categoria — antes era o maior
+  da equipe, e a categoria mais restritiva estourava em silêncio
+- **A ficha do atleta é a que a categoria configurou.** Campo não marcado
+  em `categoria_campo_atleta.pedir` não é exibido **e não é gravado**,
+  mesmo que o cliente mande: o organizador decidiu não coletar, e guardar
+  documento de menor sem ninguém ter pedido não é detalhe de UI
+- **Ano de nascimento é validado no servidor**: `<input type="date">`
+  aceita `0218` e o `date` do Postgres também. `dataDeNascimento()` exige
+  ano entre 1900 e o corrente, data que exista, e não no futuro
+- **Cargo da comissão é lista fechada** (`CARGOS_COMISSAO`): Treinador,
+  Comissão técnica, Diretoria, Médico(a)/Enfermeiro(a). Campo livre
+  produzia quatro grafias do mesmo cargo na mesma súmula impressa
 - **Rotas administrativas são exclusivas do superadmin** — 403 no `SuperadminGuard`
   e reconferência no banco; idem competição de outro dono
 
@@ -316,7 +331,9 @@ apps/api/          NestJS — a única app existente hoje
   src/competicoes/   visibilidade.ts concentra a regra de status
   src/admin/         área do ADM: só frestas SECURITY DEFINER, nunca comOrganizacao
   src/arquivos/      upload e entrega de imagens; tipo detectado pelos bytes
+                     corpo-cru.ts é compartilhado com o upload da equipe
   src/convite/       área da equipe: rotas abertas, código no cabeçalho
+  src/painel/ficha-atleta.ts  campos que a categoria pede; puro, sem Prisma
   src/carteirinha/   credencial da arbitragem por QR; nunca devolve documento
   src/painel/sumula-impressa.ts  HTML da súmula em branco; não conhece Prisma
   src/painel/premiacoes.ts       RF024, puro; empate volta como empate
@@ -338,7 +355,9 @@ apps/portal/       Next.js 16 (App Router) — portal público SSR
   proxy.ts           domínio próprio: host → slug por rewrite (Next 16 renomeou
                      middleware.ts para proxy.ts)
   app/[slug]/        competição em abas (?aba=&cat=) · [categoriaId]/[jogoId] detalhe
-  app/[slug]/inscricao/  área da equipe (client component, noindex)
+  app/[slug]/inscricao/  área da equipe (client component, noindex) — abas
+                     por categoria; FormularioDeAtleta desenha a ficha que
+                     a categoria configurou, com busca na base única
   app/c/[comp]/[atleta]/ validação da carteirinha (destino do QR, noindex)
   AoVivo.tsx         client component: EventSource no feed SSE + router.refresh()
 ```
