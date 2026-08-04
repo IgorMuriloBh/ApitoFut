@@ -29,6 +29,11 @@ import type {
 
 const CHAVE = 'apitofut.equipe';
 
+/** Mesma cor inicial do protótipo. O campo é obrigatório, mas
+    `<input type="color">` nunca fica vazio — o padrão é o ponto de
+    partida, não um valor que passa despercebido. */
+const UNIFORME_PADRAO = '#2563EB';
+
 export default function AreaDaEquipe({
   slug,
   inicial,
@@ -193,12 +198,30 @@ export default function AreaDaEquipe({
               estadoPadrao={c.estado}
               ocupado={ocupado}
               aoVoltar={() => setTela('inicio')}
-              aoEnviar={(dados) =>
+              aoEnviar={(dados, escudo) =>
                 agir(async () => {
                   const r = (await chamar('/equipes', {
                     metodo: 'POST',
                     corpo: dados,
                   })) as unknown as { codigoAcesso: string };
+
+                  // o escudo vem depois, e de propósito: o upload é
+                  // autenticado pelo código de acesso, que só existe
+                  // agora. Se falhar, a equipe já está inscrita e o
+                  // código aparece — o escudo entra pela aba de dados.
+                  if (escudo) {
+                    try {
+                      const url = await enviarImagem(slug, r.codigoAcesso, escudo);
+                      await chamar('/equipe', {
+                        metodo: 'PATCH',
+                        codigo: r.codigoAcesso,
+                        corpo: { escudoUrl: url },
+                      });
+                    } catch {
+                      /* inscrição vale mais que o escudo: segue sem ele */
+                    }
+                  }
+
                   setCodigoNovo(r.codigoAcesso);
                   setTela('inicio');
                   await carregarPainel(r.codigoAcesso);
@@ -298,7 +321,7 @@ function FormularioDeEquipe({
   estadoPadrao: string;
   ocupado: boolean;
   aoVoltar: () => void;
-  aoEnviar: (dados: Record<string, unknown>) => void;
+  aoEnviar: (dados: Record<string, unknown>, escudo: File | null) => void;
 }) {
   const [nome, setNome] = useState('');
   const [responsavel, setResponsavel] = useState('');
@@ -307,6 +330,17 @@ function FormularioDeEquipe({
   const [cidade, setCidade] = useState(cidadePadrao);
   const [estado, setEstado] = useState(estadoPadrao);
   const [escolhidas, setEscolhidas] = useState<string[]>([]);
+  // o escudo só sobe DEPOIS de criada a equipe: o upload é autenticado
+  // pelo código de acesso, que não existe antes disso. Aqui guarda-se o
+  // arquivo; quem orquestra é `aoEnviar`.
+  const [escudo, setEscudo] = useState<File | null>(null);
+  // criado uma vez por arquivo, não a cada render: `createObjectURL` no
+  // corpo do componente vaza uma URL por repintura
+  const [previa, setPrevia] = useState<string | null>(null);
+  const [uniforme1, setUniforme1] = useState(UNIFORME_PADRAO);
+  const [uniforme2, setUniforme2] = useState<string | null>(null);
+
+  useEffect(() => () => { if (previa) URL.revokeObjectURL(previa); }, [previa]);
 
   const alternar = (id: string) =>
     setEscolhidas((atual) =>
@@ -323,6 +357,34 @@ function FormularioDeEquipe({
           </span>
           <input value={nome} onChange={(e) => setNome(e.target.value)} />
         </label>
+
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 12 }}>
+          <Brasao nome={nome} url={previa} tamanho={58} />
+          <label className="campo" style={{ flex: 1, margin: 0 }}>
+            <span>Logo da equipe (escudo)</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const arquivo = e.target.files?.[0] ?? null;
+                setEscudo(arquivo);
+                if (previa) URL.revokeObjectURL(previa);
+                setPrevia(arquivo ? URL.createObjectURL(arquivo) : null);
+              }}
+            />
+            <span style={{ fontSize: 11.5, color: 'var(--tinta2)' }}>
+              Sem escudo, a equipe aparece com as iniciais sobre uma cor.
+            </span>
+          </label>
+        </div>
+
+        <Uniformes
+          primario={uniforme1}
+          secundario={uniforme2}
+          aoMudarPrimario={setUniforme1}
+          aoMudarSecundario={setUniforme2}
+        />
+
         <div className="grade2">
           <label className="campo">
             <span>
@@ -416,21 +478,92 @@ function FormularioDeEquipe({
           <button
             disabled={ocupado}
             onClick={() =>
-              aoEnviar({
-                nome,
-                responsavel,
-                contato,
-                email: email || null,
-                cidade: cidade || null,
-                estado: estado || null,
-                categoriaIds: escolhidas,
-              })
+              aoEnviar(
+                {
+                  nome,
+                  responsavel,
+                  contato,
+                  email: email || null,
+                  cidade: cidade || null,
+                  estado: estado || null,
+                  uniformePrimario: uniforme1,
+                  uniformeSecundario: uniforme2,
+                  categoriaIds: escolhidas,
+                },
+                escudo,
+              )
             }
           >
             {ocupado ? 'Enviando…' : 'Concluir inscrição da equipe'}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Cores do uniforme.
+ *
+ * O principal é obrigatório e o campo nunca fica vazio — `<input
+ * type="color">` sempre tem um valor. O secundário é opcional de verdade:
+ * só existe quando a equipe o declara, e o botão devolve ao estado "sem
+ * uniforme secundário", que é diferente de "branco".
+ */
+function Uniformes({
+  primario,
+  secundario,
+  aoMudarPrimario,
+  aoMudarSecundario,
+}: {
+  primario: string;
+  secundario: string | null;
+  aoMudarPrimario: (v: string) => void;
+  aoMudarSecundario: (v: string | null) => void;
+}) {
+  return (
+    <div className="grade2">
+      <label className="campo">
+        <span>
+          Uniforme principal <b className="req">*</b>
+        </span>
+        <input
+          type="color"
+          className="cor"
+          value={primario}
+          onChange={(e) => aoMudarPrimario(e.target.value.toUpperCase())}
+        />
+      </label>
+
+      <label className="campo">
+        <span>Uniforme secundário</span>
+        {secundario === null ? (
+          <button
+            type="button"
+            className="neutro"
+            onClick={() => aoMudarSecundario('#FFFFFF')}
+          >
+            ＋ Definir cor
+          </button>
+        ) : (
+          <span style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="color"
+              className="cor"
+              value={secundario}
+              onChange={(e) => aoMudarSecundario(e.target.value.toUpperCase())}
+            />
+            <button
+              type="button"
+              className="neutro"
+              title="Equipe sem uniforme secundário"
+              onClick={() => aoMudarSecundario(null)}
+            >
+              ✕
+            </button>
+          </span>
+        )}
+      </label>
     </div>
   );
 }
@@ -957,6 +1090,8 @@ function DadosDaEquipe({
     estado: e.estado ?? '',
   });
   const [escudo, setEscudo] = useState<string | null>(e.escudoUrl);
+  const [uniforme1, setUniforme1] = useState(e.uniformePrimario ?? UNIFORME_PADRAO);
+  const [uniforme2, setUniforme2] = useState<string | null>(e.uniformeSecundario);
   const [enviando, setEnviando] = useState(false);
 
   return (
@@ -998,6 +1133,14 @@ function DadosDaEquipe({
             onChange={(ev) => setDados({ ...dados, nome: ev.target.value })}
           />
         </label>
+
+        <Uniformes
+          primario={uniforme1}
+          secundario={uniforme2}
+          aoMudarPrimario={setUniforme1}
+          aoMudarSecundario={setUniforme2}
+        />
+
         <div className="grade2">
           <label className="campo">
             <span>Responsável</span>
@@ -1054,6 +1197,8 @@ function DadosDaEquipe({
                   email: dados.email || null,
                   cidade: dados.cidade || null,
                   estado: dados.estado || null,
+                  uniformePrimario: uniforme1,
+                  uniformeSecundario: uniforme2,
                   escudoUrl: escudo,
                 },
               }),

@@ -116,6 +116,32 @@ export interface PedidoDeComissao {
 
 const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 
+/**
+ * Cor de uniforme em hex.
+ *
+ * `times.uniforme_*` é `char(7)` com CHECK de `^#[0-9a-f]{6}$` (migration
+ * 03) — sem esta conversa o banco recusa com erro de constraint, que não
+ * diz nada a quem está preenchendo o formulário. A forma curta (`#abc`)
+ * é expandida: o `<input type="color">` sempre manda 7 caracteres, mas
+ * quem digita à mão costuma abreviar.
+ */
+function corHex(valor: unknown, rotulo: string): string | null {
+  const bruto = texto(valor);
+  if (!bruto) return null;
+
+  const curta = bruto.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i);
+  const cor = curta
+    ? `#${curta[1]}${curta[1]}${curta[2]}${curta[2]}${curta[3]}${curta[3]}`
+    : bruto;
+
+  if (!/^#[0-9a-f]{6}$/i.test(cor)) {
+    throw new BadRequestException(
+      `${rotulo} deve ser uma cor em hexadecimal (ex.: #2563EB).`,
+    );
+  }
+  return cor.toUpperCase();
+}
+
 /** Configuração da ficha no formato do módulo puro. */
 function configDaFicha(
   linhas: { campo: campo_atleta; pedir: boolean; obrigatorio: boolean }[],
@@ -428,6 +454,18 @@ export class ConviteService {
       throw new BadRequestException('Selecione ao menos uma categoria.');
     }
 
+    // O uniforme principal é obrigatório: é ele que a súmula e o portal
+    // usam para distinguir as equipes em campo. O secundário só entra
+    // quando há conflito de cor, então fica opcional.
+    const uniformePrimario = corHex(dados.uniformePrimario, 'Uniforme principal');
+    const uniformeSecundario = corHex(
+      dados.uniformeSecundario,
+      'Uniforme secundário',
+    );
+    if (!uniformePrimario) {
+      throw new BadRequestException('Informe a cor do uniforme principal.');
+    }
+
     const abertas = await this.categorias(c.id);
     const porId = new Map(abertas.map((k) => [k.id, k]));
 
@@ -468,8 +506,8 @@ export class ConviteService {
           email: dados.email || null,
           cidade: dados.cidade || null,
           estado: dados.estado || null,
-          uniforme_primario: dados.uniformePrimario || null,
-          uniforme_secundario: dados.uniformeSecundario || null,
+          uniforme_primario: uniformePrimario,
+          uniforme_secundario: uniformeSecundario,
           escudo_url: paraCaminho(dados.escudoUrl),
           origem: 'link_convite',
           codigo_acesso: codigo,
@@ -495,6 +533,20 @@ export class ConviteService {
       throw new BadRequestException('Informe o nome da equipe.');
     }
 
+    // a equipe pode trocar a cor do uniforme principal, mas não voltar a
+    // ficar sem ela — a inscrição já a exigiu
+    let uniformePrimario: string | null = null;
+    if (dados.uniformePrimario !== undefined) {
+      uniformePrimario = corHex(dados.uniformePrimario, 'Uniforme principal');
+      if (!uniformePrimario) {
+        throw new BadRequestException('Informe a cor do uniforme principal.');
+      }
+    }
+    const uniformeSecundario =
+      dados.uniformeSecundario === undefined
+        ? null
+        : corHex(dados.uniformeSecundario, 'Uniforme secundário');
+
     return this.prisma.comOrganizacao(competicao.organizacao_id, async (tx) => {
       await tx.times.update({
         where: { id: equipeId },
@@ -510,10 +562,10 @@ export class ConviteService {
           ...(dados.cidade !== undefined && { cidade: dados.cidade || null }),
           ...(dados.estado !== undefined && { estado: dados.estado || null }),
           ...(dados.uniformePrimario !== undefined && {
-            uniforme_primario: dados.uniformePrimario || null,
+            uniforme_primario: uniformePrimario,
           }),
           ...(dados.uniformeSecundario !== undefined && {
-            uniforme_secundario: dados.uniformeSecundario || null,
+            uniforme_secundario: uniformeSecundario,
           }),
           ...(dados.escudoUrl !== undefined && {
             escudo_url: paraCaminho(dados.escudoUrl),

@@ -9,13 +9,18 @@
  */
 
 function iniciais(nome: string): string {
-  return nome
+  const das = nome
     .split(/\s+/)
     .filter((p) => p.length > 2 || /^[A-Z]/.test(p))
     .slice(0, 2)
     .map((p) => p[0])
     .join('')
     .toUpperCase();
+
+  // o filtro pode zerar tudo — nome só de partícula curta ("os 12"), ou
+  // campo ainda em branco na pré-visualização da inscrição. Círculo vazio
+  // parece defeito, não "sem escudo".
+  return das || nome.trim()[0]?.toUpperCase() || '?';
 }
 
 /** Cor estável a partir do nome: a mesma equipe tem sempre a mesma cor. */

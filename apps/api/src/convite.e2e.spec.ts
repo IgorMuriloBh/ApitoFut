@@ -53,14 +53,20 @@ async function req(
   return { code: r.status, corpo: (await r.json().catch(() => null)) as any };
 }
 
-const inscreverEquipe = (nome: string, categoriaIds = [categoriaId]) =>
+const inscreverEquipe = (
+  nome: string,
+  categoriaIds = [categoriaId],
+  extra: Record<string, unknown> = {},
+) =>
   req(`/convite/${SLUG}/equipes`, {
     metodo: 'POST',
     corpo: {
       nome,
       responsavel: 'Responsável E2E',
       contato: '31 90000-0000',
+      uniformePrimario: '#2563EB',
       categoriaIds,
+      ...extra,
     },
   });
 
@@ -227,6 +233,52 @@ describe('auto-cadastro', () => {
       corpo: { nome: 'E2E Sem Cat', responsavel: 'X', contato: '1', categoriaIds: [] },
     });
     assert.equal(semCategoria.code, 400);
+  });
+
+  test('uniforme principal é obrigatório; o secundário não', async () => {
+    const sem = await req(`/convite/${SLUG}/equipes`, {
+      metodo: 'POST',
+      corpo: {
+        nome: 'E2E Sem Uniforme',
+        responsavel: 'X',
+        contato: '1',
+        categoriaIds: [categoriaId],
+      },
+    });
+    assert.equal(sem.code, 400);
+    assert.match(sem.corpo.message, /uniforme principal/i);
+
+    // o secundário só existe quando a equipe o declara: ausente é null,
+    // que é diferente de branco
+    const r = await inscreverEquipe('E2E So Primario');
+    assert.equal(r.code, 201);
+    const t = await db.times.findUniqueOrThrow({ where: { id: r.corpo.equipe.id } });
+    assert.equal(t.uniforme_primario?.trim(), '#2563EB');
+    assert.equal(t.uniforme_secundario, null);
+
+    await db.times.delete({ where: { id: t.id } });
+  });
+
+  test('hex inválido é recusado antes de o banco reclamar', async () => {
+    const r = await inscreverEquipe('E2E Cor Torta', [categoriaId], {
+      uniformePrimario: 'azul',
+    });
+    assert.equal(r.code, 400);
+    assert.match(r.corpo.message, /hexadecimal/i);
+  });
+
+  test('hex de três dígitos é expandido — char(7) recusaria', async () => {
+    const r = await inscreverEquipe('E2E Cor Curta', [categoriaId], {
+      uniformePrimario: '#f00',
+      uniformeSecundario: '#fff',
+    });
+    assert.equal(r.code, 201);
+
+    const t = await db.times.findUniqueOrThrow({ where: { id: r.corpo.equipe.id } });
+    assert.equal(t.uniforme_primario?.trim(), '#FF0000');
+    assert.equal(t.uniforme_secundario?.trim(), '#FFFFFF');
+
+    await db.times.delete({ where: { id: t.id } });
   });
 
   test('nome repetido na mesma competição é recusado', async () => {

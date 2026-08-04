@@ -345,11 +345,25 @@ agrupado. Quatro consequências que valem registrar:
   `dataDeNascimento()`: ano entre 1900 e o corrente, data que existe, não no
   futuro. O `min`/`max` no campo é conveniência, não validação.
 
+- **Escudo e uniforme entram já na inscrição.** O uniforme principal é
+  **obrigatório** (é ele que distingue as equipes em campo, na súmula e no
+  portal); o secundário só existe quando a equipe o declara — ausente é `null`,
+  que é diferente de branco. `corHex()` valida antes do banco: `uniforme_*` é
+  `char(7)` com CHECK desde a migration 03, e o erro de constraint não diz nada
+  a quem preenche o formulário. Hex de três dígitos é expandido.
+
 O upload da equipe (`POST /equipe/uploads`) existe porque `POST /painel/uploads`
 exige `AuthGuard` e quem preenche a ficha não tem conta. A credencial é o
 código; ele resolve a organização, e é ela — nunca o cliente — que decide onde
 grava. A leitura do corpo cru é a mesma dos dois lados
 (`src/arquivos/corpo-cru.ts`).
+
+**O escudo sobe DEPOIS de criada a equipe**, e é por isso que a inscrição faz
+três chamadas: o upload é autenticado pelo código de acesso, que só existe
+depois do cadastro. Falhando o upload, a equipe continua inscrita e o código
+aparece — o escudo entra pela aba de dados. A alternativa seria um upload aberto
+só pelo slug, e aí qualquer um com o link escreveria arquivos no storage da
+organização.
 
 ### Campos, árbitros e súmula impressa (RF013, RF014, RF016, RF018)
 
