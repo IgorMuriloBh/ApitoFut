@@ -136,12 +136,22 @@ export function Configuracao({ competicao }: { competicao: CompeticaoDoPainel })
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  /**
+   * Há marcação feita e ainda não gravada.
+   *
+   * Salvar é explícito nesta tela, e trocar de categoria recarrega tudo —
+   * quem marcava "pedir foto" e mudava o seletor perdia a marcação sem
+   * ver nada acontecer, e depois descobria pela área da equipe que o
+   * campo não era pedido. O aviso é o que faltava.
+   */
+  const [sujo, setSujo] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!categoriaId) return;
     setErro(null);
     try {
       setCfg(await api.configuracao(categoriaId));
+      setSujo(false);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falha ao carregar.');
     }
@@ -176,8 +186,22 @@ export function Configuracao({ competicao }: { competicao: CompeticaoDoPainel })
 
   const mexer = (mudanca: Partial<ConfiguracaoDaCategoria>) => {
     setAviso(null);
+    setSujo(true);
     setCfg({ ...cfg, ...mudanca });
   };
+
+  /** Trocar de categoria recarrega: confirma antes de descartar. */
+  function trocarCategoria(id: string) {
+    if (
+      sujo &&
+      !window.confirm(
+        'Há alterações não salvas nesta categoria. Trocar agora descarta o que foi marcado. Continuar?',
+      )
+    ) {
+      return;
+    }
+    setCategoriaId(id);
+  }
 
   async function salvar() {
     setErro(null);
@@ -198,6 +222,15 @@ export function Configuracao({ competicao }: { competicao: CompeticaoDoPainel })
   }
 
   async function replicar() {
+    // a réplica lê do BANCO, não da tela: marcar e replicar sem salvar
+    // propagaria a configuração antiga, e o organizador sairia achando
+    // que as quatro categorias ficaram iguais ao que ele está vendo
+    if (sujo) {
+      setErro(
+        'Salve a configuração desta categoria antes de replicar — a réplica copia o que está gravado.',
+      );
+      return;
+    }
     if (
       !window.confirm(
         `Replicar a configuração de "${cfg!.categoria.nome}" para as outras categorias desta competição?`,
@@ -227,7 +260,7 @@ export function Configuracao({ competicao }: { competicao: CompeticaoDoPainel })
           <select
             className={`${classeEntrada} max-w-64`}
             value={categoriaId}
-            onChange={(e) => setCategoriaId(e.target.value)}
+            onChange={(e) => trocarCategoria(e.target.value)}
           >
             {competicao.categorias.map((k) => (
               <option key={k.id} value={k.id}>
@@ -236,6 +269,11 @@ export function Configuracao({ competicao }: { competicao: CompeticaoDoPainel })
             ))}
           </select>
           <span className="flex-1" />
+          {sujo && (
+            <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
+              alterações não salvas
+            </span>
+          )}
           {competicao.categorias.length > 1 && (
             <Botao variante="neutro" disabled={salvando} onClick={replicar}>
               ⧉ Replicar para as outras
