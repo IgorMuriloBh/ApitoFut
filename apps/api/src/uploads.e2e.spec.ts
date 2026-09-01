@@ -157,7 +157,16 @@ describe('envio', () => {
 describe('entrega', () => {
   test('serve com o tipo certo e nosniff', async () => {
     const { corpo } = await enviar(pngValido(10));
-    const r = await fetch(corpo.url);
+
+    // A entrega é buscada no app DESTA suíte, não na URL absoluta do
+    // payload: `urlPublica()` aponta para localhost:3000 por padrão, e a
+    // suíte sobe em porta aleatória. Seguir a URL absoluta fazia o teste
+    // depender de quem estivesse ocupando a 3000 — outro serviço na porta
+    // derrubava a suíte com um 404 que nada tinha a ver com upload.
+    const caminho = new URL(corpo.url).pathname;
+    assert.match(caminho, /^\/uploads\/[0-9a-f-]{36}\/[a-f0-9]{64}\.png$/);
+
+    const r = await fetch(`${base}${caminho}`);
 
     assert.equal(r.status, 200);
     assert.equal(r.headers.get('content-type'), 'image/png');

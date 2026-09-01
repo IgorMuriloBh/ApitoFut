@@ -214,11 +214,26 @@ describe('regras da classificação', () => {
   before(() => definirStatus('em_andamento'));
 
   test('toda equipe inscrita aparece, mesmo sem ter jogado', async () => {
+    // A regra é "toda equipe inscrita consta", não "constam N equipes".
+    // O número fixo quebrava assim que alguém se inscrevia pelo link na
+    // competição de demonstração — e falhava acusando o portal, quando o
+    // que mudou foi o seed. O conjunto esperado vem do banco.
+    const inscritas = await admin.categoria_times.findMany({
+      where: { categoria_id: CATEGORIA },
+      include: { times: { select: { nome: true } } },
+    });
+    const esperadas = inscritas.map((v) => v.times.nome).sort();
+
     const d = await getJson(
       `/competicoes/${SLUG}/categorias/${CATEGORIA}/classificacao`,
     );
     const times = d.grupos.flatMap((g: any) => g.times.map((t: any) => t.nome));
-    assert.equal(times.length, 4, 'as 4 equipes da categoria devem constar');
+
+    assert.deepEqual(
+      times.sort(),
+      esperadas,
+      'a classificação deve listar exatamente as equipes inscritas na categoria',
+    );
     const semJogo = d.grupos
       .flatMap((g: any) => g.times)
       .filter((t: any) => t.jogos === 0);
