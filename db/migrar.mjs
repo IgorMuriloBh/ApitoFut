@@ -123,8 +123,40 @@ async function abrir(url, ssl) {
   return cliente;
 }
 
+/**
+ * A rede privada não está de pé no instante em que o contêiner começa.
+ *
+ * No Railway os serviços conversam por nomes como `postgres.railway.internal`,
+ * e esse DNS leva alguns segundos para responder depois que o processo sobe.
+ * Quem conecta na primeira linha — como este runner, que roda antes da API —
+ * pega `ENOTFOUND` e o contêiner morre. O orquestrador reinicia, a corrida se
+ * repete, e o serviço fica em laço de crash sem que nada esteja errado na
+ * configuração.
+ *
+ * Esperar resolve, e não custa nada quando a rede já está pronta: a primeira
+ * tentativa passa direto.
+ */
+const TRANSITORIOS = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ETIMEDOUT'];
+
+async function conectarComEspera(url, tentativas = 12, intervaloMs = 2500) {
+  for (let n = 1; ; n++) {
+    try {
+      return await conectar(url);
+    } catch (e) {
+      const transitorio = TRANSITORIOS.includes(e.code);
+      if (!transitorio || n >= tentativas) throw e;
+      if (n === 1) {
+        console.log(
+          `→ banco ainda inacessível (${e.code}); aguardando a rede subir…`,
+        );
+      }
+      await new Promise((r) => setTimeout(r, intervaloMs));
+    }
+  }
+}
+
 async function main() {
-  const cliente = await conectar(url);
+  const cliente = await conectarComEspera(url);
 
   const { rows: [quem] } = await cliente.query(
     'SELECT current_user AS usuario, current_database() AS banco',
