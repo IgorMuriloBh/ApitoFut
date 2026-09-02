@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, sessao, type CompeticaoDoPainel, type Sessao } from './lib/api';
+import {
+  api,
+  carregarConfiguracao,
+  sessao,
+  type CompeticaoDoPainel,
+  type Sessao,
+} from './lib/api';
 import { MenuLateral, type SecaoDoMenu } from './componentes/MenuLateral';
 import { Admin, type AbaDoAdm } from './telas/Admin';
 import { BaseDeAtletas } from './telas/BaseDeAtletas';
@@ -52,6 +58,14 @@ export function App() {
   const [erro, setErro] = useState<string | null>(null);
 
   const recarregar = useCallback(() => setVersao((v) => v + 1), []);
+
+  // Endereço do portal, buscado da API uma vez. Não é variável de build de
+  // propósito: `VITE_PORTAL_URL` só entrava no bundle ao reconstruir a
+  // imagem, e trocar o domínio sem rebuild fazia os links de convite
+  // saírem com o endereço antigo, sem erro visível.
+  useEffect(() => {
+    void carregarConfiguracao();
+  }, []);
 
   // O cliente da API dispara este evento quando recebe 401: token expirado
   // derruba a sessão em qualquer tela, sem cada uma precisar tratar.

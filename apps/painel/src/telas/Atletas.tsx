@@ -5,12 +5,12 @@ import { Escudo } from '../componentes/Escudo';
 import {
   ErroDaApi,
   api,
+  portalUrl,
   type AtletaDaBase,
   type CompeticaoDoPainel,
   type Elenco,
 } from '../lib/api';
 
-const PORTAL_URL = import.meta.env.VITE_PORTAL_URL ?? 'http://localhost:3001';
 
 /**
  * Elenco por categoria (RF008–RF012). O atleta vem da base global ou é
@@ -142,7 +142,7 @@ export function Atletas({ competicao }: { competicao: CompeticaoDoPainel }) {
                                     página de validação que a arbitragem
                                     abre na beira do campo */}
                                 <a
-                                  href={`${PORTAL_URL}/c/${competicao.id}/${a.atletaId}`}
+                                  href={`${portalUrl()}/c/${competicao.id}/${a.atletaId}`}
                                   target="_blank"
                                   rel="noreferrer"
                                   title="Carteirinha e validação por QR"

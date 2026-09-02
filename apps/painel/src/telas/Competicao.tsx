@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { EnvioDeImagem } from '../componentes/EnvioDeImagem';
 import { MenuLateral, type SecaoDoMenu } from '../componentes/MenuLateral';
 import { Alerta, Botao, Cartao, Selo, classeEntrada } from '../componentes/ui';
-import { api, type CompeticaoDoPainel, type JogoDaTabela } from '../lib/api';
+import { api, type CompeticaoDoPainel, type JogoDaTabela, portalUrl } from '../lib/api';
 import { STATUS, formataData } from '../lib/dominio';
 import { Atletas } from './Atletas';
 import { Configuracao } from './Configuracao';
@@ -65,7 +65,6 @@ const SECOES: SecaoDoMenu[] = [
   },
 ];
 
-const PORTAL = import.meta.env.VITE_PORTAL_URL ?? 'http://localhost:3001';
 
 export function Competicao({
   competicao,
@@ -196,7 +195,7 @@ export function Competicao({
           </div>
           {publico ? (
             <a
-              href={`${PORTAL}/${competicao.slug}`}
+              href={`${portalUrl()}/${competicao.slug}`}
               target="_blank"
               rel="noreferrer"
               className="px-4 py-2 rounded-lg text-sm font-medium bg-white border border-slate-300 hover:bg-slate-50"
@@ -270,7 +269,7 @@ export function Competicao({
                       {publico ? (
                         <a
                           className="text-marca hover:underline"
-                          href={`${PORTAL}/${competicao.slug}/${k.id}`}
+                          href={`${portalUrl()}/${competicao.slug}/${k.id}`}
                           target="_blank"
                           rel="noreferrer"
                         >

@@ -7,6 +7,38 @@
 const BASE = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_URL ?? '');
 const CHAVE = 'apitofut.sessao';
 
+/**
+ * Endereço do portal público, vindo da API em runtime.
+ *
+ * NÃO é variável do Vite. `import.meta.env.VITE_*` é substituída por texto
+ * durante o BUILD: trocar o domínio exigia reconstruir a imagem, e quem
+ * apenas trocava a variável do serviço via o link antigo continuar
+ * aparecendo, sem erro nenhum. Aconteceu — os links de convite saíam com
+ * `localhost:3001` para as equipes.
+ *
+ * O valor é buscado uma vez, no início, e guardado aqui. O `?? ''` do
+ * fallback é deliberado: link vazio quebra visivelmente, enquanto um
+ * `localhost` volta a enganar quem estiver testando em produção.
+ */
+let portalUrlCache: string | null = null;
+
+export async function carregarConfiguracao(): Promise<void> {
+  if (portalUrlCache !== null) return;
+  try {
+    const r = await fetch(`${BASE}/configuracao`);
+    if (!r.ok) return;
+    const { portalUrl } = (await r.json()) as { portalUrl?: string };
+    if (portalUrl) portalUrlCache = portalUrl.replace(/\/+$/, '');
+  } catch {
+    // rede fora: as telas mostram link vazio, que é honesto
+  }
+}
+
+/** Endereço do portal. Vazio até `carregarConfiguracao()` responder. */
+export function portalUrl(): string {
+  return portalUrlCache ?? '';
+}
+
 export interface Sessao {
   token: string;
   usuario: { id: string; nome: string; perfil: string; organizacaoId: string };

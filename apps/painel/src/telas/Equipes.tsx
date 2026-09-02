@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { Alerta, Botao, Campo, Cartao, classeEntrada } from '../componentes/ui';
 import { EnvioDeImagem } from '../componentes/EnvioDeImagem';
 import { Escudo } from '../componentes/Escudo';
-import { api, type CompeticaoDoPainel, type EquipeDoPainel } from '../lib/api';
+import { api, type CompeticaoDoPainel, type EquipeDoPainel, portalUrl } from '../lib/api';
 import { CORES, UFS } from '../lib/dominio';
 
-const PORTAL_URL = import.meta.env.VITE_PORTAL_URL ?? 'http://localhost:3001';
 
 /** Equipes da competição (RF006/RF007) e seu vínculo com as categorias. */
 export function Equipes({ competicao }: { competicao: CompeticaoDoPainel }) {
@@ -304,7 +303,7 @@ function FormularioDeEquipe({
  */
 function ConviteDeEquipes({ slug }: { slug: string }) {
   const [copiado, setCopiado] = useState(false);
-  const link = `${PORTAL_URL}/${slug}/inscricao`;
+  const link = `${portalUrl()}/${slug}/inscricao`;
 
   return (
     <Cartao

@@ -204,6 +204,8 @@ Atualizar: `git pull && docker compose --profile completo up -d --build`.
 
 - **`VITE_API_URL` e `API_URL` são de BUILD**, não de runtime. Mudou a URL da
   API? Rebuild do painel e do portal — trocar a variável do serviço não basta.
+  O endereço do **portal** já não é assim: o painel o lê de `GET /configuracao`
+  em runtime, e ele vem do `PORTAL_URL` da API. Uma variável, um lugar.
 - **A porta é a 8080.** O Railway injeta `PORT=8080` no contêiner e isso
   sobrepõe o `ENV PORT` do Dockerfile. O domínio precisa apontar para 8080, ou
   o serviço sobe, o deploy fica verde e o domínio responde 502.
