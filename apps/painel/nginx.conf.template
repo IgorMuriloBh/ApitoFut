@@ -2,7 +2,12 @@
 # o Railway escolhe a porta e a injeta no ambiente, e o nginx não lê
 # variáveis de ambiente sozinho.
 server {
+  # IPv4 e IPv6, e o segundo não é opcional: a malha interna do Railway é
+  # IPv6, e o proxy dele alcança o contêiner por ali. Escutando só em
+  # 0.0.0.0 o serviço sobe, o deploy é dado como bem-sucedido e o domínio
+  # responde 502 — sem nada no log, porque a conexão nunca chega.
   listen ${PORT};
+  listen [::]:${PORT};
   server_name _;
   root /usr/share/nginx/html;
 
