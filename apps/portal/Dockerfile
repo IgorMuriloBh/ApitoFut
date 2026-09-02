@@ -23,9 +23,14 @@ RUN npm run build
 
 FROM base AS runtime
 ENV NODE_ENV=production
-# standalone escuta em 127.0.0.1 por padrão; de fora do contêiner isso é
-# inalcançável (foi o que quebrou o deploy do Pelada no Railway)
-ENV HOSTNAME=0.0.0.0
+# O standalone escuta em 127.0.0.1 por padrão, inalcançável de fora do
+# contêiner — foi o que quebrou o deploy do Pelada no Railway.
+#
+# `::` e não `0.0.0.0`: o Node abre o socket em modo dual-stack, atendendo
+# IPv6 e IPv4 pelo mesmo listener. A malha interna do Railway é IPv6, e
+# escutar só em IPv4 dá o pior sintoma possível — deploy verde, contêiner
+# de pé, e 502 no domínio sem nada no log.
+ENV HOSTNAME="::"
 ENV PORT=3001
 
 # Artefatos do output standalone. O tracing tem raiz no monorepo, então a
