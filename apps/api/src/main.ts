@@ -28,7 +28,19 @@ try {
  * definir DATABASE_URL explicitamente, e ela tem precedência.
  */
 function derivarConexaoDaAplicacao(): void {
-  if (process.env.DATABASE_URL) return;
+  const informada = process.env.DATABASE_URL;
+
+  // Vale também quando ela EXISTE mas não é utilizável. Uma URL quebrada não
+  // é uma escolha do operador, é um engano — e insistir nela só produz outro
+  // deploy morto. Derivar e avisar resolve; a variável fica lá, visível, para
+  // ser limpa depois.
+  if (informada && utilizavel(informada)) return;
+  if (informada) {
+    console.warn(
+      'AVISO: DATABASE_URL está definida mas não é uma URL válida. ' +
+        'Derivando de DATABASE_URL_ADMIN e seguindo — remova a variável.',
+    );
+  }
 
   const dono = process.env.DATABASE_URL_ADMIN;
   const senha = process.env.APITOFUT_APP_PASSWORD;
@@ -46,6 +58,16 @@ function derivarConexaoDaAplicacao(): void {
     );
   } catch {
     // DATABASE_URL_ADMIN inválida: `conferirConexao` dá a mensagem boa
+  }
+}
+
+/** URL que o `pg` consegue usar: parseia e tem host. */
+function utilizavel(url: string): boolean {
+  if (url.includes('${{')) return false;
+  try {
+    return new URL(url).hostname !== '';
+  } catch {
+    return false;
   }
 }
 
