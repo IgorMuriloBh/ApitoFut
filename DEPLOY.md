@@ -74,7 +74,6 @@ Variáveis:
 
 ```
 DATABASE_URL_ADMIN = ${{Postgres.DATABASE_URL}}
-DATABASE_URL       = postgresql://apitofut_app:<APITOFUT_APP_PASSWORD>@<host>:<porta>/<banco>
 APITOFUT_APP_PASSWORD = <senha forte>
 AUTH_SEGREDO       = <48 bytes aleatórios>
 NODE_ENV           = production
@@ -83,12 +82,19 @@ ARQUIVOS_BASE_URL  = https://<dominio-da-api>
 PORTAL_URL         = https://<dominio-do-portal>
 ```
 
-São **duas** conexões de propósito. `DATABASE_URL_ADMIN` é o dono, que aplica as
-migrações e ignora RLS. `DATABASE_URL` é `apitofut_app`, que **obedece** ao RLS e
-é como a aplicação atende os requests — é o que impede uma organização de
-enxergar a competição da outra. O papel `apitofut_app` é criado pela migration 06
-e o runner aplica a senha do ambiente nele; monte a `DATABASE_URL` com o mesmo
-host/porta/banco da `DATABASE_URL_ADMIN`, trocando usuário e senha.
+**Não defina `DATABASE_URL`.** A aplicação a deriva sozinha da
+`DATABASE_URL_ADMIN`, trocando usuário e senha pelo papel `apitofut_app`.
+
+São duas conexões para o mesmo banco, de propósito: `DATABASE_URL_ADMIN` é o
+dono, que aplica as migrações e ignora RLS; a derivada é `apitofut_app`, que
+**obedece** às políticas e é quem atende os requests — é o que impede uma
+organização de enxergar a competição da outra. O papel é criado pela migration 06
+e o runner aplica nele a senha do ambiente.
+
+Montar a segunda URL à mão era o passo que mais travava o deploy: referência a
+variável de outro serviço resolvendo vazia, senha esquecida no placeholder, porta
+ausente — e nada disso aparece até a aplicação subir e quebrar. Quem precisar de
+controle explícito ainda pode definir `DATABASE_URL`; ela tem precedência.
 
 Gere o segredo com:
 
