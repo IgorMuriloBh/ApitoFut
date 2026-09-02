@@ -1,0 +1,30 @@
+# Servidor estático do painel (SPA). `envsubst` troca ${PORT} na subida —
+# o Railway escolhe a porta e a injeta no ambiente, e o nginx não lê
+# variáveis de ambiente sozinho.
+server {
+  listen ${PORT};
+  server_name _;
+  root /usr/share/nginx/html;
+
+  # gzip nos assets do build; o painel é React e o bundle não é pequeno
+  gzip on;
+  gzip_types text/css application/javascript application/json image/svg+xml;
+  gzip_min_length 1024;
+
+  # o hash no nome do arquivo é a versão: pode cachear para sempre
+  location /assets/ {
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+  }
+
+  # SPA: rota do React não existe no disco, e um 404 aqui quebraria
+  # qualquer link direto ou F5 fora da raiz
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  # index.html nunca é cacheado: é ele que aponta para o bundle novo
+  location = /index.html {
+    add_header Cache-Control "no-cache";
+  }
+}

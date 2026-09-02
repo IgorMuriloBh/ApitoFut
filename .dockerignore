@@ -1,0 +1,28 @@
+# O contexto de build é a raiz do monorepo — sem esta lista, o `docker build`
+# empacota node_modules e .next inteiros a cada camada.
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/build
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+.git
+.github
+.claude
+.env
+.env.*
+!.env.example
+
+# imagens enviadas em desenvolvimento: o storage não é o repositório
+apps/api/uploads
+uploads
+
+prototipo
+docs
+*.md
+!DEPLOY.md
+
+.DS_Store
+*.log

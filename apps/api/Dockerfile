@@ -1,0 +1,56 @@
+# ── API (NestJS + Prisma) ───────────────────────────────────────────────
+#
+# CONTEXTO DE BUILD É A RAIZ DO REPOSITÓRIO, não esta pasta: o projeto é um
+# monorepo com npm workspaces e o package-lock.json mora lá em cima. Um
+# `npm ci` rodando só dentro de apps/api não teria lockfile e resolveria
+# versões diferentes das testadas.
+#
+#   docker build -f apps/api/Dockerfile -t apitofut-api .
+#
+# No Railway: Root Directory = "/" e Dockerfile Path = apps/api/Dockerfile.
+FROM node:24-slim AS base
+WORKDIR /repo
+# OpenSSL é exigido pelo Prisma
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl \
+ && rm -rf /var/lib/apt/lists/*
+
+# ── dependências ────────────────────────────────────────────────────────
+FROM base AS deps
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+# --ignore-scripts: o `prisma generate` roda no build, com o schema já copiado
+RUN npm ci --workspace @apitofut/api --include-workspace-root --ignore-scripts
+
+# ── build (prisma generate + tsc) ───────────────────────────────────────
+FROM base AS build
+COPY --from=deps /repo/node_modules ./node_modules
+COPY package.json package-lock.json ./
+COPY apps/api ./apps/api
+WORKDIR /repo/apps/api
+RUN npx prisma generate && npm run build
+
+# ── runtime ─────────────────────────────────────────────────────────────
+FROM base AS runtime
+ENV NODE_ENV=production
+ENV PORT=3000
+
+COPY --from=build /repo/node_modules ./node_modules
+COPY --from=build /repo/apps/api/dist ./apps/api/dist
+COPY --from=build /repo/apps/api/prisma ./apps/api/prisma
+COPY apps/api/package.json apps/api/prisma.config.ts ./apps/api/
+COPY package.json ./
+
+# O runner de migrações e os .sql viajam na imagem: o schema é SQL-first e
+# não há `prisma migrate deploy` para chamar. Ver db/migrar.mjs.
+COPY db ./db
+
+# Destino do volume persistente. Sem ele, todo deploy apaga os escudos e as
+# fotos já enviados — o banco guarda só o caminho, não a imagem.
+RUN mkdir -p /repo/uploads
+ENV ARQUIVOS_DIR=/repo/uploads
+
+WORKDIR /repo/apps/api
+EXPOSE 3000
+# migra antes de servir: subir a API contra um schema velho falha em
+# runtime, no meio de um request, em vez de falhar no deploy
+CMD ["sh", "-c", "node /repo/db/migrar.mjs && node dist/main.js"]

@@ -122,7 +122,11 @@ propósito faz 5 testes falharem.
 
 ## 4. Banco de dados
 
-18 migrations, aplicadas em ordem alfabética **na primeira subida do volume**.
+19 migrations, aplicadas em ordem alfabética. Em desenvolvimento quem as aplica é
+o *initdb* da imagem do Postgres, **na primeira subida do volume**; em produção é
+`db/migrar.mjs`, que registra o que já rodou em `_migracoes` e recusa arquivo
+alterado depois de aplicado. Banco gerenciado não tem o hook do initdb — daí o
+runner. Ver `DEPLOY.md`.
 Estado atual do schema: **28 tabelas, 4 views, 16 enums, 28 políticas de RLS**.
 Mudou o schema? Nova migration. Nunca editar as antigas, nunca `prisma migrate dev`.
 Depois, `npm run db:pull` para regenerar os tipos.
@@ -813,6 +817,34 @@ for p in 3000 3001 5173; do kill $(lsof -ti:$p) 2>/dev/null; done
 **Verificar tela por DOM é mais barato e mais preciso que screenshot.** Para
 conferir se um elemento existe, ler `document.querySelector(...)` responde sem
 ambiguidade; screenshot serve para julgar layout, não para verificar dado.
+
+**A suíte deixa conexões ociosas para trás.** Cada spec sobe uma app Nest, e
+processo morto (OOM, `pkill`, timeout) não devolve as conexões: elas ficam `idle`
+no Postgres. Depois de muitas execuções seguidas o limite de 100 estoura e TUDO
+falha com `TooManyConnections` — que aparece como "seed precisa dos dois
+usuários", não como erro de conexão. Diagnóstico e cura:
+
+```bash
+docker compose exec -T db psql -U apitofut -d apitofut -c \
+  "select usename, state, count(*) from pg_stat_activity group by 1,2;"
+docker compose exec -T db psql -U apitofut -d apitofut -c \
+  "select pg_terminate_backend(pid) from pg_stat_activity
+    where usename='apitofut_app' and state='idle';"
+```
+
+**O encaminhamento de porta do Docker trava.** Se a 5433 passa a dar *timeout*
+(e não "conexão recusada") enquanto o contêiner aparece `running`, o problema é o
+port forward do Docker Desktop, não o banco. `docker compose up -d
+--force-recreate db` resolve; o volume `pgdata` preserva os dados.
+
+**Papel de banco é do CLUSTER, não do banco.** Rodar `db/migrar.mjs` contra um
+banco descartável no mesmo servidor troca a senha de `apitofut_app` para *todos*
+os bancos — inclusive o de desenvolvimento, que passa a recusar o `.env` local.
+
+**`deleteMany` com variável indefinida apaga tudo.** Para o Prisma,
+`where: { id: undefined }` é "sem filtro". Um `after` de teste que limpa por id
+guardado num `before` que falhou apaga a tabela inteira. Sempre guarde o id atrás
+de um `if`.
 
 **A API só recompila o que o `tsc --watch` viu.** Depois de mudar o schema
 (`db/*.sql`), rode `npm run db:pull` antes de compilar, senão os tipos do Prisma

@@ -762,7 +762,13 @@ describe('base única de atletas', () => {
   });
 
   after(async () => {
-    await db.competicoes.deleteMany({ where: { id: outraCompeticao } });
+    // A guarda não é zelo excessivo: `deleteMany({ where: { id: undefined } })`
+    // é, para o Prisma, "sem filtro" — e apaga a TABELA INTEIRA. Se o `before`
+    // acima falhar no meio (a máquina ficou sem memória, uma vez), a variável
+    // segue indefinida e a limpeza leva junto todo o banco de desenvolvimento.
+    if (outraCompeticao) {
+      await db.competicoes.deleteMany({ where: { id: outraCompeticao } });
+    }
   });
 
   test('acha quem jogou pela equipe de mesmo nome, e só ele', async () => {

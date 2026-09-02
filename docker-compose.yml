@@ -1,3 +1,23 @@
+# =====================================================================
+#  ApitoFut — stack local
+#
+#  DOIS MODOS, de propósito:
+#
+#    docker compose up -d
+#        só banco + Adminer. É o modo do dia a dia: as três apps rodam
+#        fora do Docker (`npm run api:dev` etc.), com recarga a cada
+#        salvamento. É também o que a suíte de testes espera.
+#
+#    docker compose --profile completo up --build
+#        a stack inteira em contêiner, igual ao que vai para produção.
+#        Serve para conferir os Dockerfiles antes de publicar.
+#
+#  As apps ficam num profile para que o modo de cima não construa três
+#  imagens a cada `docker compose up -d`.
+#
+#  Variáveis: copie .env.example para .env.
+# =====================================================================
+
 services:
   db:
     image: postgres:18-alpine
@@ -40,5 +60,63 @@ services:
       db:
         condition: service_healthy
 
+  # ── stack completa (profile "completo") ─────────────────────────────
+
+  api:
+    profiles: ["completo"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # a aplicação conecta como apitofut_app, que NÃO ignora RLS
+      DATABASE_URL: postgresql://apitofut_app:${APITOFUT_APP_PASSWORD:-apitofut_app_dev}@db:5432/apitofut
+      # o dono, só para o runner de migrações
+      DATABASE_URL_ADMIN: postgresql://apitofut:${POSTGRES_PASSWORD:-apitofut_dev}@db:5432/apitofut
+      APITOFUT_APP_PASSWORD: ${APITOFUT_APP_PASSWORD:-apitofut_app_dev}
+      AUTH_SEGREDO: ${AUTH_SEGREDO:-segredo-de-desenvolvimento-com-32-caracteres}
+      NODE_ENV: production
+      PORT: 3000
+      ARQUIVOS_BASE_URL: ${ARQUIVOS_BASE_URL:-http://localhost:3000}
+      PORTAL_URL: ${PORTAL_URL:-http://localhost:3001}
+    volumes:
+      # sem isto, todo rebuild apaga escudos e fotos já enviados
+      - uploads:/repo/uploads
+    ports:
+      - "${API_PORT:-3000}:3000"
+
+  portal:
+    profiles: ["completo"]
+    build:
+      context: .
+      dockerfile: apps/portal/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      # o portal fala com a API pelo servidor (rewrite de /api)
+      API_URL: http://api:3000
+    ports:
+      - "${PORTAL_PORT:-3001}:3001"
+
+  painel:
+    profiles: ["completo"]
+    build:
+      context: .
+      dockerfile: apps/painel/Dockerfile
+      args:
+        # EMBUTIDA NO BUNDLE no build — trocar depois exige rebuild.
+        # Precisa ser a URL que o NAVEGADOR alcança, não `http://api:3000`.
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${PAINEL_PORT:-5173}:8080"
+
 volumes:
   pgdata:
+  uploads:
