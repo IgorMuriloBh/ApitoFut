@@ -77,18 +77,43 @@ function arquivos() {
 
 const hashDe = (texto) => createHash('sha256').update(texto).digest('hex').slice(0, 16);
 
-/** Postgres gerenciado costuma exigir TLS; local, não o oferece. */
-function tls(conexao) {
-  if (/sslmode=disable/.test(conexao)) return false;
-  if (/localhost|127\.0\.0\.1|@db[:/]/.test(conexao)) return false;
-  // certificado do provedor não é validável a partir daqui; o canal
-  // segue cifrado, que é o ponto
-  return { rejectUnauthorized: false };
+/**
+ * Conecta, descobrindo o TLS em vez de adivinhá-lo.
+ *
+ * Adivinhar pelo nome do host não funciona: a rede interna do Railway usa
+ * `postgres.railway.internal` e NÃO oferece TLS, enquanto o endereço
+ * público do mesmo banco exige. Qualquer lista de exceções erra num dos
+ * dois. Então: respeita-se o `sslmode` quando ele vem na URL e, sem ele,
+ * tenta-se sem TLS — se o servidor recusar por exigir cifra, repete-se com
+ * TLS. Uma tentativa a mais no start vale mais que um deploy que não sobe.
+ *
+ * `rejectUnauthorized: false` porque o certificado do provedor não é
+ * validável daqui; o canal segue cifrado, que é o ponto.
+ */
+async function conectar(url) {
+  const modo = /[?&]sslmode=([a-z-]+)/.exec(url)?.[1];
+
+  if (modo === 'disable') return abrir(url, false);
+  if (modo) return abrir(url, { rejectUnauthorized: false });
+
+  try {
+    return await abrir(url, false);
+  } catch (e) {
+    // 28000 / mensagem do servidor quando a conexão sem cifra é recusada
+    if (!/SSL|ssl/.test(e.message ?? '')) throw e;
+    console.log('→ servidor exige TLS; repetindo a conexão cifrada.');
+    return abrir(url, { rejectUnauthorized: false });
+  }
+}
+
+async function abrir(url, ssl) {
+  const cliente = new pg.Client({ connectionString: url, ssl });
+  await cliente.connect();
+  return cliente;
 }
 
 async function main() {
-  const cliente = new pg.Client({ connectionString: url, ssl: tls(url) });
-  await cliente.connect();
+  const cliente = await conectar(url);
 
   const { rows: [quem] } = await cliente.query(
     'SELECT current_user AS usuario, current_database() AS banco',
