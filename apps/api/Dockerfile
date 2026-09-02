@@ -60,6 +60,12 @@ ENV ARQUIVOS_DIR=/repo/uploads
 
 WORKDIR /repo/apps/api
 EXPOSE 3000
-# migra antes de servir: subir a API contra um schema velho falha em
-# runtime, no meio de um request, em vez de falhar no deploy
-CMD ["sh", "-c", "node /repo/db/migrar.mjs && node dist/main.js"]
+# Migra antes de servir: subir a API contra um schema velho falha em
+# runtime, no meio de um request, em vez de falhar no deploy.
+#
+# Delega ao script `start` do package.json em vez de repetir o comando
+# aqui. O motivo é prático: algumas plataformas ignoram o CMD da imagem e
+# executam `npm start` por conta própria — o Railway faz isso. Com a
+# migração dentro do script, os dois caminhos levam ao mesmo lugar, e o
+# schema é aplicado de qualquer forma.
+CMD ["npm", "start"]

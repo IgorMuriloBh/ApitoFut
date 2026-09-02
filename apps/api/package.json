@@ -5,9 +5,9 @@
   "description": "API do ApitoFut — NestJS sobre PostgreSQL",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/main.js",
+    "start": "node ../../db/migrar.mjs && node dist/main.js",
     "start:dev": "tsc -p tsconfig.json --watch --preserveWatchOutput & node --watch dist/main.js",
-    "start:prod": "node dist/main.js",
+    "start:prod": "node ../../db/migrar.mjs && node dist/main.js",
     "test": "tsc -p tsconfig.spec.json && node --test --test-concurrency=1 \"dist/**/*.spec.js\"",
     "db:pull": "prisma db pull && prisma generate",
     "db:generate": "prisma generate"
