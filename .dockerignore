@@ -11,9 +11,16 @@ node_modules
 .git
 .github
 .claude
+# `**/` é obrigatório: o padrão `.env` sozinho casa APENAS com o arquivo na
+# raiz do contexto, e deixaria `apps/api/.env` entrar no build. Foi o que
+# aconteceu — o build local passou lendo as credenciais de desenvolvimento,
+# e só o Railway, sem esse arquivo, revelou que faltava configuração.
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
+!**/.env.example
 
 # imagens enviadas em desenvolvimento: o storage não é o repositório
 apps/api/uploads

@@ -27,7 +27,16 @@ COPY --from=deps /repo/node_modules ./node_modules
 COPY package.json package-lock.json ./
 COPY apps/api ./apps/api
 WORKDIR /repo/apps/api
-RUN npx prisma generate && npm run build
+# DATABASE_URL de fachada, válida só para este comando.
+#
+# `prisma generate` NÃO toca no banco — ele lê o schema.prisma e escreve o
+# client. Mas o `prisma.config.ts` resolve a datasource ao ser carregado, e
+# `env('DATABASE_URL')` estoura se a variável não existir. Em produção a
+# conexão real chega por ambiente, em runtime; no build não há banco algum
+# para apontar, e não deve haver.
+RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" \
+    npx prisma generate \
+ && npm run build
 
 # ── runtime ─────────────────────────────────────────────────────────────
 FROM base AS runtime
