@@ -51,7 +51,18 @@ const SENHA_DEV = 'apitofut_app_dev';
 
 const url = process.env.DATABASE_URL_ADMIN ?? process.env.DATABASE_URL;
 if (!url) {
-  console.error('ERRO: defina DATABASE_URL_ADMIN (ou DATABASE_URL).');
+  console.error(
+    'ERRO: DATABASE_URL_ADMIN (ou DATABASE_URL) não chegou ao processo.\n' +
+      '\n' +
+      'Se você definiu a variável como referência a outro serviço — algo como\n' +
+      '${{Postgres.DATABASE_URL}} — atenção: quando o nome do serviço dentro\n' +
+      'da referência não existe, a plataforma resolve para STRING VAZIA, não\n' +
+      'para um erro. O sintoma é este: a variável "está lá" e mesmo assim não\n' +
+      'chega nada.\n' +
+      '\n' +
+      'Confira o nome exato do serviço de banco e use-o na referência, ou cole\n' +
+      'a string de conexão literal.',
+  );
   process.exit(1);
 }
 
