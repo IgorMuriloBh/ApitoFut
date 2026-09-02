@@ -9,7 +9,51 @@ try {
   // sem .env: assume variáveis já exportadas no ambiente
 }
 
+/**
+ * Confere a DATABASE_URL antes de instanciar qualquer provider.
+ *
+ * Sem isto o erro chega como `TypeError: Invalid URL` vindo de dentro do
+ * `pg`, no `onModuleInit` do RealtimeService, com a URL redigida pelo log
+ * do provedor — não dá para saber se faltou a variável, se o valor tem
+ * caractere inválido, ou se uma referência do tipo `${{Postgres.PGHOST}}`
+ * não foi resolvida e virou texto literal. Este erro diz qual dos três é.
+ */
+function conferirConexao(): void {
+  const url = process.env.DATABASE_URL;
+
+  if (!url) {
+    throw new Error(
+      'DATABASE_URL não definida. É a conexão do papel da aplicação ' +
+        '(apitofut_app), que obedece ao RLS.',
+    );
+  }
+
+  // A referência não resolvida vem ANTES do parse, e não depois: `new URL`
+  // ACEITA "${{Postgres.PGHOST}}" no lugar do host — só reclama no lugar da
+  // porta, que precisa ser numérica. Quem confia no parse deixa passar
+  // metade dos casos, e a aplicação sobe apontando para um host literal.
+  if (url.includes('${{')) {
+    throw new Error(
+      'DATABASE_URL contém "${{...}}": a referência a outro serviço não foi ' +
+        'resolvida e o valor foi gravado como texto. Confira se o nome do ' +
+        'serviço dentro da referência é exatamente o nome do serviço de banco.',
+    );
+  }
+
+  try {
+    new URL(url);
+  } catch {
+    // não imprime a URL: ela carrega a senha
+    throw new Error(
+      'DATABASE_URL não é uma URL válida. Formato esperado: ' +
+        'postgresql://usuario:senha@host:porta/banco — senha com caractere ' +
+        'especial precisa vir percent-encoded.',
+    );
+  }
+}
+
 async function bootstrap(): Promise<void> {
+  conferirConexao();
   const app = await NestFactory.create(AppModule);
   app.enableCors();
 
