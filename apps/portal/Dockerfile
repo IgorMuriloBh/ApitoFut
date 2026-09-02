@@ -13,8 +13,18 @@ COPY apps/portal/package.json apps/portal/
 RUN npm ci --workspace @apitofut/portal --include-workspace-root
 
 FROM base AS build
-# O portal fala com a API pelo servidor (rewrite de /api), então a URL é
-# lida em runtime — ao contrário do painel, aqui nada é embutido no bundle.
+# ATENÇÃO: a URL da API é resolvida no BUILD, não em runtime.
+#
+# O portal fala com a API pelo rewrite de `/api`, e o Next avalia
+# `rewrites()` durante o build, gravando o destino já resolvido em
+# `.next/routes-manifest.json`. Sem esta variável aqui, o manifesto sai
+# com o padrão `http://localhost:3000` — que dentro do contêiner não é
+# ninguém — e toda chamada da área da equipe responde 500.
+#
+# Ou seja: é o mesmo cuidado do VITE_API_URL do painel. Mudou a API?
+# Rebuild, não basta trocar a variável do serviço.
+ARG API_URL
+ENV API_URL=$API_URL
 COPY --from=deps /repo/node_modules ./node_modules
 COPY package.json package-lock.json ./
 COPY apps/portal ./apps/portal

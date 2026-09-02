@@ -93,6 +93,10 @@ services:
     build:
       context: .
       dockerfile: apps/portal/Dockerfile
+      args:
+        # resolvida no BUILD: o Next grava o destino do rewrite no
+        # routes-manifest. Precisa ser alcançável pelo SERVIDOR do portal.
+        API_URL: ${API_URL_INTERNA:-http://api:3000}
     restart: unless-stopped
     depends_on:
       - api

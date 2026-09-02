@@ -115,13 +115,19 @@ apaga escudos e fotos já enviados — o banco guarda só o caminho, não a imag
 | Root Directory | `/` |
 | Dockerfile Path | `apps/portal/Dockerfile` |
 
+Variável de **BUILD** (não de runtime):
+
 ```
 API_URL = https://<dominio-da-api>
-PORT    = 3001
 ```
 
-O portal conversa com a API **pelo servidor** (rewrite de `/api`), então a URL é
-lida em runtime e nada é embutido no bundle.
+O portal conversa com a API pelo rewrite de `/api`, e o Next avalia `rewrites()`
+durante o build, gravando o destino resolvido em `.next/routes-manifest.json`.
+Sem a variável no build, o manifesto sai apontando para `http://localhost:3000`
+e toda chamada da área da equipe responde 500 — com o portal "no ar" e as
+páginas de leitura funcionando, porque só o proxy quebra.
+
+É o mesmo cuidado do `VITE_API_URL` do painel: mudou a API, rebuild.
 
 ### 3.4 Painel (organizador)
 
@@ -196,7 +202,13 @@ Atualizar: `git pull && docker compose --profile completo up -d --build`.
 
 ## Pontos que costumam morder
 
-- **`VITE_API_URL` é de build.** Mudou a URL da API? Rebuild do painel.
+- **`VITE_API_URL` e `API_URL` são de BUILD**, não de runtime. Mudou a URL da
+  API? Rebuild do painel e do portal — trocar a variável do serviço não basta.
+- **A porta é a 8080.** O Railway injeta `PORT=8080` no contêiner e isso
+  sobrepõe o `ENV PORT` do Dockerfile. O domínio precisa apontar para 8080, ou
+  o serviço sobe, o deploy fica verde e o domínio responde 502.
+- **Escute em `::`, não em `0.0.0.0`.** A malha interna do Railway é IPv6.
+  Socket só-IPv4 dá o mesmo 502 silencioso.
 - **Volume dos uploads.** Sem ele os escudos somem no próximo deploy.
 - **Os dois papéis do banco.** Rodar a aplicação com o papel dono desliga o RLS
   na prática: uma organização passaria a enxergar a competição da outra.
