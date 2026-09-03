@@ -10,6 +10,23 @@ import type { TopicoDoManual } from './page';
  * usada pelo painel — pergunta igual, resposta igual nos dois lugares.
  */
 
+/**
+ * Renderiza `**negrito**` do texto do manual.
+ *
+ * Sem `innerHTML`: monta elementos React, então nada do acervo pode virar
+ * HTML executável. O acervo é nosso, mas confiar nele por ser nosso é
+ * exatamente como injeções entram.
+ */
+function comEnfase(texto: string) {
+  return texto.split(/(\*\*[^*]+\*\*)/g).map((parte, i) =>
+    parte.startsWith('**') && parte.endsWith('**') ? (
+      <strong key={i}>{parte.slice(2, -2)}</strong>
+    ) : (
+      parte
+    ),
+  );
+}
+
 const SUGESTOES = [
   'como inscrevo minha equipe',
   'perdi o código de acesso',
@@ -127,7 +144,7 @@ export default function Ajuda({ inicial }: { inicial: TopicoDoManual[] }) {
                 >
                   {t.corpo.map((p, i) => (
                     <p key={i} style={{ marginBottom: 8 }}>
-                      {p}
+                      {comEnfase(p)}
                     </p>
                   ))}
                 </div>

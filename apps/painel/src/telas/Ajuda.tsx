@@ -15,6 +15,23 @@ import { api } from '../lib/api';
  * reconstruir a imagem do painel.
  */
 
+/**
+ * Renderiza `**negrito**` do texto do manual.
+ *
+ * Sem `dangerouslySetInnerHTML`: monta elementos React, então nada do
+ * acervo pode virar HTML executável. O acervo é nosso, mas confiar nele
+ * por ser nosso é exatamente como injeções entram.
+ */
+function comEnfase(texto: string) {
+  return texto.split(/(\*\*[^*]+\*\*)/g).map((parte, i) =>
+    parte.startsWith('**') && parte.endsWith('**') ? (
+      <strong key={i}>{parte.slice(2, -2)}</strong>
+    ) : (
+      parte
+    ),
+  );
+}
+
 /** Perguntas que a maioria faz. Servem de porta de entrada. */
 const SUGESTOES = [
   'mandar o link para as equipes',
@@ -169,7 +186,7 @@ function TopicoCartao({
         <div className="px-5 pb-5 space-y-2 border-t border-slate-100 pt-3">
           {topico.corpo.map((p, i) => (
             <p key={i} className="text-sm text-slate-700 leading-relaxed">
-              {p}
+              {comEnfase(p)}
             </p>
           ))}
 
