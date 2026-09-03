@@ -62,6 +62,9 @@ function parecidas(a: string, b: string): boolean {
   return comum >= RAIZ_MINIMA;
 }
 
+/** Ninguém lê o décimo resultado de uma busca de ajuda. */
+const LIMITE = 8;
+
 export interface Achado {
   topico: TopicoDoManual;
   pontos: number;
@@ -125,5 +128,22 @@ export function buscar(consulta: string, onde?: Publico): Achado[] {
 
   // empate resolvido pela ordem do acervo, que é a ordem do fluxo de uso
   achados.sort((a, b) => b.pontos - a.pontos);
-  return achados;
+
+  /**
+   * Corta o rabo da lista.
+   *
+   * Sem isto, "como inscrevo um atleta" devolvia os 28 tópicos: quase todo
+   * texto do manual contém "atleta" em algum lugar, e um casamento
+   * fraquíssimo virava "resultado". A ordenação estava certa — o primeiro
+   * era o certo — mas uma lista de 28 respostas para uma pergunta
+   * específica passa a impressão de que a busca não entendeu, e o usuário
+   * desiste antes de ler a primeira.
+   *
+   * O corte é relativo ao melhor achado, não absoluto: pergunta bem
+   * casada tem um teto alto e corta muito; pergunta vaga tem teto baixo e
+   * deixa passar mais, que é o comportamento desejado nos dois casos.
+   */
+  const melhor = achados[0]?.pontos ?? 0;
+  const corte = melhor * 0.4;
+  return achados.filter((a) => a.pontos >= corte).slice(0, LIMITE);
 }

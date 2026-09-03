@@ -117,6 +117,19 @@ describe('busca — a dúvida escrita como o usuário escreve', () => {
     assert.equal(r[0]?.topico.id, 'suspensoes');
   });
 
+  test('pergunta específica não devolve o acervo inteiro', () => {
+    // "atleta" aparece em quase todo texto do manual; sem o corte, uma
+    // pergunta específica voltava com 28 "resultados" e passava a
+    // impressão de que a busca não tinha entendido nada
+    const r = buscar('como inscrevo um atleta');
+    assert.equal(r[0].topico.id, 'inscrever-atleta');
+    assert.ok(r.length < TOPICOS.length / 2, `veio ${r.length} de ${TOPICOS.length}`);
+  });
+
+  test('termo exato devolve poucos', () => {
+    assert.ok(buscar('suspensao').length <= 3);
+  });
+
   test('busca vazia devolve o acervo inteiro', () => {
     assert.equal(buscar('').length, TOPICOS.length);
   });
