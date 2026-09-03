@@ -88,6 +88,12 @@ describe('busca — a dúvida escrita como o usuário escreve', () => {
     ['liberar usuario novo', 'area-adm'],
     ['criar campeonato', 'criar-competicao'],
     ['placar do jogo ao vivo', 'central-ao-vivo'],
+    // conjugação: quem pergunta escreve "inscrevo", o acervo diz
+    // "inscrever". Sem a raiz comum isto caía em "Carteirinha do atleta"
+    ['como inscrevo um atleta', 'inscrever-atleta'],
+    ['como cadastro uma equipe', 'cadastrar-equipe'],
+    ['configuro a ficha do atleta', 'configuracao'],
+    ['publicar a competicao', 'status-visibilidade'],
   ];
 
   for (const [pergunta, esperado] of casos) {
@@ -102,6 +108,13 @@ describe('busca — a dúvida escrita como o usuário escreve', () => {
     const com = buscar('SUSPENSÃO');
     const sem = buscar('suspensao');
     assert.equal(com[0]?.topico.id, sem[0]?.topico.id);
+  });
+
+  test('raiz comum não aproxima palavras diferentes', () => {
+    // "cartao" e "carteirinha" compartilham "cart" — quatro letras. Se o
+    // piso da raiz caísse para 4, procurar cartão traria a carteirinha.
+    const r = buscar('cartao');
+    assert.equal(r[0]?.topico.id, 'suspensoes');
   });
 
   test('busca vazia devolve o acervo inteiro', () => {

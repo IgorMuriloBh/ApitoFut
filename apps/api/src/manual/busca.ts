@@ -41,6 +41,27 @@ const VAZIAS = new Set([
   'faco', 'fazer', 'quero', 'preciso', 'consigo', 'posso', 'sistema',
 ]);
 
+/**
+ * Duas palavras da mesma família.
+ *
+ * Não basta prefixo: quem digita "inscrevo" não casa com "inscrever", que
+ * é como o acervo escreve — elas divergem na última letra. Comparar o
+ * trecho inicial comum resolve a conjugação sem precisar de stemmer.
+ *
+ * O piso de 5 caracteres é o que separa "inscrev" (legítimo) de "cart",
+ * que aproximaria "cartão" de "carteirinha" — palavras diferentes.
+ */
+const RAIZ_MINIMA = 5;
+
+function parecidas(a: string, b: string): boolean {
+  if (a.length < 3) return false;
+  if (b.startsWith(a) || a.startsWith(b)) return true;
+
+  let comum = 0;
+  while (comum < a.length && comum < b.length && a[comum] === b[comum]) comum++;
+  return comum >= RAIZ_MINIMA;
+}
+
 export interface Achado {
   topico: TopicoDoManual;
   pontos: number;
@@ -81,7 +102,7 @@ export function buscar(consulta: string, onde?: Publico): Achado[] {
         if (campo.palavras.includes(termo)) {
           pontos += campo.inteira;
           casouAlgum = true;
-        } else if (termo.length >= 3 && campo.palavras.some((p) => p.startsWith(termo))) {
+        } else if (campo.palavras.some((p) => parecidas(termo, p))) {
           pontos += campo.prefixo;
           casouAlgum = true;
         }

@@ -190,12 +190,22 @@ export function Competicao({
               {SECOES.flatMap((s) => s.itens).find((i) => i.chave === aba)
                 ?.rotulo ?? competicao.nome}
             </h1>
-            <p className="text-sm text-slate-500">
-              {formataData(competicao.dataInicio)} →{' '}
-              {formataData(competicao.dataFim)}
-            </p>
+            {/* período e estado do portal são contexto da COMPETIÇÃO. Na
+                ajuda viravam ruído: "Ajuda · 15/08 → 22/08 · o portal só
+                abre depois de publicar" não responde a pergunta nenhuma. */}
+            {aba !== 'ajuda' && (
+              <p className="text-sm text-slate-500">
+                {formataData(competicao.dataInicio)} →{' '}
+                {formataData(competicao.dataFim)}
+              </p>
+            )}
+            {aba === 'ajuda' && (
+              <p className="text-sm text-slate-500">
+                Manual do sistema — busque pela sua dúvida
+              </p>
+            )}
           </div>
-          {publico ? (
+          {aba === 'ajuda' ? null : publico ? (
             <a
               href={`${portalUrl()}/${competicao.slug}`}
               target="_blank"
