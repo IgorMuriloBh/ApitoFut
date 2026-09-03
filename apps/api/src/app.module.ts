@@ -8,6 +8,7 @@ import { CompeticoesModule } from './competicoes/competicoes.module';
 import { ConfiguracaoPublicaModule } from './configuracao-publica/configuracao-publica.module';
 import { ConviteModule } from './convite/convite.module';
 import { LocalidadesModule } from './localidades/localidades.module';
+import { ManualModule } from './manual/manual.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RealtimeModule } from './realtime/realtime.module';
 
@@ -24,6 +25,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     CarteirinhaModule,
     LocalidadesModule,
     ConfiguracaoPublicaModule,
+    ManualModule,
   ],
 })
 export class AppModule {}

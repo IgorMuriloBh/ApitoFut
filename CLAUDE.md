@@ -390,6 +390,15 @@ devolver a entidade do Prisma direto — `organizacao_id` e `criado_por` são in
 
 ## Ao trabalhar neste projeto
 
+- **Toda mudança visível ao usuário atualiza o MANUAL no mesmo commit.**
+  O acervo vive em `apps/api/src/manual/topicos.ts` e é servido a painel e
+  portal por `GET /manual`. Funcionalidade nova pede tópico novo; regra
+  alterada, tela renomeada ou fluxo mudado pedem revisão do tópico
+  existente — inclusive o campo `palavras`, que é como o usuário encontra.
+  Manual desatualizado é pior que manual ausente: ensina errado com ar de
+  autoridade. `apps/api/src/manual.spec.ts` confere que todo destino
+  aponta para tela que existe, mas não consegue conferir se o texto ainda
+  é verdade — isso é responsabilidade de quem mexe.
 - **Toda mudança relevante atualiza `docs/SISTEMA.md` no mesmo commit** — nova
   migration, endpoint, tela, decisão de arquitetura ou item que sai da lista de
   pendências. O documento serve para retomar o projeto sem reconstruir o

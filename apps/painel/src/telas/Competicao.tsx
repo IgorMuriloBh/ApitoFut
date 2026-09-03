@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EnvioDeImagem } from '../componentes/EnvioDeImagem';
 import { MenuLateral, type SecaoDoMenu } from '../componentes/MenuLateral';
+import { Ajuda } from './Ajuda';
 import { Alerta, Botao, Cartao, Selo, classeEntrada } from '../componentes/ui';
 import { api, type CompeticaoDoPainel, type JogoDaTabela, portalUrl } from '../lib/api';
 import { STATUS, formataData } from '../lib/dominio';
@@ -27,7 +28,7 @@ type Aba =
   | 'estatisticas'
   | 'suspensoes'
   | 'estrutura'
-  | 'config';
+  | 'config' | 'ajuda';
 
 /**
  * Seções do menu lateral, iguais às do protótipo (`NAV_COMP`, linha 797).
@@ -61,6 +62,7 @@ const SECOES: SecaoDoMenu[] = [
     itens: [
       { chave: 'estrutura', icone: '📍', rotulo: 'Campos e árbitros' },
       { chave: 'config', icone: '⚙️', rotulo: 'Configurações' },
+      { chave: 'ajuda', icone: '❓', rotulo: 'Ajuda' },
     ],
   },
 ];
@@ -229,6 +231,18 @@ export function Competicao({
             aoOperar={(jogo, categoriaId) => setOperando({ jogo, categoriaId })}
           />
         )}
+        {aba === 'ajuda' && (
+          <Ajuda
+            // dentro de uma competição a ajuda alcança as seções direto:
+            // é aqui que a maioria dos tópicos aponta
+            temCompeticaoAberta
+            aoNavegar={(d) => {
+              if (d.secao) setAba(d.secao as Aba);
+              else if (d.tela === 'painel') aoVoltar();
+            }}
+          />
+        )}
+
         {aba === 'equipes' && <Equipes competicao={competicao} />}
         {aba === 'atletas' && <Atletas competicao={competicao} />}
         {aba === 'estrutura' && <Estrutura competicao={competicao} />}

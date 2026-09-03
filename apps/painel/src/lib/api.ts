@@ -34,6 +34,20 @@ export async function carregarConfiguracao(): Promise<void> {
   }
 }
 
+/** Um tópico do manual, servido pela API (ver apps/api/src/manual). */
+export interface TopicoDoManual {
+  id: string;
+  titulo: string;
+  resumo: string;
+  corpo: string[];
+  onde: ('painel' | 'portal')[];
+  destino?: {
+    painel?: { tela: string; secao?: string };
+    portal?: string;
+  };
+  acao?: string;
+}
+
 /** Endereço do portal. Vazio até `carregarConfiguracao()` responder. */
 export function portalUrl(): string {
   return portalUrlCache ?? '';
@@ -741,6 +755,18 @@ export interface RespostaDeCadastro {
 }
 
 export const api = {
+  /**
+   * Manual do sistema. Sem token: a ajuda precisa funcionar para quem não
+   * conseguiu entrar — "criei a conta e não entro" é um dos tópicos.
+   */
+  manual: (consulta: string) =>
+    requisitar<{ versao: string; topicos: TopicoDoManual[] }>(
+      consulta.trim()
+        ? `/manual/busca?onde=painel&q=${encodeURIComponent(consulta)}`
+        : '/manual?onde=painel',
+      { autenticado: false },
+    ),
+
   login: (email: string, senha: string) =>
     requisitar<Sessao>('/auth/login', {
       metodo: 'POST',

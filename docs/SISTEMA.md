@@ -227,6 +227,9 @@ verificados no banco antes de escrever a migration:
 | `GET` | `.../categorias/:catId/elencos` | Escalações por equipe — nível 2 |
 | `SSE` | `.../jogos/:jogoId/ao-vivo` | 403 em `publicada` — recurso de nível 2 |
 | `GET` | `/uploads/:organizacao/:nome` | Imagens; nome é o hash do conteúdo |
+| `GET` | `/manual?onde=painel\|portal` | Acervo do manual, filtrado por público |
+| `GET` | `/manual/busca?q=&onde=` | Tópicos que respondem à dúvida |
+| `GET` | `/configuracao` | Endereço do portal, lido em runtime pelo painel |
 | `GET` | `/localidades/estados` | 27 UFs — dado público do IBGE |
 | `GET` | `/localidades/estados/:uf/municipios?busca=` | Municípios da UF, busca sem acento |
 | `GET` | `/convite/:slug` | Área da equipe: competição e categorias abertas |
@@ -368,6 +371,39 @@ depois do cadastro. Falhando o upload, a equipe continua inscrita e o código
 aparece — o escudo entra pela aba de dados. A alternativa seria um upload aberto
 só pelo slug, e aí qualquer um com o link escreveria arquivos no storage da
 organização.
+
+### Manual do sistema (ajuda ao usuário)
+
+`apps/api/src/manual/` — acervo de tópicos, busca e endpoint. Painel e portal
+consomem `GET /manual` e `GET /manual/busca`; nenhum dos dois guarda cópia.
+
+**Por que na API.** Os dois clientes mostram o mesmo conteúdo, e a busca precisa
+dar a mesma resposta nos dois. Um lugar só para editar, e correção de texto não
+exige reconstruir imagem de cliente.
+
+**Público, sem token.** A ajuda tem de funcionar para quem *não* conseguiu
+entrar — "criei a conta e não entro" é um dos tópicos. Exigir sessão fecharia a
+porta para quem mais precisa dela.
+
+**A busca é heurística, não semântica.** Pontuação por campo (título, sinônimos,
+resumo, corpo), palavra inteira valendo mais que prefixo, sem acento e sem
+caixa. Duas decisões que vieram de erro observado:
+
+- `palavras` pesa quase como o título. Sem isso, uma palavra genérica no título
+  ("atleta", "cadastrar") vencia o sinônimo específico e a busca levava ao
+  tópico errado;
+- há **bônus por cobertura**: quem responde a mais termos da pergunta sobe.
+  Sem ele "cadastrar um jogador" ia parar em "Cadastrar equipes", porque
+  "cadastrar" está no título dela.
+
+**Destino.** Cada tópico pode apontar para uma tela. No painel a navegação é por
+estado, não por URL, então o destino é `{ tela, secao }` — e `secao` só é
+alcançável de dentro de uma competição. Fora dela, a ajuda leva à lista e
+explica, em vez de oferecer um botão que não faz nada. O spec confere que todo
+destino existe.
+
+**Manutenção**: ver CLAUDE.md › Ao trabalhar neste projeto. Mudança visível ao
+usuário atualiza o manual no mesmo commit.
 
 ### Campos, árbitros e súmula impressa (RF013, RF014, RF016, RF018)
 

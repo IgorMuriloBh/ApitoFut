@@ -14,6 +14,7 @@ import { RankingGeral } from './telas/RankingGeral';
 import { Login } from './telas/Login';
 import { Painel } from './telas/Painel';
 import { Wizard } from './telas/Wizard';
+import { Ajuda, type DestinoDaAjuda } from './telas/Ajuda';
 
 type Tela =
   | { nome: 'painel' }
@@ -21,6 +22,7 @@ type Tela =
   | { nome: 'base' }
   | { nome: 'ranking' }
   | { nome: 'competicao'; competicao: CompeticaoDoPainel }
+  | { nome: 'ajuda' }
   | { nome: 'admin'; aba: AbaDoAdm };
 
 /**
@@ -38,6 +40,7 @@ const NAV_GLOBAL: SecaoDoMenu[] = [
       { chave: 'painel', icone: '⌂', rotulo: 'Meus campeonatos' },
       { chave: 'base', icone: '👥', rotulo: 'Base de atletas' },
       { chave: 'ranking', icone: '📊', rotulo: 'Ranking da plataforma' },
+      { chave: 'ajuda', icone: '❓', rotulo: 'Ajuda' },
     ],
   },
 ];
@@ -194,7 +197,7 @@ export function App() {
               if (chave.startsWith('admin:')) {
                 setTela({ nome: 'admin', aba: chave.slice(6) as AbaDoAdm });
               } else {
-                setTela({ nome: chave as 'painel' | 'base' | 'ranking' });
+                setTela({ nome: chave as 'painel' | 'base' | 'ranking' | 'ajuda' });
               }
             }}
           />
@@ -230,6 +233,23 @@ export function App() {
             )
           }
           aoMudar={recarregar}
+        />
+      )}
+
+      {tela.nome === 'ajuda' && (
+        <Ajuda
+          // fora de uma competição não há seção alcançável: a ajuda avisa
+          // e leva à lista, em vez de oferecer um botão que não faz nada
+          temCompeticaoAberta={false}
+          aoNavegar={(d: DestinoDaAjuda) => {
+            if (d.tela.startsWith('admin:')) {
+              setTela({ nome: 'admin', aba: d.tela.slice(6) as AbaDoAdm });
+            } else if (d.tela === 'competicao' || d.tela === 'painel') {
+              setTela({ nome: 'painel' });
+            } else {
+              setTela({ nome: d.tela as 'painel' | 'base' | 'ranking' | 'wizard' });
+            }
+          }}
         />
       )}
 
