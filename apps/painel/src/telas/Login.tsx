@@ -199,9 +199,20 @@ export function Login({ aoEntrar }: { aoEntrar: (s: Sessao) => void }) {
               )}
             </p>
 
-            {modo === 'login' && (
+            {/*
+              Credencial de demonstração SÓ em desenvolvimento.
+              `import.meta.env.DEV` é falso em qualquer build de produção, e
+              o Vite elimina o bloco inteiro do bundle — não é um `display:
+              none` que alguém encontra lendo o HTML.
+
+              Numa página pública isto anunciava uma senha a qualquer
+              visitante. Mesmo quando a conta não existe no ambiente, ensina
+              que o sistema tem conta de demonstração com senha óbvia — e o
+              visitante seguinte tenta demo/demo, admin/admin e afins.
+            */}
+            {modo === 'login' && import.meta.env.DEV && (
               <p className="mt-6 text-xs text-slate-500 border border-slate-200 rounded-lg p-3 bg-white">
-                <b>Conta de demonstração</b>
+                <b>Conta de demonstração</b> (só em desenvolvimento)
                 <br />
                 E-mail: <b>demo@apitofut.com</b> · Senha: <b>demo</b>
               </p>
