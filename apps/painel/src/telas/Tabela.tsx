@@ -146,9 +146,9 @@ export function Tabela({
                 {p.motivo === 'empate' ? (
                   <>
                     continua em aberto: {p.empatados?.join(' e ')} empatam em
-                    todos os critérios. Desempate pelo regulamento — use a
-                    coluna extra (confronto direto) ou acrescente um critério
-                    em Configurações, e clique de novo.
+                    todos os critérios. Desempate pelo regulamento em
+                    Classificação → "Ajustar" (a coluna extra é o confronto
+                    direto), e clique aqui de novo.
                   </>
                 ) : (
                   <>

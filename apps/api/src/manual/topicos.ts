@@ -338,6 +338,23 @@ export const TOPICOS: TopicoDoManual[] = [
     acao: 'Ir para Tabela de jogos',
   },
   {
+    id: 'coluna-extra',
+    titulo: 'Ajuste manual na classificação (coluna extra)',
+    resumo: 'O desempate de última instância, na sua mão.',
+    corpo: [
+      'A coluna extra é um valor que você lança por equipe: positivo sobe, negativo desce. Serve para confronto direto, bônus de fair play, punição por W.O. ou pontuação herdada de uma fase anterior.',
+      'Ative a coluna em Configurações › Classificação e súmula e coloque-a entre os critérios de desempate — sem isso ela aparece na tabela mas não desempata nada.',
+      'Depois, em Classificação, use o botão de ajuste e informe o valor de cada equipe. A tabela reordena na hora.',
+      'É por aqui que se resolve a vaga do mata-mata quando duas equipes empatam em todos os critérios.',
+      'Você pode dar um nome próprio à coluna na configuração da categoria — "Confronto direto" diz mais ao torcedor do que "Coluna extra".',
+    ],
+    palavras:
+      'coluna extra ajuste manual desempate confronto direto bonus punicao wo penalizacao pontos a mais tirar ponto criterio',
+    onde: ['painel'],
+    destino: { painel: { tela: 'competicao', secao: 'classificacao' } },
+    acao: 'Ir para Classificação',
+  },
+  {
     id: 'classificados-mata-mata',
     titulo: 'Levar os classificados para o mata-mata',
     resumo: 'Quem sai dos grupos para a semifinal, e quem sobe depois.',
@@ -345,7 +362,7 @@ export const TOPICOS: TopicoDoManual[] = [
       'Enquanto a fase de grupos corre, os jogos do mata-mata aparecem com o rótulo da vaga: "1º Grupo A", "2º Grupo B".',
       'Encerrado o último jogo dos grupos, use "Definir classificados" na Tabela de jogos. Cada vaga recebe a equipe que está naquela posição da classificação — na mesma ordem que a tela mostra, com os critérios de desempate que você configurou.',
       'Da semifinal em diante é automático: encerrar um jogo de mata-mata sobe o vencedor para a fase seguinte sozinho. Reabrir o jogo esvazia a vaga que ele havia preenchido.',
-      'Se duas equipes empatarem em todos os critérios na posição que decide a vaga, o sistema não escolhe: mostra as duas e espera. Desempate pelo regulamento usando a coluna extra (confronto direto) ou acrescentando um critério, e clique de novo.',
+      'Se duas equipes empatarem em todos os critérios na posição que decide a vaga, o sistema não escolhe: mostra as duas e espera. Desempate pelo regulamento em Classificação, no botão de ajuste da coluna extra — é onde entra o confronto direto —, e clique de novo.',
       'Com jogo de grupo ainda em aberto o sistema recusa: classificação parcial daria vaga a quem ainda pode perder o lugar na última rodada.',
       'Jogo eliminatório que já começou não é alterado — trocar a equipe deixaria a súmula falando de quem não entrou em campo.',
     ],

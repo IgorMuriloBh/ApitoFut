@@ -250,3 +250,83 @@ describe('definir classificados', () => {
     assert.equal(depois.mandante_id, semi.mandante_id);
   });
 });
+
+describe('coluna extra desempata a vaga', () => {
+  test('empate total trava a vaga; o ajuste manual destrava', async () => {
+    // 0×0 nos dois grupos: as duas equipes de cada grupo ficam iguais em
+    // tudo, e nenhuma vaga pode ser dada sem escolher por ordem alfabética
+    for (const j of daFase(await jogos(), 'grupos')) {
+      await admin.jogos.update({
+        where: { id: j.id },
+        data: { status: 'encerrado', placar_mandante: 0, placar_visitante: 0 },
+      });
+    }
+    for (const j of daFase(await jogos(), 'mata')) {
+      await admin.jogos.update({
+        where: { id: j.id },
+        data: {
+          status: 'agendado',
+          mandante_id: null,
+          visitante_id: null,
+          placar_mandante: 0,
+          placar_visitante: 0,
+        },
+      });
+    }
+
+    const empatado = await api(
+      `/painel/categorias/${categoria}/classificados`,
+      'POST',
+    );
+    assert.equal(empatado.corpo.definidos.length, 0);
+    assert.ok(empatado.corpo.pendencias.length > 0);
+    assert.ok(
+      empatado.corpo.pendencias.every((p: any) => p.motivo === 'empate'),
+      JSON.stringify(empatado.corpo.pendencias),
+    );
+
+    // a coluna extra tem de estar entre os critérios para valer de fato
+    await api(`/painel/categorias/${categoria}/configuracao`, 'PUT', {
+      colunas: { coluna_extra: true },
+      criteriosDesempate: [
+        { criterio: 'pontos', direcao: 'DESC' },
+        { criterio: 'coluna_extra', direcao: 'DESC' },
+      ],
+    });
+
+    const ajuste = await api(
+      `/painel/categorias/${categoria}/coluna-extra`,
+      'PUT',
+      { ajustes: equipes.map((e, i) => ({ timeId: e.id, valor: i + 1 })) },
+    );
+    assert.equal(ajuste.code, 200, JSON.stringify(ajuste.corpo));
+
+    const agora = await api(
+      `/painel/categorias/${categoria}/classificados`,
+      'POST',
+    );
+    assert.equal(
+      agora.corpo.pendencias.length,
+      0,
+      JSON.stringify(agora.corpo.pendencias),
+    );
+    assert.equal(agora.corpo.definidos.length, 4);
+  });
+
+  test('valor 0 sem motivo some da tabela em vez de virar linha zerada', async () => {
+    await api(`/painel/categorias/${categoria}/coluna-extra`, 'PUT', {
+      ajustes: equipes.map((e) => ({ timeId: e.id, valor: 0 })),
+    });
+    const linhas = await admin.categoria_coluna_extra.findMany({
+      where: { categoria_id: categoria },
+    });
+    assert.equal(linhas.length, 0);
+  });
+
+  test('valor não inteiro é recusado', async () => {
+    const r = await api(`/painel/categorias/${categoria}/coluna-extra`, 'PUT', {
+      ajustes: [{ timeId: equipes[0].id, valor: 1.5 }],
+    });
+    assert.equal(r.code, 400);
+  });
+});

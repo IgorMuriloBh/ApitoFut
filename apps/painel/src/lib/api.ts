@@ -900,6 +900,19 @@ export const api = {
    * Leva os classificados da fase de grupos para a primeira fase
    * eliminatória (RF017). O que o gatilho do banco não cobre.
    */
+  /**
+   * Ajuste manual por equipe (coluna extra). É o desempate de última
+   * instância quando duas equipes empatam em todos os critérios.
+   */
+  salvarColunaExtra: (
+    categoriaId: string,
+    ajustes: { timeId: string; valor: number; motivo?: string | null }[],
+  ) =>
+    requisitar(`/painel/categorias/${categoriaId}/coluna-extra`, {
+      metodo: 'PUT',
+      corpo: { ajustes },
+    }),
+
   definirClassificados: (categoriaId: string) =>
     requisitar<ResultadoDosClassificados>(
       `/painel/categorias/${categoriaId}/classificados`,

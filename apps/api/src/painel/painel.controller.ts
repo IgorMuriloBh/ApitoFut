@@ -89,6 +89,26 @@ export class PainelController {
     return this.configuracao.salvar(req.sessao.org, id, corpo ?? {});
   }
 
+  /**
+   * PUT /painel/categorias/:id/coluna-extra — ajuste manual por equipe.
+   *
+   * É o desempate de última instância: quando duas equipes empatam em todos
+   * os critérios, é aqui que o organizador aplica o confronto direto.
+   */
+  @Put('categorias/:id/coluna-extra')
+  colunaExtra(
+    @Req() req: RequestAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body()
+    corpo: { ajustes?: { timeId: string; valor: number; motivo?: string | null }[] },
+  ) {
+    return this.configuracao.salvarColunaExtra(
+      req.sessao.org,
+      id,
+      corpo?.ajustes ?? [],
+    );
+  }
+
   /** POST /painel/categorias/:id/configuracao/replicar — para as irmãs. */
   @Post('categorias/:id/configuracao/replicar')
   replicarConfiguracao(

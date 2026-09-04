@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { EquipeComEscudo } from '../componentes/Escudo';
-import { Alerta, Cartao, classeEntrada } from '../componentes/ui';
+import { Alerta, Botao, Cartao, classeEntrada } from '../componentes/ui';
 import { api, type ClassificacaoDoPainel, type CompeticaoDoPainel } from '../lib/api';
 
 /**
@@ -67,6 +67,10 @@ export function Classificacao({ competicao }: { competicao: CompeticaoDoPainel }
   const [categoriaId, setCategoriaId] = useState(competicao.categorias[0]?.id ?? '');
   const [dados, setDados] = useState<ClassificacaoDoPainel | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [ajustando, setAjustando] = useState(false);
+  const [ajustes, setAjustes] = useState<Record<string, string>>({});
+  const [salvando, setSalvando] = useState(false);
+  const [recado, setRecado] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     if (!categoriaId) return;
@@ -80,8 +84,41 @@ export function Classificacao({ competicao }: { competicao: CompeticaoDoPainel }
   }, [categoriaId]);
 
   useEffect(() => {
+    setAjustando(false);
+    setRecado(null);
     void carregar();
   }, [carregar]);
+
+  /** Entra no modo de ajuste com os valores que já estão na tabela. */
+  function abrirAjuste() {
+    const atuais: Record<string, string> = {};
+    for (const g of dados?.grupos ?? []) {
+      for (const t of g.times) atuais[t.timeId] = String(t.colunaExtra ?? 0);
+    }
+    setAjustes(atuais);
+    setRecado(null);
+    setAjustando(true);
+  }
+
+  async function salvarAjustes() {
+    setSalvando(true);
+    try {
+      await api.salvarColunaExtra(
+        categoriaId,
+        Object.entries(ajustes).map(([timeId, valor]) => ({
+          timeId,
+          valor: Number(valor) || 0,
+        })),
+      );
+      setAjustando(false);
+      setRecado('Ajuste salvo. A classificação já está reordenada.');
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao salvar o ajuste.');
+    } finally {
+      setSalvando(false);
+    }
+  }
 
   if (!competicao.categorias.length) {
     return (
@@ -114,6 +151,24 @@ export function Classificacao({ competicao }: { competicao: CompeticaoDoPainel }
             ))}
           </select>
           <span className="flex-1" />
+          {/* a coluna extra é o desempate de última instância: quando duas
+              equipes empatam em tudo, é por aqui que o confronto direto
+              entra. Só aparece se a coluna estiver visível na categoria */}
+          {dados?.colunasVisiveis.includes('coluna_extra') &&
+            (ajustando ? (
+              <span className="flex gap-2">
+                <Botao variante="neutro" onClick={() => setAjustando(false)}>
+                  Cancelar
+                </Botao>
+                <Botao onClick={() => void salvarAjustes()} disabled={salvando}>
+                  {salvando ? 'Salvando…' : 'Salvar ajustes'}
+                </Botao>
+              </span>
+            ) : (
+              <Botao variante="neutro" onClick={abrirAjuste}>
+                ✏️ Ajustar {dados.colunaExtraRotulo}
+              </Botao>
+            ))}
           {dados && dados.criteriosDesempate.length > 0 && (
             <span className="text-xs text-slate-500">
               Desempate:{' '}
@@ -126,6 +181,15 @@ export function Classificacao({ competicao }: { competicao: CompeticaoDoPainel }
       </Cartao>
 
       {erro && <Alerta tom="erro">{erro}</Alerta>}
+      {recado && <Alerta tom="info">{recado}</Alerta>}
+      {ajustando && (
+        <Alerta tom="aviso">
+          Valor positivo sobe a equipe, negativo desce. Use para confronto
+          direto, bônus ou punição — e lembre que ele só desempata se{' '}
+          <b>{dados?.colunaExtraRotulo}</b> estiver na lista de critérios, em
+          Configurações.
+        </Alerta>
+      )}
       {!dados && !erro && (
         <p className="py-8 text-center text-sm text-slate-500">Carregando…</p>
       )}
@@ -173,11 +237,25 @@ export function Classificacao({ competicao }: { competicao: CompeticaoDoPainel }
                           c === 'pontos' ? 'font-bold' : ''
                         }`}
                       >
-                        {c === 'porcentagem'
-                          ? `${Number(linha.porcentagem ?? 0).toFixed(1)}%`
-                          : ((linha as unknown as Record<string, number>)[
-                              CAMPO_DA_COLUNA[c] ?? c
-                            ] ?? 0)}
+                        {ajustando && c === 'coluna_extra' ? (
+                          <input
+                            type="number"
+                            className="w-14 px-1 py-0.5 border border-slate-300 rounded text-center tabular-nums"
+                            value={ajustes[linha.timeId] ?? '0'}
+                            onChange={(e) =>
+                              setAjustes((a) => ({
+                                ...a,
+                                [linha.timeId]: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : c === 'porcentagem' ? (
+                          `${Number(linha.porcentagem ?? 0).toFixed(1)}%`
+                        ) : (
+                          ((linha as unknown as Record<string, number>)[
+                            CAMPO_DA_COLUNA[c] ?? c
+                          ] ?? 0)
+                        )}
                       </td>
                     ))}
                   </tr>

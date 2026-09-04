@@ -526,4 +526,80 @@ export class ConfiguracaoService {
       ),
     };
   }
+
+  /**
+   * Ajuste manual por equipe (`categoria_coluna_extra`, migration 05).
+   *
+   * A tabela existe desde a migration 05, mas nada escrevia nela: a coluna
+   * aparecia na classificação sempre em 0 e, como critério de desempate,
+   * nunca desempatava nada. Isso virou um beco sem saída quando
+   * `POST /categorias/:id/classificados` passou a recusar vaga empatada e
+   * mandar o organizador desempatar por aqui.
+   *
+   * É o lugar de "confronto direto", bônus de fair play, punição por W.O.
+   * ou pontuação herdada de uma fase anterior — por isso aceita negativo, e
+   * por isso `motivo` existe: seis meses depois ninguém lembra por que
+   * aquela equipe tem -3.
+   *
+   * O FK aponta para `categoria_times`, então equipe que não disputa a
+   * categoria é recusada pelo banco, não por checagem aqui.
+   */
+  async salvarColunaExtra(
+    organizacaoId: string,
+    categoriaId: string,
+    ajustes: { timeId: string; valor: number; motivo?: string | null }[],
+  ) {
+    if (!Array.isArray(ajustes)) {
+      throw new BadRequestException('Envie a lista de ajustes.');
+    }
+    for (const a of ajustes) {
+      if (!Number.isInteger(a?.valor)) {
+        throw new BadRequestException('O ajuste tem de ser um número inteiro.');
+      }
+    }
+
+    return this.prisma.comOrganizacao(organizacaoId, async (tx) => {
+      const categoria = await tx.categorias.findUnique({
+        where: { id: categoriaId },
+      });
+      if (!categoria) throw new NotFoundException('Categoria não encontrada.');
+
+      for (const a of ajustes) {
+        // valor 0 sem motivo é "não há ajuste": apagar mantém a tabela
+        // limpa e a classificação idêntica
+        if (a.valor === 0 && !a.motivo) {
+          await tx.categoria_coluna_extra.deleteMany({
+            where: { categoria_id: categoriaId, time_id: a.timeId },
+          });
+          continue;
+        }
+        await tx.categoria_coluna_extra.upsert({
+          where: {
+            categoria_id_time_id: {
+              categoria_id: categoriaId,
+              time_id: a.timeId,
+            },
+          },
+          update: { valor: a.valor, motivo: a.motivo ?? null },
+          create: {
+            categoria_id: categoriaId,
+            time_id: a.timeId,
+            valor: a.valor,
+            motivo: a.motivo ?? null,
+          },
+        });
+      }
+
+      const linhas = await tx.categoria_coluna_extra.findMany({
+        where: { categoria_id: categoriaId },
+      });
+      return {
+        ajustes: linhas.map((l) => ({
+          timeId: l.time_id,
+          valor: l.valor,
+          motivo: l.motivo,
+        })),
+      };
+    });
+  }
 }

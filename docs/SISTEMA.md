@@ -257,6 +257,7 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `PUT` | `/painel/competicoes/:id/imagens` | Logo e banner |
 | `GET` `PUT` | `/painel/categorias/:id/configuracao` | RF005 inteiro; envio parcial aceito |
 | `POST` | `/painel/categorias/:id/configuracao/replicar` | Copia para as categorias irmãs |
+| `PUT` | `/painel/categorias/:id/coluna-extra` | Ajuste manual por equipe; aceita negativo |
 | `GET` `POST` | `/painel/competicoes/:id/campos` | Locais de jogo (RF013) |
 | `PATCH` `DELETE` | `/painel/campos/:id` | 409 se o campo estiver em jogo |
 | `GET` `POST` | `/painel/competicoes/:id/arbitros` | Arbitragem (RF014) |
@@ -547,6 +548,14 @@ classificação. Decisões que valem a pena conhecer antes de mexer:
 `interpretarRotulo` (em `chaveamento.ts`) é o par de leitura de
 `paresPrimeiraFase`; um teste percorre tudo que a geração escreve e exige que o
 parser entenda, senão um rótulo novo viraria vaga eterna sem ninguém notar.
+
+**A coluna extra passou a ser gravável junto com isso.** `categoria_coluna_extra`
+existia desde a migration 05 e nada escrevia nela: a coluna aparecia sempre em 0
+e, como critério, nunca desempatava. Recusar a vaga empatada mandando o
+organizador "desempatar pela coluna extra" teria criado um segundo beco sem
+saída. `PUT /painel/categorias/:id/coluna-extra` e o botão de ajuste na tela de
+Classificação fecham o caminho. Valor 0 sem motivo apaga a linha em vez de gravar
+zero — a classificação fica idêntica e a tabela, limpa.
 
 Três detalhes que o banco impõe:
 

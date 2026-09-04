@@ -201,7 +201,7 @@ export class ClassificacaoService {
   ): number {
     for (const { criterio, direcao } of criterios) {
       const campo = COLUNA_DA_VIEW[criterio];
-      if (!campo) continue; // coluna_extra e afins ainda sem origem de dados
+      if (!campo) continue; // critério sem coluna correspondente na view
 
       const va = Number(a[campo] ?? 0);
       const vb = Number(b[campo] ?? 0);
