@@ -313,6 +313,7 @@ export const TOPICOS: TopicoDoManual[] = [
       'Com as equipes inscritas, gere a tabela em Tabela de jogos. O sistema monta o turno (e o returno, se configurado) e distribui as rodadas.',
       'Em formato com grupos, as equipes são distribuídas e o mata-mata vem depois, conforme as fases definidas.',
       'A ordem das fases decide o chaveamento: é por ela que o vencedor sabe para onde subir.',
+      'Os jogos do mata-mata nascem com o rótulo da vaga. Quem os preenche é "Definir classificados", depois que a fase de grupos acabar.',
       'Encolher um mata-mata corta só jogo ainda não disputado. Remover fase que já tem resultado exige confirmação explícita.',
     ],
     palavras:
@@ -332,6 +333,24 @@ export const TOPICOS: TopicoDoManual[] = [
     ],
     palavras:
       'programar jogo data hora campo local arbitro escalar agendar partida horario',
+    onde: ['painel'],
+    destino: { painel: { tela: 'competicao', secao: 'tabela' } },
+    acao: 'Ir para Tabela de jogos',
+  },
+  {
+    id: 'classificados-mata-mata',
+    titulo: 'Levar os classificados para o mata-mata',
+    resumo: 'Quem sai dos grupos para a semifinal, e quem sobe depois.',
+    corpo: [
+      'Enquanto a fase de grupos corre, os jogos do mata-mata aparecem com o rótulo da vaga: "1º Grupo A", "2º Grupo B".',
+      'Encerrado o último jogo dos grupos, use "Definir classificados" na Tabela de jogos. Cada vaga recebe a equipe que está naquela posição da classificação — na mesma ordem que a tela mostra, com os critérios de desempate que você configurou.',
+      'Da semifinal em diante é automático: encerrar um jogo de mata-mata sobe o vencedor para a fase seguinte sozinho. Reabrir o jogo esvazia a vaga que ele havia preenchido.',
+      'Se duas equipes empatarem em todos os critérios na posição que decide a vaga, o sistema não escolhe: mostra as duas e espera. Desempate pelo regulamento usando a coluna extra (confronto direto) ou acrescentando um critério, e clique de novo.',
+      'Com jogo de grupo ainda em aberto o sistema recusa: classificação parcial daria vaga a quem ainda pode perder o lugar na última rodada.',
+      'Jogo eliminatório que já começou não é alterado — trocar a equipe deixaria a súmula falando de quem não entrou em campo.',
+    ],
+    palavras:
+      'classificados semifinal mata mata definir vaga quem passa avanca avancar subir fase seguinte grupo primeiro colocado chaveamento cruzamento eliminatoria quartas oitavas final',
     onde: ['painel'],
     destino: { painel: { tela: 'competicao', secao: 'tabela' } },
     acao: 'Ir para Tabela de jogos',

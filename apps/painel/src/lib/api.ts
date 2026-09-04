@@ -316,6 +316,20 @@ export interface ResumoDaGeracao {
 }
 
 
+/** Resposta de `definirClassificados`. */
+export interface ResultadoDosClassificados {
+  definidos: { jogoId: string; lado: string; rotulo: string; nome: string }[];
+  pendencias: {
+    jogoId: string;
+    lado: string;
+    rotulo: string;
+    motivo: 'grupo_inexistente' | 'posicao_inexistente' | 'empate';
+    empatados?: string[];
+  }[];
+  bloqueados: { jogoId: string; motivo: string }[];
+}
+
+
 export interface EstadoDoJogo {
   id: string;
   status: string;
@@ -881,6 +895,16 @@ export const api = {
       metodo: 'POST',
       corpo: opcoes,
     }),
+
+  /**
+   * Leva os classificados da fase de grupos para a primeira fase
+   * eliminatória (RF017). O que o gatilho do banco não cobre.
+   */
+  definirClassificados: (categoriaId: string) =>
+    requisitar<ResultadoDosClassificados>(
+      `/painel/categorias/${categoriaId}/classificados`,
+      { metodo: 'POST' },
+    ),
 
   programarJogo: (
     jogoId: string,

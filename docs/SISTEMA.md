@@ -283,6 +283,7 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `GET` | `/painel/categorias/:id/elenco` | Marca quem está fora da faixa |
 | `POST` `PATCH` `DELETE` | `/painel/inscricoes[/:id]` | 409 de faixa etária é aviso |
 | `GET` `POST` | `/painel/categorias/:id/tabela` | Geração automática |
+| `POST` | `/painel/categorias/:id/classificados` | Grupos → primeira fase eliminatória; 409 com jogo de grupo em aberto |
 | `PATCH` | `/painel/jogos/:id/programacao` | Data, hora e campo |
 | `POST` | `/painel/jogos/:id/{iniciar,periodo,encerrar,reabrir}` | Controle da partida |
 | `GET` | `/painel/jogos/:id/lances` | Cronologia para a timeline do operador |
@@ -473,6 +474,14 @@ O CPF **sai** no arquivo de inscritos — é download autenticado do organizador
 o que a federação exige. Diferente da carteirinha pública, que nunca mostra
 documento.
 
+**O CSV da classificação usa o `ClassificacaoService`, não consulta própria.**
+Já teve uma, com `ORDER BY` fixo, e o arquivo mentia de dois jeitos: numerava
+1..N corrido, então o líder do Grupo B saía como "5º"; e ignorava os critérios de
+desempate configurados, apesar do comentário dizer o contrário. Quem imprimisse o
+arquivo publicava classificação diferente da que o sistema mostra. Fonte única
+agora. (`grupos.nome` é `char(2)`: sai `'A '` e precisa de `trim` — o CSV de
+jogos também.)
+
 > Ao testar: `Response.text()` do fetch **remove o BOM** por especificação. Um
 > teste que verifica BOM precisa ler `arrayBuffer()`, senão conclui que ele
 > sumiu quando está lá.
@@ -504,6 +513,40 @@ mata-mata. Antes só existia o que a geração automática criava.
 **A ordem não é enfeite.** `trg_avanca_mata_mata` (migration 13) usa
 `fases.ordem` para decidir para onde o vencedor sobe — reordenar aqui muda o
 caminho do chaveamento de verdade.
+
+### Dos grupos para o mata-mata (`classificados.ts`)
+
+O gatilho cobre mata-mata → mata-mata. A ponte **grupos → primeira fase
+eliminatória não existia**: as vagas ficavam eternamente em "1º Grupo A", e a
+Central ao vivo não abre jogo sem as duas equipes definidas, então toda
+competição no formato mais comum morria na semifinal. O protótipo escapava pela
+edição manual do jogo, que aqui não foi reimplementada. Achado percorrendo o
+roteiro de teste em produção.
+
+`POST /painel/categorias/:id/classificados` resolve cada rótulo contra a
+classificação. Decisões que valem a pena conhecer antes de mexer:
+
+- **Em TypeScript, não no banco.** A ordem depende dos critérios de desempate
+  configurados, e essa ordenação mora em `ClassificacaoService.comparar`.
+  Refazê-la em SQL criaria duas verdades — que é exatamente o defeito que o CSV
+  da classificação tinha.
+- **Ação explícita, não automática.** O organizador confere a classificação
+  antes e pode reexecutar depois de corrigir um placar. Reexecutar é idempotente.
+- **Empate na fronteira da vaga não é decidido sozinho** — volta como pendência
+  com os nomes, como na premiação (RF024). Dar a vaga ao primeiro do array seria
+  decidir uma semifinal por ordem alfabética. O caminho de saída é a coluna
+  extra (confronto direto) ou um critério a mais.
+- **Recusa com jogo de grupo em aberto** (409): classificação parcial daria vaga
+  a quem ainda pode perder o lugar na última rodada.
+- **As duas vagas de um jogo são gravadas juntas.** `ck_adversarios` proíbe
+  mandante = visitante, e gravar um lado de cada vez passa por um estado
+  intermediário que viola o check ao reexecutar sobre chaveamento já preenchido.
+- **Jogo que já saiu do agendado não é tocado** — trocar a equipe deixaria a
+  súmula falando de quem não entrou em campo.
+
+`interpretarRotulo` (em `chaveamento.ts`) é o par de leitura de
+`paresPrimeiraFase`; um teste percorre tudo que a geração escreve e exige que o
+parser entenda, senão um rótulo novo viraria vaga eterna sem ninguém notar.
 
 Três detalhes que o banco impõe:
 
@@ -800,6 +843,7 @@ outro — falhava de verdade, com corrida real.
 | `sumula.e2e.spec.ts` | Operação + ciclo completo com o SSE |
 | `cronologia.e2e.spec.ts` | Timeline e correção de lance |
 | `mata-mata.e2e.spec.ts` | Avanço do vencedor, correção de resultado |
+| `classificados.e2e.spec.ts` | Grupos → mata-mata: vaga, empate, reexecução |
 | `suspensoes.e2e.spec.ts` | Acúmulo, vermelho, cumprimento, bloqueio |
 | `uploads.e2e.spec.ts` | Envio, entrega, travessia de caminho |
 | `escudo.e2e.spec.ts` | O escudo saindo em **toda** rota que expõe equipe |
@@ -916,9 +960,13 @@ ficam para trás e o erro aponta para o lugar errado.
 
 ## 10. O que falta
 
-**Nenhuma funcionalidade do protótipo.** As 23 telas dele têm equivalente, e
-vários pontos foram além (premiações com empate explícito, exportações, cadastro
-de municípios). O que resta é operacional — seção 8.
+As 23 telas do protótipo têm equivalente, e vários pontos foram além (premiações
+com empate explícito, exportações, cadastro de municípios). O que resta é
+operacional — seção 8 — e um item de tela:
+
+| Item | Situação |
+|---|---|
+| Edição manual do jogo (`modalJogo` do protótipo, RF016) | **Não existe.** O protótipo deixa o organizador escolher mandante e visitante à mão, e criar jogo avulso. Aqui só data, hora, campo e árbitro são editáveis. A lacuna que isso abria — a vaga do mata-mata sem ninguém para preencher — foi fechada por `POST /painel/categorias/:id/classificados`, mas o caso de exceção (sorteio, W.O., decisão fora do sistema) continua sem saída |
 
 ### Deixado de fora de propósito
 

@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ClassificacaoService } from '../competicoes/classificacao.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { paraCsv } from './csv';
 
@@ -28,7 +29,10 @@ const STATUS_JOGO: Record<string, string> = {
 
 @Injectable()
 export class ExportacaoService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly servicoDeClassificacao: ClassificacaoService,
+  ) {}
 
   private async exigirCategoria(tx: any, categoriaId: string) {
     const categoria = await tx.categorias.findUnique({
@@ -83,59 +87,64 @@ export class ExportacaoService {
     });
   }
 
-  /** Classificação na ordem em que a tela mostra. */
-  classificacao(organizacaoId: string, categoriaId: string) {
-    return this.prisma.comOrganizacao(organizacaoId, async (tx) => {
-      const categoria = await this.exigirCategoria(tx, categoriaId);
+  /**
+   * Classificação, na MESMA ordem e com a MESMA numeração da tela.
+   *
+   * Já foi uma consulta própria com `ORDER BY` fixo, e o arquivo mentia de
+   * dois jeitos: numerava 1..N corrido, então o líder do Grupo B saía como
+   * "5º"; e ignorava os critérios de desempate que o organizador tinha
+   * configurado. Quem imprimisse o CSV publicava classificação diferente da
+   * que o sistema mostra. Agora a fonte é uma só — `ClassificacaoService`,
+   * a mesma do painel e do portal.
+   */
+  async classificacao(organizacaoId: string, categoriaId: string) {
+    const tabela = await this.servicoDeClassificacao.paraOrganizador(
+      organizacaoId,
+      categoriaId,
+    );
 
-      const linhas = await tx.$queryRaw<any[]>`
-        SELECT vc.*, g.nome AS grupo_nome
-          FROM v_classificacao vc
-          LEFT JOIN grupos g ON g.id = vc.grupo_id
-         WHERE vc.categoria_id = ${categoriaId}::uuid
-         ORDER BY g.nome NULLS FIRST, vc.pontos DESC, vc.saldo_gols DESC,
-                  vc.gols_pro DESC, vc.time_nome
-      `;
+    const linhas = tabela.grupos.flatMap((g) =>
+      g.times.map((t) => [
+        g.grupo ?? '',
+        t.posicao,
+        t.nome,
+        t.pontos,
+        t.jogos,
+        t.vitorias,
+        t.empates,
+        t.derrotas,
+        t.golsPro,
+        t.golsContra,
+        t.saldoGols,
+        // vírgula decimal: o arquivo abre em Excel pt-BR
+        String(Number(t.porcentagem ?? 0).toFixed(1)).replace('.', ','),
+        t.cartaoAmarelo,
+        t.cartaoVermelho,
+      ]),
+    );
 
-      return {
-        nome: `classificacao-${categoria.competicoes.slug}-${categoria.nome}`,
-        conteudo: paraCsv(
-          [
-            'Grupo',
-            'Pos.',
-            'Equipe',
-            'P',
-            'J',
-            'V',
-            'E',
-            'D',
-            'GP',
-            'GC',
-            'SG',
-            '%',
-            'CA',
-            'CV',
-          ],
-          linhas.map((l, i) => [
-            l.grupo_nome ?? '',
-            i + 1,
-            l.time_nome,
-            Number(l.pontos),
-            Number(l.jogos),
-            Number(l.vitorias),
-            Number(l.empates),
-            Number(l.derrotas),
-            Number(l.gols_pro),
-            Number(l.gols_contra),
-            Number(l.saldo_gols),
-            // vírgula decimal: o arquivo abre em Excel pt-BR
-            String(Number(l.porcentagem ?? 0).toFixed(1)).replace('.', ','),
-            Number(l.cartao_amarelo),
-            Number(l.cartao_vermelho),
-          ]),
-        ),
-      };
-    });
+    return {
+      nome: `classificacao-${tabela.competicao.slug}-${tabela.categoria.nome}`,
+      conteudo: paraCsv(
+        [
+          'Grupo',
+          'Pos.',
+          'Equipe',
+          'P',
+          'J',
+          'V',
+          'E',
+          'D',
+          'GP',
+          'GC',
+          'SG',
+          '%',
+          'CA',
+          'CV',
+        ],
+        linhas,
+      ),
+    };
   }
 
   /** Estatísticas individuais — a base da premiação. */
@@ -218,7 +227,8 @@ export class ExportacaoService {
           ],
           jogos.map((j: any) => [
             j.fases?.nome ?? '',
-            j.grupos?.nome ?? '',
+            // char(2) no banco: 'A' vem como 'A ' e o espaço aparece no Excel
+            j.grupos?.nome.trim() ?? '',
             j.rodada ?? '',
             data(j.data),
             hora(j.hora),

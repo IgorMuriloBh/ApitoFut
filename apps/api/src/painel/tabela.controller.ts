@@ -39,6 +39,18 @@ export class TabelaController {
     return this.tabela.gerar(req.sessao.org, categoriaId, corpo ?? {});
   }
 
+  /**
+   * POST /painel/categorias/:id/classificados — leva os classificados da
+   * fase de grupos para a primeira fase eliminatória (RF017).
+   */
+  @Post('categorias/:categoriaId/classificados')
+  definirClassificados(
+    @Req() req: RequestAutenticado,
+    @Param('categoriaId', ParseUUIDPipe) categoriaId: string,
+  ) {
+    return this.tabela.definirClassificados(req.sessao.org, categoriaId);
+  }
+
   /** Lançamento posterior de data, hora e campo. */
   @Patch('jogos/:jogoId/programacao')
   programar(

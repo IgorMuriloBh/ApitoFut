@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { urlPublica } from '../arquivos/armazenamento';
+import { ClassificacaoService } from '../competicoes/classificacao.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   FaseMata,
@@ -14,6 +15,14 @@ import {
   montarFaseDeGrupos,
   montarMataMata,
 } from './chaveamento';
+import {
+  GrupoClassificado,
+  Resolucao,
+  VagaPendente,
+  VagaResolvida,
+  ehPendente,
+  resolverVaga,
+} from './classificados';
 
 /**
  * Geração automática da tabela (RF015/RF017), espelhando `gerarTabela`.
@@ -48,7 +57,10 @@ function exigir(cond: unknown, mensagem: string): asserts cond {
 
 @Injectable()
 export class TabelaService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly classificacao: ClassificacaoService,
+  ) {}
 
   async gerar(organizacaoId: string, categoriaId: string, opcoes: OpcoesDeGeracao) {
     const simples = opcoes?.simples ?? true;
@@ -312,6 +324,123 @@ export class TabelaService {
             ? { mandante: j.placar_mandante, visitante: j.placar_visitante }
             : null,
       }));
+    });
+  }
+
+  /**
+   * Leva os classificados da fase de grupos para a primeira fase
+   * eliminatória (RF017).
+   *
+   * O gatilho `trg_avanca_mata_mata` cobre mata-mata → mata-mata; esta é a
+   * ponte que faltava, de grupos → mata-mata. Ação explícita e não
+   * automática: o organizador confere a classificação antes, e pode
+   * reexecutar depois de corrigir um placar.
+   *
+   * O que ele recusa a fazer, de propósito:
+   *  - com jogo de grupo em aberto, não define nada. Classificação parcial
+   *    daria vaga a quem ainda pode perder o lugar na última rodada;
+   *  - vaga empatada em todos os critérios ativos volta como pendência,
+   *    com os nomes. Escolher sozinho seria decidir uma semifinal pela
+   *    ordem alfabética — mesma postura da premiação (RF024);
+   *  - jogo eliminatório que já começou não é mexido. Trocar a equipe de um
+   *    jogo com lance registrado deixaria a súmula falando de quem não
+   *    entrou em campo.
+   */
+  async definirClassificados(organizacaoId: string, categoriaId: string) {
+    // fora da transação de propósito: `paraOrganizador` abre a sua própria,
+    // e é dela que sai a MESMA ordenação que a tela mostra
+    const tabela = await this.classificacao.paraOrganizador(
+      organizacaoId,
+      categoriaId,
+    );
+
+    return this.prisma.comOrganizacao(organizacaoId, async (tx) => {
+      const jogos = await tx.jogos.findMany({
+        where: { categoria_id: categoriaId },
+        include: { fases: true },
+        orderBy: [{ ordem: 'asc' }],
+      });
+
+      const emAberto = jogos.filter(
+        (j) =>
+          j.fases?.tipo === 'grupos' &&
+          j.status !== 'encerrado' &&
+          j.status !== 'wo' &&
+          j.status !== 'cancelado',
+      );
+      if (emAberto.length > 0) {
+        throw new ConflictException(
+          `A fase de grupos ainda tem ${emAberto.length} jogo(s) sem resultado. ` +
+            'Encerre todos antes de definir os classificados.',
+        );
+      }
+
+      const grupos = tabela.grupos as GrupoClassificado[];
+      const criterios = tabela.criteriosDesempate;
+
+      const definidos: (VagaResolvida & { jogoId: string; lado: string })[] = [];
+      const pendencias: (VagaPendente & { jogoId: string; lado: string })[] = [];
+      const bloqueados: { jogoId: string; motivo: string }[] = [];
+
+      for (const jogo of jogos) {
+        const mandante = resolverVaga(jogo.mandante_rotulo, grupos, criterios);
+        const visitante = resolverVaga(jogo.visitante_rotulo, grupos, criterios);
+        if (!mandante && !visitante) continue; // vaga do gatilho, ou já é jogo de grupo
+
+        // As duas vagas de um jogo são gravadas JUNTAS. `ck_adversarios`
+        // proíbe mandante = visitante, e gravar um lado de cada vez passa
+        // por um estado intermediário que pode violar o check ao reexecutar
+        // sobre um chaveamento já preenchido.
+        if (jogo.status !== 'agendado' && jogo.status !== 'adiado') {
+          bloqueados.push({
+            jogoId: jogo.id,
+            motivo: 'O jogo já saiu do agendado; as equipes não foram trocadas.',
+          });
+          continue;
+        }
+
+        const dados: { mandante_id?: string; visitante_id?: string } = {};
+
+        // mesma equipe dos dois lados só aparece com chaveamento
+        // inconsistente — melhor mostrar do que estourar o check no banco
+        const conflito =
+          mandante &&
+          visitante &&
+          !ehPendente(mandante) &&
+          !ehPendente(visitante) &&
+          mandante.timeId === visitante.timeId;
+
+        for (const [lado, resolucao] of [
+          ['mandante', mandante],
+          ['visitante', visitante],
+        ] as const) {
+          if (!resolucao) continue;
+
+          if (ehPendente(resolucao)) {
+            pendencias.push({ ...resolucao, jogoId: jogo.id, lado });
+            continue;
+          }
+          if (conflito) {
+            pendencias.push({
+              rotulo: resolucao.rotulo,
+              motivo: 'posicao_inexistente',
+              jogoId: jogo.id,
+              lado,
+            });
+            continue;
+          }
+
+          if (lado === 'mandante') dados.mandante_id = resolucao.timeId;
+          else dados.visitante_id = resolucao.timeId;
+          definidos.push({ ...resolucao, jogoId: jogo.id, lado });
+        }
+
+        if (Object.keys(dados).length > 0) {
+          await tx.jogos.update({ where: { id: jogo.id }, data: dados });
+        }
+      }
+
+      return { definidos, pendencias, bloqueados };
     });
   }
 

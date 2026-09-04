@@ -183,3 +183,42 @@ export function montarMataMata(
 
   return jogos;
 }
+
+/**
+ * A vaga que um rótulo de mata-mata descreve.
+ *
+ * `grupo` é `null` quando a categoria tem chave única e o rótulo saiu como
+ * "3º colocado" — aí a posição é na tabela inteira, não dentro de um grupo.
+ */
+export interface VagaDeClassificado {
+  posicao: number;
+  grupo: string | null;
+}
+
+const VAGA_COM_GRUPO = /^(\d+)º\s+Grupo\s+([A-Za-z])$/;
+const VAGA_SEM_GRUPO = /^(\d+)º\s+colocado$/;
+
+/**
+ * Lê de volta o que `paresPrimeiraFase` escreveu.
+ *
+ * Só a PRIMEIRA fase eliminatória tem rótulo de classificado; da segunda em
+ * diante é "Vencedor Semifinal 1", que quem preenche é o gatilho
+ * `trg_avanca_mata_mata`. Por isso um rótulo que não casa devolve `null` em
+ * vez de erro: significa "esta vaga não é minha".
+ */
+export function interpretarRotulo(
+  rotulo: string | null | undefined,
+): VagaDeClassificado | null {
+  if (!rotulo) return null;
+  const texto = rotulo.trim();
+
+  const comGrupo = VAGA_COM_GRUPO.exec(texto);
+  if (comGrupo) {
+    return { posicao: Number(comGrupo[1]), grupo: comGrupo[2].toUpperCase() };
+  }
+
+  const semGrupo = VAGA_SEM_GRUPO.exec(texto);
+  if (semGrupo) return { posicao: Number(semGrupo[1]), grupo: null };
+
+  return null;
+}

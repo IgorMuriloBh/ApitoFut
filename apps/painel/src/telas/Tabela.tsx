@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Alerta, Botao, Campo, Cartao, classeEntrada } from '../componentes/ui';
-import { ErroDaApi, api, type CompeticaoDoPainel, type JogoDaTabela } from '../lib/api';
+import {
+  ErroDaApi,
+  api,
+  type CompeticaoDoPainel,
+  type JogoDaTabela,
+  type ResultadoDosClassificados,
+} from '../lib/api';
 import { formataData } from '../lib/dominio';
 import { EquipeComEscudo } from '../componentes/Escudo';
 import { ConfigurarFases } from './ConfigurarFases';
@@ -21,6 +27,31 @@ export function Tabela({
   const [jogos, setJogos] = useState<JogoDaTabela[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [gerando, setGerando] = useState(false);
+  const [definindo, setDefinindo] = useState(false);
+  const [classificados, setClassificados] =
+    useState<ResultadoDosClassificados | null>(null);
+
+  /**
+   * Leva os classificados dos grupos para a primeira fase eliminatória.
+   *
+   * O gatilho do banco promove vencedor de mata-mata para mata-mata; a
+   * ponte grupos → mata-mata é esta. Sem ela a vaga fica em "1º Grupo A"
+   * para sempre e a Central ao vivo não abre o jogo, porque exige as duas
+   * equipes definidas.
+   */
+  async function definirClassificados() {
+    setDefinindo(true);
+    setClassificados(null);
+    try {
+      setClassificados(await api.definirClassificados(categoriaId));
+      setErro(null);
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Falha ao definir os classificados.');
+    } finally {
+      setDefinindo(false);
+    }
+  }
 
   async function carregar(id = categoriaId) {
     if (!id) return;
@@ -33,6 +64,7 @@ export function Tabela({
   }
 
   useEffect(() => {
+    setClassificados(null);
     void carregar(categoriaId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoriaId]);
@@ -42,6 +74,15 @@ export function Tabela({
   }
 
   const porBloco = agrupar(jogos ?? []);
+
+  // vaga de classificado ainda vazia: "1º Grupo A" espera alguém, enquanto
+  // "Vencedor Semifinal 1" é do gatilho e não aparece aqui
+  const vagasAbertas = (jogos ?? []).some(
+    (j) =>
+      j.fase?.tipo === 'mata' &&
+      ((!j.mandante.id && !j.mandante.nome.startsWith('Vencedor')) ||
+        (!j.visitante.id && !j.visitante.nome.startsWith('Vencedor'))),
+  );
 
   const categoriaAtual = competicao.categorias.find((k) => k.id === categoriaId);
 
@@ -87,6 +128,48 @@ export function Tabela({
         />
       )}
 
+      {classificados && (
+        <Alerta tom={classificados.pendencias.length ? 'aviso' : 'info'}>
+          <div className="space-y-1">
+            {classificados.definidos.length > 0 && (
+              <p>
+                {classificados.definidos.length} vaga(s) preenchida(s):{' '}
+                {classificados.definidos
+                  .map((d) => `${d.rotulo} = ${d.nome}`)
+                  .join(' · ')}
+                .
+              </p>
+            )}
+            {classificados.pendencias.map((p, i) => (
+              <p key={i}>
+                <b>{p.rotulo}</b>{' '}
+                {p.motivo === 'empate' ? (
+                  <>
+                    continua em aberto: {p.empatados?.join(' e ')} empatam em
+                    todos os critérios. Desempate pelo regulamento — use a
+                    coluna extra (confronto direto) ou acrescente um critério
+                    em Configurações, e clique de novo.
+                  </>
+                ) : (
+                  <>
+                    não pôde ser resolvida: a classificação não tem essa
+                    posição. Confira as fases da categoria.
+                  </>
+                )}
+              </p>
+            ))}
+            {classificados.bloqueados.map((b, i) => (
+              <p key={`b${i}`}>{b.motivo}</p>
+            ))}
+            {!classificados.definidos.length &&
+              !classificados.pendencias.length &&
+              !classificados.bloqueados.length && (
+                <p>Nenhuma vaga de classificado para preencher nesta categoria.</p>
+              )}
+          </div>
+        </Alerta>
+      )}
+
       <Cartao
         titulo="Tabela de jogos"
         sub={
@@ -102,6 +185,15 @@ export function Tabela({
             <Botao variante="neutro" onClick={() => setConfigurandoFases(true)}>
               🗂 Configurar fases
             </Botao>
+            {vagasAbertas && (
+              <Botao
+                variante="neutro"
+                onClick={() => void definirClassificados()}
+                disabled={definindo}
+              >
+                {definindo ? 'Definindo…' : '🎟 Definir classificados'}
+              </Botao>
+            )}
             <Botao onClick={() => setGerando(true)}>⚙ Gerar tabela</Botao>
           </span>
         }
