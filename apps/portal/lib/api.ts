@@ -220,8 +220,17 @@ export const api = {
     ),
 };
 
-/** URL do feed SSE — usada no navegador, então precisa ser pública. */
+/**
+ * URL do feed SSE. Roda no NAVEGADOR, então é relativa: passa pelo rewrite
+ * de `/api` do próprio portal, igual à área da equipe.
+ *
+ * Já foi `NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'`, e o padrão foi
+ * exatamente o que quebrou em produção: a variável não existia no build, o
+ * bundle saiu apontando para `localhost:3000`, e o EventSource ficou
+ * tentando reconectar em silêncio. Nada no log, nada na tela — só o placar
+ * parado. Endereço relativo não tem como sair errado: é sempre a origem de
+ * onde a página veio, sem variável de build para esquecer.
+ */
 export function urlAoVivo(slug: string, categoriaId: string, jogoId: string) {
-  const publica = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-  return `${publica}/competicoes/${slug}/categorias/${categoriaId}/jogos/${jogoId}/ao-vivo`;
+  return `/api/competicoes/${slug}/categorias/${categoriaId}/jogos/${jogoId}/ao-vivo`;
 }

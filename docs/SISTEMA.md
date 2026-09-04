@@ -693,6 +693,15 @@ O placar ao vivo é um client component com `EventSource`; como o aviso não tra
 dado de atleta, o placar atualiza na hora e um `router.refresh()` busca a
 cronologia pela rota que aplica a regra.
 
+**A URL do feed SSE é relativa** (`/api/competicoes/...`), passando pelo mesmo
+rewrite da área da equipe. Já foi `NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'`
+e quebrou em produção do pior jeito: a variável não existia no build, o bundle
+saiu apontando para `localhost:3000`, e o `EventSource` ficou reconectando em
+silêncio — deploy verde, portal inteiro funcionando, e só o placar parado. Achado
+percorrendo o roteiro de teste, não por teste automatizado. Endereço relativo não
+tem variável de build para esquecer. O rewrite do Next repassa `text/event-stream`
+sem bufferizar (verificado com `NOTIFY` no banco e `curl -N` pelo portal).
+
 **Domínio próprio** (`proxy.ts`, RF002): o host da requisição vira slug por
 `/competicoes/resolver`, e um `rewrite` — não redirect — mantém o endereço que o
 visitante vê. Arquivo `proxy.ts` e não `middleware.ts` porque o Next 16 renomeou

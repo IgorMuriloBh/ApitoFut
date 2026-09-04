@@ -13,10 +13,14 @@ const nextConfig = {
   outputFileTracingRoot: new URL('../../', import.meta.url).pathname,
 
   /**
-   * A área da equipe (`/{slug}/inscricao`) é client component e fala com a
-   * API do navegador. Passar por `/api/*` do próprio portal mantém tudo na
-   * mesma origem: sem CORS, e sem precisar de uma `NEXT_PUBLIC_API_URL`
-   * que exporia o endereço interno da API no bundle.
+   * Tudo que o NAVEGADOR chama da API passa por aqui: a área da equipe
+   * (`/{slug}/inscricao`) e o feed SSE do placar ao vivo. Mesma origem,
+   * então sem CORS e sem uma `NEXT_PUBLIC_API_URL` que exporia o endereço
+   * interno da API no bundle — e que, quando faltava no build, deixava o
+   * cliente apontando para `localhost` sem nenhum sintoma visível.
+   *
+   * O rewrite repassa `text/event-stream` sem bufferizar: o evento nasce
+   * no NOTIFY do Postgres e chega ao navegador na hora. Verificado.
    *
    * O white-label por domínio próprio vive em `proxy.ts`.
    */
