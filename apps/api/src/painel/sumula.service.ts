@@ -483,9 +483,13 @@ export class SumulaService {
     const texto =
       erro instanceof Error ? erro.message : String(erro ?? '');
     if (texto.includes('suspensão em vigor')) {
-      const detalhe = texto.match(/Atleta com suspensão em vigor:[^\n]*/)?.[0];
+      // o erro cru vem embrulhado pelo driver: a mensagem do gatilho está
+      // no meio de aspas e crases, que não podem vazar para a tela
+      const detalhe = texto
+        .match(/Atleta com suspensão em vigor:[^\n]*/)?.[0]
+        .replace(/[\s`"']+$/, '');
       throw new BadRequestException(
-        detalhe ??
+        detalhe ||
           'O atleta está suspenso nesta categoria e não pode participar do jogo.',
       );
     }

@@ -493,5 +493,8 @@ describe('suspensão que nasce retroativa', () => {
 
     assert.equal(r.code, 400, JSON.stringify(r.corpo));
     assert.match(r.corpo.message, /suspens/i);
+    assert.match(r.corpo.message, /\d+ jogo\(s\)/, 'diz quantos jogos faltam');
+    // a mensagem vai direto para a tela: nada de crase ou aspas do erro cru
+    assert.doesNotMatch(r.corpo.message, /[`"]/, r.corpo.message);
   });
 });
