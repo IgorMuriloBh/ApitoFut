@@ -738,6 +738,15 @@ conteúdo a caminho. Link direto para aba travada cai na Tabela, nunca em branco
 
 O detalhe do jogo continua em `/{slug}/{categoriaId}/{jogoId}`.
 
+**Estatísticas tem sub-abas** (`?sub=`): Artilharia, Assistências, Goleiros e
+Disciplina, uma por vez, artilharia primeiro. As quatro empilhadas davam uma
+página de rolagem longa em que a artilharia — o que quase todo mundo abre para
+ver — empurrava o resto para fora da tela. A escolha é URL e não estado de
+cliente, pelo mesmo motivo das abas: o endereço tem de continuar servindo depois
+de colado no grupo da competição. `montarHref` é a única função que monta esses
+endereços; duas versões dela sairiam de sincronia no primeiro parâmetro novo.
+Trocar de aba descarta a sub-aba, trocar de categoria a mantém.
+
 **O portal não contém nenhuma regra de visibilidade.** O que a API não devolve
 não existe nele: `em_criacao` vira `notFound()` pelo 404 da API; em `publicada`,
 `escalacoes` e `lances` chegam `null` e a página renderiza o aviso de bloqueio.

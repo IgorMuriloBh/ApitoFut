@@ -243,6 +243,36 @@ button:disabled {
    página só fazia o responsável rolar procurando qual formulário era de
    qual categoria; a aba diz onde ele está.
    --------------------------------------------------------------------- */
+/* Sub-abas de Estatísticas. São links, não botões: a escolha vive na URL
+   (`?sub=`) para o endereço continuar servindo depois de compartilhado. */
+.subabas {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid var(--linha);
+  border-radius: 12px;
+  padding: 4px;
+  margin: 16px 0;
+  scrollbar-width: none;
+}
+.subabas::-webkit-scrollbar { display: none; }
+
+.subaba {
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--tinta2);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.subaba:hover { background: #f1f5f9; color: inherit; }
+.subaba.ativa {
+  background: color-mix(in srgb, var(--cor, #16a34a) 12%, transparent);
+  color: var(--cor, #16a34a);
+}
+
 .abas-equipe {
   display: flex;
   gap: 4px;

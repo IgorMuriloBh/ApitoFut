@@ -4,7 +4,7 @@ import { api, type Competicao, type JogoPublico } from '@/lib/api';
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ aba?: string; cat?: string }>;
+  searchParams: Promise<{ aba?: string; cat?: string; sub?: string }>;
 }
 
 /**
@@ -30,6 +30,57 @@ const ABAS: { chave: string; rotulo: string; nivel: 1 | 2 }[] = [
 const nivelDoStatus = (status: string) =>
   status === 'em_andamento' || status === 'encerrada' ? 2 : 1;
 
+/**
+ * Sub-abas de Estatísticas (`?sub=`).
+ *
+ * As quatro listas empilhadas davam uma página de rolagem longa em que a
+ * artilharia — que é o que quase todo mundo abre para ver — empurrava o
+ * resto para fora da tela. Uma por vez, e a artilharia primeiro.
+ *
+ * Mesma disciplina das abas: a escolha é URL, não estado de cliente, para
+ * o link continuar servindo quando alguém o colar no grupo da competição.
+ */
+const SUB_ESTATISTICAS: {
+  chave: string;
+  rotulo: string;
+  campo: 'gols' | 'assistencias' | 'defesas' | 'cartoesAmarelos';
+  /** cabeçalho da coluna do número: sem ele, "5" ao lado do nome não diz nada */
+  metrica: string;
+  vazio: string;
+}[] = [
+  { chave: 'artilharia', rotulo: '🥇 Artilharia', campo: 'gols',
+    metrica: 'Gols', vazio: 'Nenhum gol registrado ainda.' },
+  { chave: 'assistencias', rotulo: '🅰️ Assistências', campo: 'assistencias',
+    metrica: 'Assistências', vazio: 'Nenhuma assistência registrada ainda.' },
+  { chave: 'goleiros', rotulo: '🧤 Goleiros', campo: 'defesas',
+    metrica: 'Defesas', vazio: 'Nenhuma defesa registrada ainda.' },
+  { chave: 'disciplina', rotulo: '🟨 Disciplina', campo: 'cartoesAmarelos',
+    metrica: 'Amarelos', vazio: 'Nenhum cartão registrado ainda.' },
+];
+
+/**
+ * O endereço de uma combinação aba/categoria/sub-aba.
+ *
+ * Uma função só, usada pela barra de abas e pelas sub-abas: duas versões
+ * disto sairiam de sincronia na primeira vez que um parâmetro mudasse.
+ * Trocar de aba ou de categoria NÃO leva a sub-aba junto — ela só faz
+ * sentido dentro de Estatísticas, e voltar para a artilharia é o esperado.
+ */
+function montarHref(
+  slug: string,
+  varias: boolean,
+  aba: string,
+  categoriaId?: string,
+  sub?: string,
+) {
+  const p = new URLSearchParams();
+  if (aba !== 'tabela') p.set('aba', aba);
+  if (categoriaId && varias) p.set('cat', categoriaId);
+  if (sub && sub !== SUB_ESTATISTICAS[0].chave) p.set('sub', sub);
+  const q = p.toString();
+  return `/${slug}${q ? `?${q}` : ''}`;
+}
+
 /** SEO por competição — a razão de o portal ser SSR (CLAUDE.md). */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -53,7 +104,7 @@ const STATUS_ROTULO: Record<string, string> = {
 
 export default async function PaginaCompeticao({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { aba: abaPedida, cat } = await searchParams;
+  const { aba: abaPedida, cat, sub: subPedida } = await searchParams;
   const c = await api.competicao(slug);
 
   const nivel = nivelDoStatus(c.status);
@@ -66,14 +117,25 @@ export default async function PaginaCompeticao({ params, searchParams }: Props) 
     ABAS.find((a) => a.chave === abaPedida && a.nivel <= nivel)?.chave ??
     'tabela';
 
-  const href = (novaAba: string, novaCat?: string) => {
-    const p = new URLSearchParams();
-    if (novaAba !== 'tabela') p.set('aba', novaAba);
-    const alvo = novaCat ?? categoria?.id;
-    if (alvo && c.categorias.length > 1) p.set('cat', alvo);
-    const q = p.toString();
-    return `/${c.slug}${q ? `?${q}` : ''}`;
-  };
+  // sub-aba desconhecida cai na primeira, como a aba cai na tabela
+  const sub =
+    SUB_ESTATISTICAS.find((x) => x.chave === subPedida)?.chave ??
+    SUB_ESTATISTICAS[0].chave;
+
+  /**
+   * Trocar de ABA descarta a sub-aba (ela só existe dentro de
+   * Estatísticas); trocar de CATEGORIA a mantém — quem está comparando a
+   * disciplina da Sub-13 quer ver a disciplina da Sub-15, não voltar para
+   * a artilharia.
+   */
+  const href = (novaAba: string, novaCat?: string) =>
+    montarHref(
+      c.slug,
+      c.categorias.length > 1,
+      novaAba,
+      novaCat ?? categoria?.id,
+      novaAba === aba && aba === 'estatisticas' ? sub : undefined,
+    );
 
   return (
     <main style={{ ['--cor' as string]: c.corPrimaria }}>
@@ -158,7 +220,12 @@ export default async function PaginaCompeticao({ params, searchParams }: Props) 
             </p>
           </div>
         ) : (
-          <Conteudo aba={aba} competicao={c} categoriaId={categoria.id} />
+          <Conteudo
+            aba={aba}
+            sub={sub}
+            competicao={c}
+            categoriaId={categoria.id}
+          />
         )}
 
         {aba === 'tabela' && c.regulamento && (
@@ -174,10 +241,12 @@ export default async function PaginaCompeticao({ params, searchParams }: Props) 
 
 async function Conteudo({
   aba,
+  sub,
   competicao,
   categoriaId,
 }: {
   aba: string;
+  sub: string;
   competicao: Competicao;
   categoriaId: string;
 }) {
@@ -253,28 +322,44 @@ async function Conteudo({
     const est = await api.estatisticas(slug, categoriaId);
     if (!est) return <Travado />;
 
+    const atual =
+      SUB_ESTATISTICAS.find((x) => x.chave === sub) ?? SUB_ESTATISTICAS[0];
+
+    /**
+     * Sem `<h2>`: a sub-aba ativa logo acima já nomeia a lista, e repetir
+     * "🥇 Artilharia" duas vezes seguidas é ruído. Quem nomeia a coluna do
+     * número é o cabeçalho da tabela — antes não havia nenhum, e um "5" ao
+     * lado do nome podia ser gol, defesa ou cartão.
+     */
     const ranking = (
-      titulo: string,
       campo: 'gols' | 'assistencias' | 'defesas' | 'cartoesAmarelos',
+      metrica: string,
+      vazio: string,
     ) => {
       const lista = est.atletas
         .filter((a) => a[campo] > 0)
         .sort((x, y) => y[campo] - x[campo])
         .slice(0, 10);
       return (
-        <div className="cartao" key={titulo}>
-          <h2>{titulo}</h2>
+        <div className="cartao">
           {lista.length === 0 ? (
-            <p style={{ fontSize: 14, color: 'var(--tinta2)' }}>
-              Nada registrado ainda.
-            </p>
+            <p style={{ fontSize: 14, color: 'var(--tinta2)' }}>{vazio}</p>
           ) : (
             <table>
+              <thead>
+                <tr>
+                  <th style={{ width: 28 }}>#</th>
+                  <th style={{ textAlign: 'left' }}>Atleta</th>
+                  <th style={{ textAlign: 'right' }}>{metrica}</th>
+                </tr>
+              </thead>
               <tbody>
                 {lista.map((a, i) => (
                   <tr key={a.atletaId}>
                     <td style={{ width: 28 }}>{i + 1}</td>
-                    <td>
+                    {/* a regra global centraliza td; o nome acompanha o
+                        cabeçalho "Atleta", que é alinhado à esquerda */}
+                    <td style={{ textAlign: 'left' }}>
                       <b>{a.nome}</b>
                       <span
                         style={{
@@ -300,10 +385,27 @@ async function Conteudo({
 
     return (
       <>
-        {ranking('🥇 Artilharia', 'gols')}
-        {ranking('🅰️ Assistências', 'assistencias')}
-        {ranking('🧤 Goleiros', 'defesas')}
-        {ranking('🟨 Disciplina', 'cartoesAmarelos')}
+        {/* uma lista por vez: as quatro empilhadas viravam rolagem longa,
+            com a artilharia empurrando o resto para fora da tela */}
+        <nav className="subabas" aria-label="Estatísticas">
+          {SUB_ESTATISTICAS.map((x) => (
+            <Link
+              key={x.chave}
+              href={montarHref(
+                slug,
+                competicao.categorias.length > 1,
+                aba,
+                categoriaId,
+                x.chave,
+              )}
+              className={x.chave === atual.chave ? 'subaba ativa' : 'subaba'}
+              aria-current={x.chave === atual.chave ? 'page' : undefined}
+            >
+              {x.rotulo}
+            </Link>
+          ))}
+        </nav>
+        {ranking(atual.campo, atual.metrica, atual.vazio)}
       </>
     );
   }

@@ -441,11 +441,13 @@ export const TOPICOS: TopicoDoManual[] = [
     resumo: 'Artilharia, assistências e os prêmios da competição.',
     corpo: [
       'Artilharia, assistências e demais números saem dos lances registrados na súmula.',
+      'No portal público, a aba Estatísticas tem quatro listas em abas próprias: Artilharia, Assistências, Goleiros e Disciplina — uma por vez, começando pela artilharia.',
+      'Cada uma é um endereço próprio: o link que você copiar já abre na lista que estava vendo. Trocar de categoria mantém a lista; trocar de aba volta para a artilharia.',
       'Nas premiações, empate volta como **empate**: a lista mostra todos os empatados e avisa, em vez de escolher um sozinho.',
       'Equipe que ainda não jogou não concorre a "melhor defesa" nem a "fair play" — zero jogos não é o mesmo que zero gols sofridos.',
     ],
     palavras:
-      'estatisticas artilharia artilheiro assistencia premiacao melhor defesa fair play craque numeros',
+      'estatisticas artilharia artilheiro assistencia premiacao melhor defesa fair play craque numeros goleiros defesas disciplina cartoes ranking',
     onde: ['painel', 'portal'],
     destino: { painel: { tela: 'competicao', secao: 'estatisticas' } },
     acao: 'Ir para Estatísticas',
