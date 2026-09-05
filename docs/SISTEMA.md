@@ -739,7 +739,10 @@ conteúdo a caminho. Link direto para aba travada cai na Tabela, nunca em branco
 O detalhe do jogo continua em `/{slug}/{categoriaId}/{jogoId}`.
 
 **Estatísticas tem sub-abas** (`?sub=`): Artilharia, Assistências, Goleiros e
-Disciplina, uma por vez, artilharia primeiro. As quatro empilhadas davam uma
+Disciplina, uma por vez, artilharia primeiro. O painel tem as mesmas quatro, em
+`Estatisticas.tsx` — lá a escolha é `useState`, porque o painel é SPA atrás de
+login e não há link para compartilhar; a lista sobrevive à troca de categoria e
+à alternância para o ranking geral. As quatro empilhadas davam uma
 página de rolagem longa em que a artilharia — o que quase todo mundo abre para
 ver — empurrava o resto para fora da tela. A escolha é URL e não estado de
 cliente, pelo mesmo motivo das abas: o endereço tem de continuar servindo depois

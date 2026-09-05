@@ -6,11 +6,13 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
-    // A API vive na 3000; o proxy evita CORS e deixa o token no mesmo host
-    // durante o desenvolvimento.
+    // O proxy evita CORS e deixa o token no mesmo host durante o
+    // desenvolvimento. O alvo é a 3000 por padrão, e `API_URL` sobrescreve —
+    // mesma variável que o portal já usa, para quem tiver a 3000 ocupada por
+    // outro projeto não precisar editar arquivo versionado.
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.API_URL ?? 'http://localhost:3000',
         changeOrigin: true,
         rewrite: (caminho) => caminho.replace(/^\/api/, ''),
       },

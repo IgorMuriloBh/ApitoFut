@@ -21,6 +21,59 @@ import {
 
 type Recorte = { tipo: 'categoria'; id: string } | { tipo: 'geral' };
 
+/**
+ * Os quatro rankings, um por sub-aba.
+ *
+ * Antes vinham os quatro empilhados na mesma tela. A artilharia é o que
+ * quase sempre se abre para ver, e era ela que empurrava o resto para
+ * baixo — mesma mudança já feita no portal, para as duas telas contarem a
+ * mesma história.
+ */
+type SubRanking = 'artilharia' | 'assistencias' | 'goleiros' | 'disciplina';
+
+const RANKINGS: {
+  chave: SubRanking;
+  rotulo: string;
+  /** o que o número significa; vira o título do cartão */
+  metrica: string;
+  campo: keyof AtletaNoRanking;
+  vazio: string;
+  /** goleiro é o único recorte por posição */
+  filtrar?: (a: AtletaNoRanking) => boolean;
+}[] = [
+  {
+    chave: 'artilharia',
+    rotulo: '🥇 Artilharia',
+    metrica: 'Gols marcados',
+    campo: 'gols',
+    vazio: 'Nenhum gol registrado ainda.',
+  },
+  {
+    chave: 'assistencias',
+    rotulo: '🅰️ Assistências',
+    metrica: 'Passes para gol',
+    campo: 'assistencias',
+    vazio: 'Nenhuma assistência registrada ainda.',
+  },
+  {
+    chave: 'goleiros',
+    rotulo: '🧤 Goleiros',
+    metrica: 'Defesas difíceis e de pênalti',
+    campo: 'defesas',
+    vazio: 'Nenhuma defesa registrada ainda.',
+    // sem posição preenchida o atleta entra: a ficha pode não pedir posição,
+    // e sumir com quem defendeu seria pior que listar alguém a mais
+    filtrar: (a) => !a.posicao || a.posicao.toLowerCase().includes('goleir'),
+  },
+  {
+    chave: 'disciplina',
+    rotulo: '🟨 Disciplina',
+    metrica: 'Cartões amarelos',
+    campo: 'cartoesAmarelos',
+    vazio: 'Nenhum cartão registrado ainda.',
+  },
+];
+
 function Indicador({ rotulo, valor, nota }: { rotulo: string; valor: number; nota: string }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
@@ -33,15 +86,15 @@ function Indicador({ rotulo, valor, nota }: { rotulo: string; valor: number; not
 
 function Ranking({
   titulo,
-  sub,
   atletas,
   campo,
+  vazio,
   mostrarCompeticao,
 }: {
   titulo: string;
-  sub: string;
   atletas: AtletaNoRanking[];
   campo: keyof AtletaNoRanking;
+  vazio: string;
   mostrarCompeticao?: boolean;
 }) {
   // só quem pontuou: um ranking de artilharia com dezenas de zeros no fim
@@ -52,11 +105,11 @@ function Ranking({
     .slice(0, 10);
 
   return (
-    <Cartao titulo={titulo} sub={sub}>
+    // sem subtítulo: quem nomeia a lista é a sub-aba ativa logo acima, e o
+    // título do cartão diz o que o número significa
+    <Cartao titulo={titulo}>
       {lista.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-slate-500">
-          Nada registrado ainda.
-        </p>
+        <p className="px-5 py-8 text-center text-sm text-slate-500">{vazio}</p>
       ) : (
         <table className="w-full text-sm">
           <tbody className="divide-y divide-slate-100">
@@ -195,6 +248,11 @@ export function Estatisticas({ competicao }: { competicao: CompeticaoDoPainel })
     EstatisticasDaCategoria | RankingGeral | null
   >(null);
   const [erro, setErro] = useState<string | null>(null);
+  // a sub-aba NÃO se perde ao trocar de categoria ou de recorte: quem
+  // compara a disciplina de duas categorias quer continuar na disciplina
+  const [sub, setSub] = useState<SubRanking>('artilharia');
+
+  const atual = RANKINGS.find((r) => r.chave === sub) ?? RANKINGS[0];
 
   const carregar = useCallback(async () => {
     setErro(null);
@@ -304,38 +362,32 @@ export function Estatisticas({ competicao }: { competicao: CompeticaoDoPainel })
       )}
 
       {dados && (
-        <div className="grid lg:grid-cols-2 gap-4">
+        <>
+          <nav className="flex gap-1 border-b border-slate-200">
+            {RANKINGS.map((r) => (
+              <button
+                key={r.chave}
+                onClick={() => setSub(r.chave)}
+                aria-current={r.chave === atual.chave ? 'page' : undefined}
+                className={`px-4 py-2 text-sm -mb-px border-b-2 ${
+                  r.chave === atual.chave
+                    ? 'border-marca text-marca font-medium'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                {r.rotulo}
+              </button>
+            ))}
+          </nav>
+
           <Ranking
-            titulo="🥇 Artilharia"
-            sub="Gols marcados"
-            atletas={atletas}
-            campo="gols"
+            titulo={atual.metrica}
+            atletas={atual.filtrar ? atletas.filter(atual.filtrar) : atletas}
+            campo={atual.campo}
+            vazio={atual.vazio}
             mostrarCompeticao={Boolean(geral)}
           />
-          <Ranking
-            titulo="🅰️ Assistências"
-            sub="Passes para gol"
-            atletas={atletas}
-            campo="assistencias"
-            mostrarCompeticao={Boolean(geral)}
-          />
-          <Ranking
-            titulo="🧤 Goleiros"
-            sub="Defesas difíceis e de pênalti"
-            atletas={atletas.filter(
-              (a) => !a.posicao || a.posicao.toLowerCase().includes('goleir'),
-            )}
-            campo="defesas"
-            mostrarCompeticao={Boolean(geral)}
-          />
-          <Ranking
-            titulo="🟨 Disciplina"
-            sub="Cartões amarelos"
-            atletas={atletas}
-            campo="cartoesAmarelos"
-            mostrarCompeticao={Boolean(geral)}
-          />
-        </div>
+        </>
       )}
     </div>
   );

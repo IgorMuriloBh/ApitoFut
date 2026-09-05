@@ -441,8 +441,9 @@ export const TOPICOS: TopicoDoManual[] = [
     resumo: 'Artilharia, assistências e os prêmios da competição.',
     corpo: [
       'Artilharia, assistências e demais números saem dos lances registrados na súmula.',
-      'No portal público, a aba Estatísticas tem quatro listas em abas próprias: Artilharia, Assistências, Goleiros e Disciplina — uma por vez, começando pela artilharia.',
-      'Cada uma é um endereço próprio: o link que você copiar já abre na lista que estava vendo. Trocar de categoria mantém a lista; trocar de aba volta para a artilharia.',
+      'São quatro listas em abas próprias, no painel e no portal: Artilharia, Assistências, Goleiros e Disciplina — uma por vez, começando pela artilharia.',
+      'No portal, cada lista é um endereço próprio: o link que você copiar já abre na que estava vendo. Trocar de categoria mantém a lista; trocar de aba volta para a artilharia.',
+      'No painel, a lista escolhida também se mantém ao trocar de categoria ou ao alternar para o ranking geral da plataforma.',
       'Nas premiações, empate volta como **empate**: a lista mostra todos os empatados e avisa, em vez de escolher um sozinho.',
       'Equipe que ainda não jogou não concorre a "melhor defesa" nem a "fair play" — zero jogos não é o mesmo que zero gols sofridos.',
     ],
