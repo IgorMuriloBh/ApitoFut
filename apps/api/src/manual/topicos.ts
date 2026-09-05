@@ -455,13 +455,16 @@ export const TOPICOS: TopicoDoManual[] = [
     titulo: 'Suspensões por cartão',
     resumo: 'Geradas, cumpridas e controladas pelo sistema.',
     corpo: [
-      'Se a categoria tem suspensão automática, o cartão gera a punição conforme as regras configuradas.',
+      'Ligue "Habilitar suspensões automáticas" em Configurações › Regras. Sem isso os cartões são apenas registrados e ninguém é suspenso.',
+      'Com a regra ligada, o cartão gera a punição conforme o número de amarelos e os jogos por cartão que você configurou.',
+      'A suspensão vale a partir do jogo SEGUINTE. Quem foi expulso continua na súmula da partida em que levou o vermelho — ele estava em campo.',
       'Cada jogo que a equipe disputa sem o atleta desconta uma partida. Atleta suspenso não pode ser escalado.',
+      'Ligar a regra depois não é retroativo: cartões dados enquanto ela estava desligada não geram suspensão. Se precisar, use a suspensão manual.',
       'Corrigir ou apagar o cartão desfaz a suspensão que ele originou.',
       'A tela de Suspensões mostra quem está cumprindo e quanto falta.',
     ],
     palavras:
-      'suspensao suspenso cartao amarelo vermelho punicao gancho cumprir nao pode jogar automatica',
+      'suspensao suspenso cartao amarelo vermelho expulso expulsao punicao gancho cumprir nao pode jogar automatica habilitar ligar regra terceiro amarelo',
     onde: ['painel'],
     destino: { painel: { tela: 'competicao', secao: 'suspensoes' } },
     acao: 'Ir para Suspensões',

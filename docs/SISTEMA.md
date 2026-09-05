@@ -147,6 +147,7 @@ Depois, `npm run db:pull` para regenerar os tipos.
 | `12-soft-delete.sql` | Exclusão lógica de organização e competição |
 | `13-avanco-mata-mata.sql` | Vencedor sobe para a fase seguinte ao encerrar |
 | `14-suspensoes.sql` | Suspensão automática por cartões, cumprimento e bloqueio (RF032) |
+| `20-suspensao-no-proprio-jogo.sql` | A suspensão só vale a partir do jogo seguinte |
 | `15-adm-sistema.sql` | Auto-cadastro, primeira conta vira ADM e as frestas da área do ADM (RF031) |
 | `16-area-da-equipe.sql` | Convite por link: código de acesso e frestas de leitura (RF006/RF007) |
 | `17-carteirinha.sql` | Credencial do atleta para a arbitragem, sem documento (RF029) |
@@ -168,7 +169,7 @@ Depois, `npm run db:pull` para regenerar os tipos.
 | `trg_avanca_mata_mata` | `jogos` | Promove o vencedor à fase seguinte; reabrir desfaz |
 | `trg_zz_cartao_suspensao` | `jogo_eventos` | Gera/desfaz suspensão ao mexer num cartão |
 | `trg_cumpre_suspensoes` | `jogos` | Desconta um jogo de quem estava suspenso e não jogou |
-| `trg_bloqueia_escalacao_suspensa` | `jogo_escalacoes` | Impede escalar atleta suspenso |
+| `trg_bloqueia_escalacao_suspensa` | `jogo_escalacoes` | Impede escalar atleta suspenso — menos no jogo que gerou a suspensão |
 
 > **Por que `trg_zz_notifica_lance`:** o PostgreSQL dispara triggers do mesmo
 > evento em **ordem alfabética**. O aviso precisa rodar *depois* de `trg_placar`
@@ -853,7 +854,7 @@ outro — falhava de verdade, com corrida real.
 | `cronologia.e2e.spec.ts` | Timeline e correção de lance |
 | `mata-mata.e2e.spec.ts` | Avanço do vencedor, correção de resultado |
 | `classificados.e2e.spec.ts` | Grupos → mata-mata: vaga, empate, reexecução |
-| `suspensoes.e2e.spec.ts` | Acúmulo, vermelho, cumprimento, bloqueio |
+| `suspensoes.e2e.spec.ts` | Acúmulo, vermelho, cumprimento, bloqueio, cartão lançado pela API |
 | `uploads.e2e.spec.ts` | Envio, entrega, travessia de caminho |
 | `escudo.e2e.spec.ts` | O escudo saindo em **toda** rota que expõe equipe |
 | `exportacao.e2e.spec.ts` | CSVs e premiações |
@@ -1010,6 +1011,7 @@ Registro do que foi decidido e **por quê** — para não refazer a discussão.
 | Soft-delete só no topo | `excluido_em` em 28 tabelas | Complexidade em toda consulta sem ganho proporcional |
 | Dedup por nome + nascimento | Certidão de nascimento | Certidão é campo **opcional** na configuração da categoria; identidade não pode depender do que pode não ser pedido |
 | Suspensão persistida, não derivada | Calcular `floor(amarelos/N)` a cada consulta, como o protótipo | Derivada, a suspensão nunca termina: nada marca o cumprimento e o atleta fica suspenso para sempre |
+| A suspensão não alcança o jogo que a gerou (migration 20) | Bloquear já a partir do cartão | O atleta estava em campo — foi por isso que levou o cartão. Bloqueando, `POST /lances` derrubava a própria requisição que gravava a expulsão: o endpoint escala quem participou do lance logo depois de gravá-lo, e o gatilho recusava. Qualquer vermelho lançado pela súmula respondia 500. Os testes antigos não pegavam porque inseriam cartão direto no banco |
 | `acumular_dois_amarelos` com efeito real | Manter só no rótulo, como o protótipo | Opção configurável que não muda nada é armadilha para quem a liga esperando resultado |
 | Avanço do mata-mata por trigger | Lógica na API | Encerrar um jogo pode vir do endpoint, de um W.O. lançado direto ou de correção por SQL; no banco vale em todos os casos |
 | Menu lateral em duas camadas | Uma fila de abas no topo | Com onze itens a fila transborda e perde o agrupamento; a lateral da conta some dentro da competição para não competir com a dela |

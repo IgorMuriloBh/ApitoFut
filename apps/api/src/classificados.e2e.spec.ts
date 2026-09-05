@@ -285,14 +285,28 @@ describe('coluna extra desempata a vaga', () => {
       JSON.stringify(empatado.corpo.pendencias),
     );
 
-    // a coluna extra tem de estar entre os critérios para valer de fato
-    await api(`/painel/categorias/${categoria}/configuracao`, 'PUT', {
-      colunas: { coluna_extra: true },
-      criteriosDesempate: [
-        { criterio: 'pontos', direcao: 'DESC' },
-        { criterio: 'coluna_extra', direcao: 'DESC' },
-      ],
-    });
+    // a coluna extra tem de estar VISÍVEL e entre os critérios: escondida,
+    // a regra da configuração a tira do desempate. O campo é `desempate` —
+    // uma chave errada aqui é ignorada em silêncio, e o teste passaria à toa
+    const config = await api(
+      `/painel/categorias/${categoria}/configuracao`,
+      'PUT',
+      {
+        colunas: { coluna_extra: true },
+        desempate: [
+          { criterio: 'pontos', direcao: 'DESC' },
+          { criterio: 'coluna_extra', direcao: 'DESC' },
+        ],
+      },
+    );
+    assert.equal(config.code, 200, JSON.stringify(config.corpo));
+
+    const conferida = await api(`/painel/categorias/${categoria}/classificacao`);
+    assert.deepEqual(
+      conferida.corpo.criteriosDesempate.map((c: any) => c.criterio),
+      ['pontos', 'coluna_extra'],
+      'sem a coluna extra entre os critérios o resto do teste não prova nada',
+    );
 
     const ajuste = await api(
       `/painel/categorias/${categoria}/coluna-extra`,

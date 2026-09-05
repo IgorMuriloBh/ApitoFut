@@ -52,6 +52,7 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
 - `db/17-carteirinha.sql` — credencial do atleta para a arbitragem (RF029)
 - `db/18-municipios.sql` — UFs e municípios do IBGE; regerar com `db/ferramentas/`
 - `db/19-comissao-por-categoria.sql` — comissão técnica é da categoria, não da equipe (RF007)
+- `db/20-suspensao-no-proprio-jogo.sql` — a suspensão só vale a partir do jogo seguinte
 
 ## Banco de dados
 
@@ -179,6 +180,10 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
 - **Suspensão é persistida e se cumpre** (migration 14): o cartão gera, cada jogo
   que a equipe disputa sem o atleta desconta, e atleta suspenso não é escalado.
   Corrigir ou apagar o cartão desfaz a suspensão que ele originou
+- **A suspensão não vale no jogo que a gerou** (migration 20) — nem para
+  descontar, nem para bloquear. O expulso estava em campo: é por isso que
+  levou o vermelho. Sem essa exceção, registrar o cartão pela súmula
+  derrubava a própria requisição que o gravava
 - **Classificação conta só fase de grupos e jogo encerrado** — inclusive os
   cartões. Toda equipe inscrita aparece na tabela, mesmo sem ter jogado
 - **Só desempata por coluna visível**: esconder uma coluna da classificação

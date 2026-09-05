@@ -372,9 +372,32 @@ export class SumulaService {
     // Suspensão em vigor barra o atleta (RF032). O trigger do banco
     // também barra na escalação, mas aqui a mensagem diz quantos jogos
     // faltam — e o lance nem chega a ser gravado.
+    //
+    // Suspensão nascida NESTE jogo não conta: ela vale a partir da partida
+    // seguinte. Sem esta exceção, o atleta que levou o terceiro amarelo aos
+    // 20' não podia mais aparecer em lance nenhum do mesmo jogo — e o
+    // expulso ficaria impedido de ter a própria expulsão registrada
+    // (migration 20 corrige o outro lado, no gatilho).
+    const daPartida = (
+      await tx.jogo_eventos.findMany({
+        where: { jogo_id: jogo.id },
+        select: { id: true },
+      })
+    ).map((e) => e.id);
+
     const suspenso = async (atletaId: string, quem: string) => {
       const pendentes = await tx.suspensoes.aggregate({
-        where: { categoria_id: jogo.categoria_id, atleta_id: atletaId, ativa: true },
+        where: {
+          categoria_id: jogo.categoria_id,
+          atleta_id: atletaId,
+          ativa: true,
+          // `notIn` sozinho descartaria as linhas com origem NULA — que são
+          // as suspensões manuais, e essas valem sempre
+          OR: [
+            { evento_origem_id: null },
+            { evento_origem_id: { notIn: daPartida } },
+          ],
+        },
         _sum: { jogos_suspensao: true, jogos_cumpridos: true },
       });
       const restam =

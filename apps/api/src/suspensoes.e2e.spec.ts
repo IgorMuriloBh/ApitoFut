@@ -395,3 +395,69 @@ describe('suspensão manual', () => {
     assert.match(r.corpo.message, /remova o cartão/);
   });
 });
+
+describe('o cartão que gera a suspensão, lançado pela API', () => {
+  /**
+   * Regressão de um 500 em produção.
+   *
+   * `POST /painel/jogos/:id/lances` grava o cartão e, logo depois, escala
+   * quem participou do lance. O terceiro amarelo criava a suspensão pelo
+   * gatilho e, um passo adiante, `fn_bloqueia_escalacao_suspensa` recusava
+   * escalar o próprio atleta que acabara de ser advertido — a transação
+   * inteira caía com "Internal server error".
+   *
+   * A suspensão vale a partir do jogo SEGUINTE; `fn_cumpre_suspensoes` já
+   * dizia isso, mas o bloqueio nunca soube. Os testes antigos não pegaram
+   * porque inserem cartão direto no banco, sem passar pela API.
+   */
+  const lance = (jogoId: string, tipo: string) =>
+    api(`/painel/jogos/${jogoId}/lances`, 'POST', {
+      tipo,
+      timeId: timeA,
+      atletaId: atleta,
+    });
+
+  test('o terceiro amarelo é aceito e o atleta fica escalado no jogo dele', async () => {
+    let ultimo = '';
+    for (const r of [1, 2, 3]) {
+      const j = await novoJogo(r);
+      ultimo = j.id;
+      const r1 = await lance(j.id, 'cartao_amarelo');
+      assert.equal(r1.code, 201, `rodada ${r}: ${JSON.stringify(r1.corpo)}`);
+    }
+
+    assert.equal(await pendentes(), 1, 'o terceiro amarelo tinha de suspender');
+
+    const escalado = await db.jogo_escalacoes.findFirst({
+      where: { jogo_id: ultimo, atleta_id: atleta },
+    });
+    assert.ok(escalado, 'quem levou o cartão estava em campo naquele jogo');
+  });
+
+  test('mas no jogo seguinte ele é recusado', async () => {
+    for (const r of [1, 2, 3]) {
+      const j = await novoJogo(r);
+      assert.equal((await lance(j.id, 'cartao_amarelo')).code, 201);
+    }
+
+    const seguinte = await novoJogo(4);
+    const r = await lance(seguinte.id, 'cartao_amarelo');
+    assert.equal(r.code, 400, JSON.stringify(r.corpo));
+    assert.match(r.corpo.message, /suspenso/i);
+  });
+
+  test('vermelho: expulso continua em campo naquele jogo, e some do próximo', async () => {
+    const j = await novoJogo(1);
+    const r = await lance(j.id, 'cartao_vermelho');
+    assert.equal(r.code, 201, JSON.stringify(r.corpo));
+    assert.equal(await pendentes(), 1);
+
+    const escalado = await db.jogo_escalacoes.findFirst({
+      where: { jogo_id: j.id, atleta_id: atleta },
+    });
+    assert.ok(escalado, 'o expulso jogou a partida em que foi expulso');
+
+    const seguinte = await novoJogo(2);
+    assert.equal((await lance(seguinte.id, 'cartao_amarelo')).code, 400);
+  });
+});
