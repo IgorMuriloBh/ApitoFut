@@ -738,6 +738,14 @@ conteúdo a caminho. Link direto para aba travada cai na Tabela, nunca em branco
 
 O detalhe do jogo continua em `/{slug}/{categoriaId}/{jogoId}`.
 
+**Cada jogo da tabela mostra data, hora e campo** numa segunda linha da própria
+linha do jogo. Antes só existia a hora, e só enquanto não houvesse placar: o
+badge do meio trocava a hora pelo resultado ao encerrar, então quem abria a
+tabela para saber onde jogar tinha de entrar jogo a jogo. Peça faltando é
+omitida em vez de virar travessão; sem nenhuma, a linha diz "Data e local a
+definir", que é a informação útil para quem espera a definição. A página do jogo
+ganhou a data pelo mesmo motivo — ela listava campo e árbitro, mas não o dia.
+
 **Estatísticas tem sub-abas** (`?sub=`): Artilharia, Assistências, Goleiros e
 Disciplina, uma por vez, artilharia primeiro. O painel tem as mesmas quatro, em
 `Estatisticas.tsx` — lá a escolha é `useState`, porque o painel é SPA atrás de

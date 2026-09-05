@@ -71,6 +71,11 @@ export default async function PaginaJogo({ params }: Props) {
             {j.fase?.nome}
             {j.grupo ? ` · Grupo ${j.grupo}` : ''}
             {j.rodada ? ` · ${j.rodada}ª rodada` : ''}
+            {/* a data faltava aqui: o placar do meio troca a hora pelo
+                resultado quando o jogo acaba, e o dia não aparecia em
+                lugar nenhum da página */}
+            {j.data ? ` · ${formataData(j.data)}` : ''}
+            {j.hora ? ` · ${j.hora}` : ''}
             {j.campo ? ` · ${j.campo.nome}` : ''}
             {j.arbitro ? ` · Árbitro: ${j.arbitro.nome}` : ''}
           </p>
@@ -162,4 +167,9 @@ function Elenco({ titulo, atletas }: { titulo: string; atletas: Escalado[] }) {
       )}
     </div>
   );
+}
+
+function formataData(iso: string): string {
+  const [a, m, d] = iso.split('-');
+  return `${d}/${m}/${a}`;
 }

@@ -561,6 +561,24 @@ function Jogo({
   slug: string;
   categoriaId: string;
 }) {
+  /**
+   * Onde e quando, sempre visível na lista.
+   *
+   * O placar do meio já mostrava a hora enquanto o jogo não tinha
+   * resultado, mas era só isso: encerrado o jogo, a hora sumia junto, e a
+   * data e o campo nunca apareciam — quem abria a tabela para saber onde
+   * jogar tinha de entrar jogo a jogo.
+   *
+   * Peça faltando é omitida em vez de virar travessão: uma linha cheia de
+   * "—" não informa nada. Sem nada marcado, a linha diz isso com todas as
+   * letras, que é a informação útil para quem espera a definição.
+   */
+  const quando = [
+    jogo.data ? formata(jogo.data) : null,
+    jogo.hora,
+    jogo.campo?.nome,
+  ].filter(Boolean);
+
   return (
     <Link href={`/${slug}/${categoriaId}/${jogo.id}`} className="jogo">
       <span className="lado">
@@ -583,6 +601,9 @@ function Jogo({
           <img src={jogo.visitante.escudoUrl} alt="" className="escudo" />
         )}
         {jogo.visitante.nome}
+      </span>
+      <span className="quando">
+        {quando.length > 0 ? quando.join(' · ') : 'Data e local a definir'}
       </span>
     </Link>
   );

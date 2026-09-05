@@ -328,11 +328,12 @@ export const TOPICOS: TopicoDoManual[] = [
     resumo: 'Cada jogo ganha horário e local.',
     corpo: [
       'Na tabela, cada jogo abre para receber data, hora, campo e arbitragem.',
+      'O que você programar aqui aparece no portal, embaixo de cada jogo: data, hora e campo. Jogo sem nada marcado mostra "Data e local a definir".',
       'Campos e árbitros são cadastrados em Campos e árbitros, e só podem ser escalados se pertencerem à mesma competição.',
       'Campo ou árbitro em uso não é excluído: apagá-lo esvaziaria o local de jogos já programados sem aviso.',
     ],
     palavras:
-      'programar jogo data hora campo local arbitro escalar agendar partida horario',
+      'programar jogo data hora campo local arbitro escalar agendar partida horario onde vai ser aparece no portal',
     onde: ['painel'],
     destino: { painel: { tela: 'competicao', secao: 'tabela' } },
     acao: 'Ir para Tabela de jogos',
