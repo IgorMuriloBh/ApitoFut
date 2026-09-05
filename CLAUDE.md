@@ -31,6 +31,10 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
 - **`docs/SISTEMA.md` — mapa do sistema: o que existe, por quê, e o que falta.**
   Consulte ao voltar a um trecho depois de um tempo ou antes de refazer uma
   decisão já tomada; este CLAUDE.md continua sendo a referência das regras.
+- `docs/roteiro-de-teste-apitofut.pdf` — percurso manual do sistema de ponta a
+  ponta, em 16 etapas, com o resultado esperado de cada passo. **É gerado**:
+  edite `docs/roteiro/conteudo.py` e rode `python3 docs/roteiro/gerar.py`.
+  Mudou tela ou fluxo? O roteiro entra na mesma revisão que o manual
 - `docs/especificacao-completa.docx` — requisitos funcionais RF001 a RF034
 - `docs/modelo-dados-apitofut.docx` — dicionário de dados e decisões de modelagem
 - `db/01-schema.sql` — DDL PostgreSQL, fonte da verdade do banco

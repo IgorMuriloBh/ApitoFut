@@ -892,6 +892,13 @@ Todas já custaram tempo pelo menos uma vez:
 
 Coisas que não se deduzem lendo o código, e que já custaram tempo.
 
+**O roteiro de teste é código, não anexo.** `docs/roteiro-de-teste-apitofut.pdf`
+sai de `docs/roteiro/conteudo.py` via `python3 docs/roteiro/gerar.py` (precisa de
+`reportlab`). Ele descreve a interface passo a passo e envelhece junto com ela —
+percorrê-lo inteiro em produção rendeu, numa sessão, quatro defeitos que a suíte
+não pegava: o placar ao vivo parado, a vaga do mata-mata sem preenchimento, o
+cartão vermelho respondendo 500 e o CSV numerando a classificação errado.
+
 **O shell volta ao Node antigo.** A máquina tem um Node de sistema anterior ao 24
 e o projeto usa nvm. Todo terminal novo precisa de:
 
