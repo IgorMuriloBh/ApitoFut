@@ -262,7 +262,9 @@ export class SumulaService {
         },
       });
 
-      await this.escalarEnvolvidos(tx, jogo, dados);
+      await this.escalarEnvolvidos(tx, jogo, dados).catch((e) =>
+        this.traduzirBloqueio(e),
+      );
       return this.respostaComPlacar(tx, jogoId, lance.id);
     });
   }
@@ -291,7 +293,9 @@ export class SumulaService {
         data: dados, // minuto e periodo ficam de fora por construção
       });
 
-      await this.escalarEnvolvidos(tx, jogo, dados);
+      await this.escalarEnvolvidos(tx, jogo, dados).catch((e) =>
+        this.traduzirBloqueio(e),
+      );
       return this.respostaComPlacar(tx, jogoId, lanceId);
     });
   }
@@ -462,6 +466,30 @@ export class SumulaService {
       gol_contra: tipo === 'gol' ? (corpo.golContra ?? false) : false,
       convertido: tipo === 'penalti' ? (corpo.convertido ?? true) : true,
     };
+  }
+
+  /**
+   * O gatilho `trg_bloqueia_escalacao_suspensa` fala português e diz
+   * quantos jogos faltam. Deixar o erro subir cru vira "Internal server
+   * error" e o organizador não descobre por quê.
+   *
+   * O caso que chega aqui é o retroativo: a punição nasceu do cartão que
+   * está sendo gravado agora, mas de um jogo ANTERIOR — acontece ao ligar
+   * a regra no meio da competição, ou ao corrigir um cartão antigo. A
+   * checagem em `validarParticipantes` não alcança, porque naquele momento
+   * a suspensão ainda não existia.
+   */
+  private traduzirBloqueio(erro: unknown): never {
+    const texto =
+      erro instanceof Error ? erro.message : String(erro ?? '');
+    if (texto.includes('suspensão em vigor')) {
+      const detalhe = texto.match(/Atleta com suspensão em vigor:[^\n]*/)?.[0];
+      throw new BadRequestException(
+        detalhe ??
+          'O atleta está suspenso nesta categoria e não pode participar do jogo.',
+      );
+    }
+    throw erro;
   }
 
   /** salvarEvento escala automaticamente todos os envolvidos no lance. */

@@ -461,3 +461,37 @@ describe('o cartão que gera a suspensão, lançado pela API', () => {
     assert.equal((await lance(seguinte.id, 'cartao_amarelo')).code, 400);
   });
 });
+
+describe('suspensão que nasce retroativa', () => {
+  /**
+   * Regressão do resto do 500 de produção.
+   *
+   * Ligar a regra no meio da competição não recalcula nada — só o próximo
+   * cartão dispara a ressincronização. Aí a punição nasce de um cartão
+   * ANTIGO, de outro jogo, e o atleta que está em campo agora passa a
+   * dever jogo. O gatilho recusa escalá-lo, com razão; o que não podia é o
+   * organizador receber "Internal server error" e não saber o que houve.
+   */
+  test('o lance é recusado com mensagem, não com erro interno', async () => {
+    await configurar({ suspensao_ativa: false });
+
+    for (const r of [1, 2, 3]) {
+      const j = await novoJogo(r);
+      await cartao(j.id, 'cartao_amarelo', 10);
+      await db.jogos.update({ where: { id: j.id }, data: { status: 'encerrado' } });
+    }
+    assert.equal(await pendentes(), 0, 'regra desligada não gera nada');
+
+    await configurar({ suspensao_ativa: true });
+
+    const quarto = await novoJogo(4);
+    const r = await api(`/painel/jogos/${quarto.id}/lances`, 'POST', {
+      tipo: 'cartao_amarelo',
+      timeId: timeA,
+      atletaId: atleta,
+    });
+
+    assert.equal(r.code, 400, JSON.stringify(r.corpo));
+    assert.match(r.corpo.message, /suspens/i);
+  });
+});
