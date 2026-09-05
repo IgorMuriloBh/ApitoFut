@@ -854,7 +854,7 @@ outro — falhava de verdade, com corrida real.
 | `cronologia.e2e.spec.ts` | Timeline e correção de lance |
 | `mata-mata.e2e.spec.ts` | Avanço do vencedor, correção de resultado |
 | `classificados.e2e.spec.ts` | Grupos → mata-mata: vaga, empate, reexecução |
-| `suspensoes.e2e.spec.ts` | Acúmulo, vermelho, cumprimento, bloqueio, cartão lançado pela API |
+| `suspensoes.e2e.spec.ts` | Acúmulo, vermelho, cumprimento, bloqueio, cartão lançado pela API, punição retroativa |
 | `uploads.e2e.spec.ts` | Envio, entrega, travessia de caminho |
 | `escudo.e2e.spec.ts` | O escudo saindo em **toda** rota que expõe equipe |
 | `exportacao.e2e.spec.ts` | CSVs e premiações |
@@ -1012,6 +1012,7 @@ Registro do que foi decidido e **por quê** — para não refazer a discussão.
 | Dedup por nome + nascimento | Certidão de nascimento | Certidão é campo **opcional** na configuração da categoria; identidade não pode depender do que pode não ser pedido |
 | Suspensão persistida, não derivada | Calcular `floor(amarelos/N)` a cada consulta, como o protótipo | Derivada, a suspensão nunca termina: nada marca o cumprimento e o atleta fica suspenso para sempre |
 | A suspensão não alcança o jogo que a gerou (migration 20) | Bloquear já a partir do cartão | O atleta estava em campo — foi por isso que levou o cartão. Bloqueando, `POST /lances` derrubava a própria requisição que gravava a expulsão: o endpoint escala quem participou do lance logo depois de gravá-lo, e o gatilho recusava. Qualquer vermelho lançado pela súmula respondia 500. Os testes antigos não pegavam porque inseriam cartão direto no banco |
+| Traduzir o erro do gatilho de escalação em 400 | Deixar subir | Sobra um caso legítimo: ligar a regra no meio da competição faz o próximo cartão ressincronizar e nascer punição de um jogo ANTERIOR. O bloqueio está certo; o organizador é que não podia receber "Internal server error" sem saber por quê |
 | `acumular_dois_amarelos` com efeito real | Manter só no rótulo, como o protótipo | Opção configurável que não muda nada é armadilha para quem a liga esperando resultado |
 | Avanço do mata-mata por trigger | Lógica na API | Encerrar um jogo pode vir do endpoint, de um W.O. lançado direto ou de correção por SQL; no banco vale em todos os casos |
 | Menu lateral em duas camadas | Uma fila de abas no topo | Com onze itens a fila transborda e perde o agrupamento; a lateral da conta some dentro da competição para não competir com a dela |
