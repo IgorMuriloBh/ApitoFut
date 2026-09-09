@@ -782,6 +782,12 @@ conteúdo a caminho. Link direto para aba travada cai na Tabela, nunca em branco
 
 O detalhe do jogo continua em `/{slug}/{categoriaId}/{jogoId}`.
 
+**A categoria fica entre o cabeçalho e as abas**, numa faixa própria com o rótulo
+"Categoria". Estava encostada à direita da barra de abas, onde passava por filtro
+secundário — mas ela é o recorte de TUDO que aparece embaixo (tabela,
+classificação, artilharia). Na faixa, a leitura vira competição → categoria → o
+que ver dela. Só aparece com mais de uma categoria.
+
 **Cada jogo da tabela mostra data, hora e campo** numa segunda linha da própria
 linha do jogo. Antes só existia a hora, e só enquanto não houvesse placar: o
 badge do meio trocava a hora pelo resultado ao encerrar, então quem abria a

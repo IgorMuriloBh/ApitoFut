@@ -170,9 +170,31 @@ export default async function PaginaCompeticao({ params, searchParams }: Props) 
         </div>
       </header>
 
-      {/* Barra de abas + categorias. A aba bloqueada aparece com cadeado em
-          vez de sumir: o visitante vê que existe mais conteúdo a caminho, e
-          sabe o que esperar quando a competição começar. */}
+      {/* A CATEGORIA VEM ANTES DAS ABAS, e não encostada nelas do lado
+          direito. Ela é o recorte de tudo que aparece embaixo — tabela,
+          classificação, artilharia — e no canto passava por filtro
+          secundário. Aqui fica na linha de leitura: competição → categoria
+          → o que você quer ver dela. */}
+      {c.categorias.length > 1 && categoria && (
+        <div className="barra-cats">
+          <div className="miolo cats-linha">
+            <span className="cats-rotulo">Categoria</span>
+            {c.categorias.map((k) => (
+              <Link
+                key={k.id}
+                href={href(aba, k.id)}
+                className={k.id === categoria.id ? 'cat ativa' : 'cat'}
+              >
+                {k.nome}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Abas. A bloqueada aparece com cadeado em vez de sumir: o visitante
+          vê que existe mais conteúdo a caminho, e sabe o que esperar quando
+          a competição começar. */}
       <div className="barra-abas">
         <div className="miolo abas">
           {ABAS.map((a) =>
@@ -193,20 +215,6 @@ export default async function PaginaCompeticao({ params, searchParams }: Props) 
                 {a.rotulo} 🔒
               </span>
             ),
-          )}
-
-          {c.categorias.length > 1 && categoria && (
-            <span className="cats">
-              {c.categorias.map((k) => (
-                <Link
-                  key={k.id}
-                  href={href(aba, k.id)}
-                  className={k.id === categoria.id ? 'cat ativa' : 'cat'}
-                >
-                  {k.nome}
-                </Link>
-              ))}
-            </span>
           )}
         </div>
       </div>

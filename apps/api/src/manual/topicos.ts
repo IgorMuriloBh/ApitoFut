@@ -504,11 +504,13 @@ export const TOPICOS: TopicoDoManual[] = [
     resumo: 'A página pública que torcida e equipes acompanham.',
     corpo: [
       'Cada competição tem endereço próprio no portal, com abas de jogos, classificação, estatísticas e elencos.',
+      'Competição com mais de uma categoria mostra os botões de categoria logo abaixo do nome, antes das abas: primeiro você escolhe a categoria, depois o que quer ver dela. Trocar de categoria mantém a aba em que você estava.',
+      'Cada jogo da tabela mostra data, hora e campo. Jogo ainda sem programação aparece como "Data e local a definir".',
       'O que aparece depende do status: antes de publicar, nada; publicada, tabela e classificação sem nomes de atleta; em andamento, tudo.',
       'Jogo em andamento mostra o placar ao vivo, atualizando sozinho.',
     ],
     palavras:
-      'portal publico site pagina competicao divulgar torcida acompanhar jogos link publico',
+      'portal publico site pagina competicao divulgar torcida acompanhar jogos link publico categoria sub trocar categoria onde e o jogo local horario',
     onde: ['portal', 'painel'],
     destino: { portal: '/{slug}' },
     acao: 'Abrir o portal',

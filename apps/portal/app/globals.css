@@ -216,26 +216,47 @@ button:disabled {
    isso claro antes do clique */
 .aba.travada { opacity: 0.45; cursor: not-allowed; }
 
-.cats {
+/* Faixa da categoria, entre o cabeçalho e as abas. Fundo tingido com a cor
+   da competição para ler como continuação do cabeçalho, não como mais uma
+   barra de navegação. */
+.barra-cats {
+  background: color-mix(in srgb, var(--cor, #16a34a) 8%, #fff);
+  border-bottom: 1px solid color-mix(in srgb, var(--cor, #16a34a) 18%, #fff);
+}
+.cats-linha {
   display: flex;
-  gap: 2px;
-  margin-left: auto;
-  padding-left: 12px;
-  border-left: 1px solid #e2e8f0;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 16px;
+  scrollbar-width: none;
+}
+.cats-linha::-webkit-scrollbar { display: none; }
+.cats-rotulo {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--tinta2);
+  margin-right: 4px;
+  white-space: nowrap;
 }
 .cat {
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 12.5px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--tinta2);
+  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--cor, #16a34a) 25%, #fff);
   white-space: nowrap;
   text-decoration: none;
 }
-.cat:hover { background: #f1f5f9; }
+.cat:hover { background: #f8fafc; color: inherit; }
 .cat.ativa {
   background: var(--cor, #16a34a);
+  border-color: var(--cor, #16a34a);
   color: #fff;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .placar.vivo {
