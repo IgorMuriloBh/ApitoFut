@@ -157,7 +157,12 @@ export function App() {
   return (
     <div className="min-h-screen">
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-4">
+        {/* Barra do topo em largura cheia, não centrada numa coluna: o
+            layout abaixo é lateral + conteúdo, e o nome do sistema flutuando
+            no meio não pertencia a nenhum dos dois. O `px-5` casa com o
+            recuo dos itens do menu (p-2 + px-3), então o nome fica
+            exatamente acima deles. */}
+        <div className="h-14 flex items-center gap-4 px-5">
           <button
             onClick={() => setTela({ nome: 'painel' })}
             className="font-bold text-marca"
@@ -192,7 +197,7 @@ export function App() {
           aviso vale ainda mais, porque a alteração é permanente. */}
       {atual.assumida && (
         <div className="bg-amber-100 border-b border-amber-300 text-amber-900">
-          <div className="max-w-6xl mx-auto px-6 py-2 flex items-center gap-3 text-sm">
+          <div className="px-5 py-2 flex items-center gap-3 text-sm">
             <span className="flex-1">
               👁 Você está vendo a conta de <b>{atual.assumida.organizacao}</b> como ADM
               do sistema. O que você alterar aqui vale para o organizador.
@@ -208,7 +213,7 @@ export function App() {
       )}
 
       {erro && (
-        <div className="max-w-6xl mx-auto px-6 pt-4">
+        <div className="px-5 pt-4">
           <div className="border border-red-200 bg-red-50 text-red-800 rounded-lg px-4 py-3 text-sm">
             {erro}
           </div>
