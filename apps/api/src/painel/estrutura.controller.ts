@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
+import { Exige, PermissaoGuard } from '../auth/permissao.guard';
 import { ClassificacaoService } from '../competicoes/classificacao.service';
 import { CatalogoService } from './catalogo.service';
 import { FasesService, type FaseDesejada } from './fases.service';
@@ -35,7 +36,8 @@ import type { WizardCategoria } from './wizard';
  * RF022, RF023). Tudo do organizador, tudo sob `comOrganizacao`.
  */
 @Controller('painel')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissaoGuard)
+@Exige('estrutura')
 export class EstruturaController {
   constructor(
     private readonly estrutura: EstruturaService,

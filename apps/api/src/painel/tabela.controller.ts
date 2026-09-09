@@ -10,11 +10,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
+import { Exige, PermissaoGuard } from '../auth/permissao.guard';
 import { OpcoesDeGeracao, TabelaService } from './tabela.service';
 
 /** Geração e programação da tabela de jogos (RF015/RF017). */
 @Controller('painel')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissaoGuard)
+@Exige('tabela')
 export class TabelaController {
   constructor(private readonly tabela: TabelaService) {}
 

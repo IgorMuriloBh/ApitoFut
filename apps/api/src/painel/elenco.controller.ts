@@ -13,12 +13,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
+import { Exige, PermissaoGuard } from '../auth/permissao.guard';
 import { DadosDaEquipe, EquipesService } from './equipes.service';
 import { ElencoService, PedidoDeInscricao } from './elenco.service';
 
 /** Equipes, vínculos e elenco (RF006–RF012) — tudo autenticado. */
 @Controller('painel')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissaoGuard)
+@Exige('elenco')
 export class ElencoController {
   constructor(
     private readonly equipes: EquipesService,

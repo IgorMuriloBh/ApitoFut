@@ -15,6 +15,8 @@ import { Login } from './telas/Login';
 import { Painel } from './telas/Painel';
 import { Wizard } from './telas/Wizard';
 import { Ajuda, type DestinoDaAjuda } from './telas/Ajuda';
+import { Equipe } from './telas/Equipe';
+import { TrocarSenha } from './telas/TrocarSenha';
 
 type Tela =
   | { nome: 'painel' }
@@ -23,6 +25,7 @@ type Tela =
   | { nome: 'ranking' }
   | { nome: 'competicao'; competicao: CompeticaoDoPainel }
   | { nome: 'ajuda' }
+  | { nome: 'equipe' }
   | { nome: 'admin'; aba: AbaDoAdm };
 
 /**
@@ -33,17 +36,25 @@ type Tela =
  * Fica escondida enquanto uma competição está aberta, para não competir
  * com o menu da competição — voltar é um clique em "Meus campeonatos".
  */
-const NAV_GLOBAL: SecaoDoMenu[] = [
-  {
-    titulo: 'Minha conta',
-    itens: [
-      { chave: 'painel', icone: '⌂', rotulo: 'Meus campeonatos' },
-      { chave: 'base', icone: '👥', rotulo: 'Base de atletas' },
-      { chave: 'ranking', icone: '📊', rotulo: 'Ranking da plataforma' },
-      { chave: 'ajuda', icone: '❓', rotulo: 'Ajuda' },
-    ],
-  },
-];
+function navGlobal(ehDono: boolean): SecaoDoMenu[] {
+  return [
+    {
+      titulo: 'Minha conta',
+      itens: [
+        { chave: 'painel', icone: '⌂', rotulo: 'Meus campeonatos' },
+        { chave: 'base', icone: '👥', rotulo: 'Base de atletas' },
+        { chave: 'ranking', icone: '📊', rotulo: 'Ranking da plataforma' },
+        // só o responsável gerencia a equipe (migration 22). Para os
+        // demais o item nem aparece: oferecer e responder 403 é pior que
+        // não oferecer
+        ...(ehDono
+          ? [{ chave: 'equipe', icone: '🧑‍🤝‍🧑', rotulo: 'Equipe da conta' }]
+          : []),
+        { chave: 'ajuda', icone: '❓', rotulo: 'Ajuda' },
+      ],
+    },
+  ];
+}
 
 const NAV_ADMIN: SecaoDoMenu = {
   titulo: 'Administração do sistema',
@@ -121,7 +132,27 @@ export function App() {
 
   if (!atual) return <Login aoEntrar={setAtual} />;
 
+  // Convite recém-aceito: nenhuma outra tela antes de a pessoa criar a
+  // própria senha. Ver TrocarSenha.tsx para o porquê de não haver "pular".
+  if (atual.usuario.senhaProvisoria) {
+    return (
+      <TrocarSenha
+        atual={atual}
+        aoTrocar={setAtual}
+        aoSair={() => {
+          sessao.limpar();
+          setAtual(null);
+        }}
+      />
+    );
+  }
+
   const ehAdm = atual.usuario.perfil === 'superadmin';
+  // dono da conta: quem se auto-cadastrou. O ADM do sistema também é dono
+  // da organização dele — mas não da que tiver assumido.
+  const ehDono =
+    !atual.assumida &&
+    (atual.usuario.perfil === 'organizador' || ehAdm);
 
   return (
     <div className="min-h-screen">
@@ -189,7 +220,9 @@ export function App() {
             o menu da competição, e duas laterais competiriam entre si */}
         {tela.nome !== 'competicao' && (
           <MenuLateral
-            secoes={ehAdm ? [...NAV_GLOBAL, NAV_ADMIN] : NAV_GLOBAL}
+            secoes={
+              ehAdm ? [...navGlobal(ehDono), NAV_ADMIN] : navGlobal(ehDono)
+            }
             atual={
               tela.nome === 'admin' ? `admin:${tela.aba}` : tela.nome
             }
@@ -197,7 +230,9 @@ export function App() {
               if (chave.startsWith('admin:')) {
                 setTela({ nome: 'admin', aba: chave.slice(6) as AbaDoAdm });
               } else {
-                setTela({ nome: chave as 'painel' | 'base' | 'ranking' | 'ajuda' });
+                setTela({
+                  nome: chave as 'painel' | 'base' | 'ranking' | 'ajuda' | 'equipe',
+                });
               }
             }}
           />
@@ -253,6 +288,7 @@ export function App() {
         />
       )}
 
+      {tela.nome === 'equipe' && <Equipe />}
       {tela.nome === 'base' && <BaseDeAtletas />}
       {tela.nome === 'ranking' && <RankingGeral />}
 

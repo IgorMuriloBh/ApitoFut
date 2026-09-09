@@ -478,23 +478,27 @@ model times {
 }
 
 model usuarios {
-  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizacao_id String?          @db.Uuid
-  nome           String
-  email          String           @unique @db.Citext
-  senha_hash     String
-  perfil         perfil_usuario   @default(organizador)
-  situacao       situacao_usuario @default(pendente)
-  ultimo_acesso  DateTime?        @db.Timestamptz(6)
-  liberado_por   String?          @db.Uuid
-  liberado_em    DateTime?        @db.Timestamptz(6)
-  criado_em      DateTime         @default(now()) @db.Timestamptz(6)
-  atualizado_em  DateTime         @default(now()) @db.Timestamptz(6)
-  competicoes    competicoes[]
-  jogo_eventos   jogo_eventos[]
-  usuarios       usuarios?        @relation("usuariosTousuarios", fields: [liberado_por], references: [id], onUpdate: NoAction)
-  other_usuarios usuarios[]       @relation("usuariosTousuarios")
-  organizacoes   organizacoes?    @relation(fields: [organizacao_id], references: [id], onUpdate: NoAction)
+  id                                              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacao_id                                  String?          @db.Uuid
+  nome                                            String
+  email                                           String           @unique @db.Citext
+  senha_hash                                      String
+  perfil                                          perfil_usuario   @default(organizador)
+  situacao                                        situacao_usuario @default(pendente)
+  ultimo_acesso                                   DateTime?        @db.Timestamptz(6)
+  liberado_por                                    String?          @db.Uuid
+  liberado_em                                     DateTime?        @db.Timestamptz(6)
+  criado_em                                       DateTime         @default(now()) @db.Timestamptz(6)
+  atualizado_em                                   DateTime         @default(now()) @db.Timestamptz(6)
+  senha_provisoria                                Boolean          @default(false)
+  convidado_por                                   String?          @db.Uuid
+  competicoes                                     competicoes[]
+  jogo_eventos                                    jogo_eventos[]
+  usuarios_usuarios_convidado_porTousuarios       usuarios?        @relation("usuarios_convidado_porTousuarios", fields: [convidado_por], references: [id], onUpdate: NoAction)
+  other_usuarios_usuarios_convidado_porTousuarios usuarios[]       @relation("usuarios_convidado_porTousuarios")
+  usuarios                                        usuarios?        @relation("usuariosTousuarios", fields: [liberado_por], references: [id], onUpdate: NoAction)
+  other_usuarios                                  usuarios[]       @relation("usuariosTousuarios")
+  organizacoes                                    organizacoes?    @relation(fields: [organizacao_id], references: [id], onUpdate: NoAction)
 
   @@index([organizacao_id], map: "idx_usuarios_organizacao")
   @@index([situacao], map: "idx_usuarios_situacao", where: raw("(situacao = 'pendente'::situacao_usuario)"))
@@ -529,6 +533,14 @@ model municipios {
   estados estados @relation(fields: [uf], references: [sigla], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([uf, nome], map: "idx_municipios_uf")
+}
+
+model migracoes {
+  arquivo     String   @id
+  hash        String
+  aplicada_em DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("_migracoes")
 }
 
 enum campo_atleta {
@@ -612,6 +624,9 @@ enum perfil_usuario {
   tecnico
   arbitro
   atleta
+  gestor
+  secretaria
+  mesario
 }
 
 enum situacao_usuario {

@@ -10,11 +10,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
+import { Exige, PermissaoGuard } from '../auth/permissao.guard';
 import { DisciplinaService } from './disciplina.service';
 
 /** Situação disciplinar e suspensões (RF032). */
 @Controller('painel')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissaoGuard)
+@Exige('disciplina')
 export class DisciplinaController {
   constructor(private readonly disciplina: DisciplinaService) {}
 

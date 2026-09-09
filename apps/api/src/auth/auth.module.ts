@@ -20,6 +20,8 @@ import { SumulaController } from '../painel/sumula.controller';
 import { SumulaService } from '../painel/sumula.service';
 import { TabelaController } from '../painel/tabela.controller';
 import { TabelaService } from '../painel/tabela.service';
+import { EquipeController, MinhaContaController } from '../equipe/equipe.controller';
+import { EquipeService } from '../equipe/equipe.service';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
@@ -33,10 +35,13 @@ import { AuthService } from './auth.service';
     TabelaController,
     DisciplinaController,
     EstruturaController,
+    EquipeController,
+    MinhaContaController,
   ],
   providers: [
     AuthService,
     AuthGuard,
+    EquipeService,
     PainelCompeticoesService,
     ConfiguracaoService,
     EstruturaService,

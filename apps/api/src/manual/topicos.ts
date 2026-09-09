@@ -84,16 +84,39 @@ export const TOPICOS: TopicoDoManual[] = [
   },
   {
     id: 'perfis',
-    titulo: 'Perfis: organizador e administrador do sistema',
-    resumo: 'O que cada um enxerga e pode fazer.',
+    titulo: 'Perfis: quem pode o quê',
+    resumo: 'Responsável, gestor, secretaria, mesário e o ADM do sistema.',
     corpo: [
-      'Organizador: administra apenas as próprias competições. É o perfil de quem toca uma liga, uma escola ou um evento.',
+      'Responsável pela conta (organizador): administra as próprias competições e é o único que convida e gerencia a equipe.',
+      'Gestor: faz tudo na competição, como o responsável — categorias, equipes, tabela, jogos e configuração. Não mexe em quem entra na conta.',
+      'Secretaria: cadastra e edita equipes, atletas e comissão técnica. Não opera jogos nem altera a configuração da competição.',
+      'Mesário: opera a partida — inicia, lança os acontecimentos, corrige e encerra — e imprime súmula. Não cadastra nem configura.',
+      'Ler é liberado para todos: qualquer perfil enxerga tabela, classificação e estatísticas das competições da conta. O que muda é o que cada um pode ALTERAR.',
       'Administrador do sistema (superadmin): enxerga todas as contas e todas as competições da base, libera cadastros, bloqueia e promove usuários.',
       'O administrador não tem passe-livre no banco: para abrir a competição de outro organizador ele usa "assumir", que troca o contexto dele para aquela organização — e o painel mostra uma tarja âmbar enquanto isso dura.',
     ],
     palavras:
-      'perfil permissao papel organizador superadmin administrador adm o que posso fazer acesso total',
+      'perfil permissao papel organizador gestor secretaria mesario superadmin administrador adm o que posso fazer acesso total nao tenho permissao 403 funcionario',
     onde: ['painel'],
+  },
+  {
+    id: 'equipe-da-conta',
+    titulo: 'Convidar minha equipe',
+    resumo: 'Quem mais trabalha nas suas competições, e até onde cada um vai.',
+    corpo: [
+      'Em Minha conta › Equipe da conta você convida quem trabalha com você: informe nome, e-mail e o perfil. O acesso vale para TODAS as competições da sua conta.',
+      'O sistema gera uma senha e a mostra UMA vez, para você entregar à pessoa. Ela não é exibida de novo — anote antes de fechar. Se perder, convide de novo com outro e-mail ou peça ao ADM do sistema.',
+      'No primeiro acesso a pessoa é obrigada a criar a própria senha. É isso que faz o lançamento ficar no nome de quem lançou: enquanto a senha do convite valer, você também a conhece.',
+      'Trocar o perfil de alguém vale a partir do próximo login dela — o acesso em curso continua com o perfil antigo até sair e entrar de novo.',
+      'Bloquear tira o acesso na hora, sem apagar nada do que a pessoa já lançou. Reativar devolve.',
+      'Só o responsável pela conta chega a esta tela. Nem o gestor: é o que impede um convidado de convidar outros e ampliar o próprio alcance.',
+      'Você não altera o seu próprio acesso — nem para bloquear nem para mudar de perfil.',
+    ],
+    palavras:
+      'convidar funcionario equipe criar usuario novo usuario dar acesso login para outra pessoa mesario secretaria gestor senha provisoria bloquear quem trabalha comigo',
+    onde: ['painel'],
+    destino: { painel: { tela: 'equipe' } },
+    acao: 'Ir para Equipe da conta',
   },
   {
     id: 'area-adm',

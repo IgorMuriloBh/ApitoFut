@@ -4,6 +4,7 @@ import { EnvioDeImagem } from '../componentes/EnvioDeImagem';
 import { Escudo } from '../componentes/Escudo';
 import { api, type CompeticaoDoPainel, type EquipeDoPainel, portalUrl } from '../lib/api';
 import { CORES, UFS } from '../lib/dominio';
+import { podeEscrever } from '../lib/permissoes';
 
 
 /** Equipes da competição (RF006/RF007) e seu vínculo com as categorias. */
@@ -69,7 +70,11 @@ export function Equipes({ competicao }: { competicao: CompeticaoDoPainel }) {
       <Cartao
         titulo="Equipes"
         sub={`${lista?.length ?? 0} equipe(s) — vincule cada uma às categorias que disputa`}
-        acao={<Botao onClick={() => setEditando('nova')}>+ Nova equipe</Botao>}
+        acao={
+          podeEscrever('elenco') ? (
+            <Botao onClick={() => setEditando('nova')}>+ Nova equipe</Botao>
+          ) : undefined
+        }
       >
         {lista === null ? (
           <p className="p-8 text-center text-sm text-slate-500">Carregando…</p>

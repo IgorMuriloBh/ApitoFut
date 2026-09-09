@@ -10,6 +10,7 @@ import {
   type CompeticaoDoPainel,
   type Elenco,
 } from '../lib/api';
+import { podeEscrever } from '../lib/permissoes';
 
 
 /**
@@ -99,7 +100,11 @@ export function Atletas({ competicao }: { competicao: CompeticaoDoPainel }) {
                 ? `Limite de ${elenco.categoria.maxAtletas} atletas por equipe`
                 : undefined
             }
-            acao={<Botao onClick={() => setInscrevendo(true)}>+ Inscrever atleta</Botao>}
+            acao={
+              podeEscrever('elenco') ? (
+                <Botao onClick={() => setInscrevendo(true)}>+ Inscrever atleta</Botao>
+              ) : undefined
+            }
           >
             {elenco === null ? (
               <p className="p-8 text-center text-sm text-slate-500">Carregando…</p>

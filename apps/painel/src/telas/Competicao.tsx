@@ -16,6 +16,7 @@ import { Suspensoes } from './Suspensoes';
 import { Equipes } from './Equipes';
 import { Sumula } from './Sumula';
 import { Tabela } from './Tabela';
+import { SOMENTE_LEITURA, podeEscrever } from '../lib/permissoes';
 
 type Aba =
   | 'visao'
@@ -350,13 +351,20 @@ export function Competicao({
                 ))}
               </div>
 
+              {/* publicar é decisão do responsável ou do gestor: muda o
+                  que o público inteiro enxerga */}
               <Botao
                 onClick={salvarStatus}
-                disabled={salvando || escolhido === status}
+                disabled={
+                  salvando || escolhido === status || !podeEscrever('competicao')
+                }
                 className="w-full mt-4"
               >
                 {salvando ? 'Salvando…' : 'Salvar status'}
               </Botao>
+              {!podeEscrever('competicao') && (
+                <p className="text-xs text-slate-500 mt-2">{SOMENTE_LEITURA}</p>
+              )}
             </div>
           </Cartao>
 

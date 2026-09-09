@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alerta, Botao, Campo, Cartao, classeEntrada } from '../componentes/ui';
 import { api, type CompeticaoDoPainel, type DadosDaCategoria } from '../lib/api';
 import { FORMATOS, GENEROS, MODALIDADES, TIPOS } from '../lib/dominio';
+import { podeEscrever } from '../lib/permissoes';
 
 /**
  * Categorias da competição (`VIEWS.categorias`).
@@ -54,7 +55,10 @@ export function Categorias({
         titulo="Categorias"
         sub={`${competicao.categorias.length} categoria(s) — cada uma com tabela, classificação e configuração próprias`}
         acao={
-          <Botao onClick={() => setEditando('nova')} disabled={ocupado}>
+          <Botao
+            onClick={() => setEditando('nova')}
+            disabled={ocupado || !podeEscrever('estrutura')}
+          >
             + Nova categoria
           </Botao>
         }

@@ -45,6 +45,19 @@ export function traduzirErroDoBanco(erro: unknown): never {
       throw new BadRequestException(mensagem('Operação não permitida.'));
     case 'AF001':
       throw new ConflictException(mensagem('E-mail já cadastrado.'));
+
+    // migration 22 — equipe do organizador
+    case 'AF020':
+      throw new ForbiddenException(
+        mensagem('Apenas o responsável pela conta gerencia a equipe.'),
+      );
+    case 'AF021':
+    case 'AF022':
+    case 'AF024':
+    case 'AF025':
+      throw new BadRequestException(mensagem('Operação não permitida.'));
+    case 'AF023':
+      throw new NotFoundException(mensagem('Usuário não encontrado nesta conta.'));
     default:
       throw erro;
   }

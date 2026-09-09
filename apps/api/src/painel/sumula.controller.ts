@@ -11,11 +11,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
+import { Exige, PermissaoGuard } from '../auth/permissao.guard';
 import { NovoLance, SumulaService } from './sumula.service';
 
 /** Operação da súmula ao vivo (RF019/RF020) — sempre autenticada. */
 @Controller('painel/jogos/:jogoId')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissaoGuard)
+@Exige('sumula')
 export class SumulaController {
   constructor(private readonly sumula: SumulaService) {}
 

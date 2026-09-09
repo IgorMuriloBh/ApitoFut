@@ -57,6 +57,8 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
 - `db/18-municipios.sql` — UFs e municípios do IBGE; regerar com `db/ferramentas/`
 - `db/19-comissao-por-categoria.sql` — comissão técnica é da categoria, não da equipe (RF007)
 - `db/20-suspensao-no-proprio-jogo.sql` — a suspensão só vale a partir do jogo seguinte
+- `db/21-perfis-equipe.sql` — perfis `gestor`, `secretaria` e `mesario` no enum
+- `db/22-equipe-da-organizacao.sql` — o dono convida a própria equipe (RF031)
 
 ## Banco de dados
 
@@ -78,12 +80,29 @@ Ao alterar o schema, use `docker compose down -v` ou crie uma migration.
 
 ## Perfis de acesso e área do ADM do sistema
 
-O sistema tem **dois níveis de acesso**, ambos já implementados no protótipo:
+O sistema tem **dois níveis de conta** e, dentro da conta do organizador, três
+perfis de trabalho:
 
 | perfil | alcance |
 |---|---|
-| `organizador` | administra apenas as próprias competições |
+| `organizador` | dono da conta: administra as próprias competições e **é o único que convida e gerencia a equipe** |
 | `superadmin` | ADM do sistema: enxerga todos os usuários e todas as competições |
+| `gestor` | equiparado ao dono **dentro da competição**; não mexe em quem entra na conta |
+| `secretaria` | equipes, atletas e comissão técnica; não opera jogo nem configura |
+| `mesario` | opera a partida e imprime súmula; não cadastra nem configura |
+
+**Leitura é livre dentro da organização; escrita é por recurso.** A matriz vive em
+`apps/api/src/auth/permissoes.ts` e é aplicada pelo `PermissaoGuard`, pendurado no
+controller: rota nova herda o recurso e **falha fechado** se o controller não
+declarar `@Exige(...)`. GET passa sempre — um mesário precisa ver a tabela para
+achar o jogo dele.
+
+O que o banco guarda (migration 22) é só o que seria catastrófico: **ninguém se
+promove**. Convidar, trocar perfil e bloquear passam por funções SECURITY DEFINER
+que reconferem o ator, recusam perfil fora da lista, recusam alterar a si mesmo e
+recusam tocar no dono. O convite nasce com senha gerada e `senha_provisoria`, e o
+painel prende a pessoa na troca antes de qualquer tela — sem isso o dono
+conheceria para sempre a credencial de quem lança na súmula.
 
 **Área do ADM do sistema** — seção "Administração do sistema" visível somente ao
 `superadmin` (menu lateral no protótipo, barra superior no painel). Três telas:

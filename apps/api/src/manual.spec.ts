@@ -17,7 +17,8 @@ import { TOPICOS } from './manual/topicos';
 
 /** Telas e seções que o painel realmente tem (App.tsx e Competicao.tsx). */
 const TELAS = new Set(['painel', 'wizard', 'base', 'ranking', 'ajuda',
-  'competicao', 'admin:plataforma', 'admin:usuarios', 'admin:competicoes']);
+  'equipe', 'competicao', 'admin:plataforma', 'admin:usuarios',
+  'admin:competicoes']);
 const SECOES = new Set(['visao', 'categorias', 'equipes', 'atletas', 'tabela',
   'aovivo', 'classificacao', 'estatisticas', 'suspensoes', 'estrutura',
   'config', 'ajuda']);
@@ -86,6 +87,12 @@ describe('busca — a dúvida escrita como o usuário escreve', () => {
     ['tecnico da equipe', 'comissao'],
     ['qr code do atleta', 'carteirinha'],
     ['liberar usuario novo', 'area-adm'],
+    // os dois lados da mesma dúvida: o ADM libera cadastro pendente, o
+    // organizador convida funcionário. Confundir os dois manda a pessoa
+    // para uma tela que ela nem enxerga
+    ['convidar funcionario', 'equipe-da-conta'],
+    ['criar acesso para o mesario', 'equipe-da-conta'],
+    ['o que cada perfil pode fazer', 'perfis'],
     ['criar campeonato', 'criar-competicao'],
     ['placar do jogo ao vivo', 'central-ao-vivo'],
     // conjugação: quem pergunta escreve "inscrevo", o acervo diz

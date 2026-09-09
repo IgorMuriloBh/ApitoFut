@@ -148,6 +148,8 @@ Depois, `npm run db:pull` para regenerar os tipos.
 | `13-avanco-mata-mata.sql` | Vencedor sobe para a fase seguinte ao encerrar |
 | `14-suspensoes.sql` | Suspensão automática por cartões, cumprimento e bloqueio (RF032) |
 | `20-suspensao-no-proprio-jogo.sql` | A suspensão só vale a partir do jogo seguinte |
+| `21-perfis-equipe.sql` | `gestor`, `secretaria` e `mesario` no enum de perfil |
+| `22-equipe-da-organizacao.sql` | O dono convida a própria equipe; senha provisória |
 | `15-adm-sistema.sql` | Auto-cadastro, primeira conta vira ADM e as frestas da área do ADM (RF031) |
 | `16-area-da-equipe.sql` | Convite por link: código de acesso e frestas de leitura (RF006/RF007) |
 | `17-carteirinha.sql` | Credencial do atleta para a arbitragem, sem documento (RF029) |
@@ -215,6 +217,44 @@ verificados no banco antes de escrever a migration:
 
 `apps/api/src` — módulos por domínio.
 
+### Perfis dentro da conta (RF031)
+
+O organizador convida a própria equipe: `gestor` (equiparado ao dono dentro da
+competição), `secretaria` (equipes, atletas, comissão) e `mesario` (opera a
+partida). Antes disso a organização tinha um usuário só, e todo mundo entrava com
+a senha do dono — o que apaga a autoria do lançamento e obriga a trocar a senha de
+todos ao desligar alguém.
+
+**Leitura livre, escrita por recurso.** A matriz está em `auth/permissoes.ts`; quem
+aplica é o `PermissaoGuard`, pendurado no **controller**, não na rota:
+
+- ele só age em método que altera estado — GET passa, porque o mesário precisa da
+  tabela para achar o jogo e da classificação para conferir o que lançou;
+- rota nova **herda** o recurso do controller, então não nasce liberada por
+  esquecimento;
+- controller sob o guard sem `@Exige(...)` **recusa toda escrita**. Errar negando
+  produz um chamado; errar permitindo produz um mesário apagando a competição.
+
+**Por que a permissão não está no RLS.** O RLS recorta por ORGANIZAÇÃO e é o que
+garante o isolamento entre contas. Reescrever as políticas de todas as tabelas
+para também recortar por perfil seria mexer nessa camada para proteger contra dano
+interno já limitado à própria organização — risco alto, ganho pequeno. O que o
+banco guarda (migration 22) é o que seria catastrófico: **ninguém se promove**.
+Convidar, trocar perfil e bloquear passam por SECURITY DEFINER que reconferem o
+ator, recusam perfil fora da lista, recusam alterar a si mesmo e recusam tocar no
+dono. É a mesma divisão da migration 15.
+
+**Senha provisória.** O convite nasce com uma senha gerada pela API — alfabeto sem
+`0/O` e `1/I`, porque ela vai ser lida de um bilhete — mostrada **uma vez** ao
+responsável e marcada como provisória. O painel prende a pessoa na troca antes de
+qualquer outra tela, sem botão de pular: enquanto essa senha valer, o dono também
+a conhece, e a autoria do lançamento não se sustenta.
+
+O superadmin entra em `fn_exige_dono_da_conta` porque a primeira conta da base é
+promovida a ele (migration 15) e perde o rótulo `organizador` — continua dona da
+própria organização. Mas só da PRÓPRIA: com a conta de outro organizador assumida,
+ele administra a competição alheia, não a equipe alheia.
+
 ### Público (sem autenticação)
 
 | Método | Rota | Observação |
@@ -253,6 +293,10 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `POST` | `/auth/login` | Mesma mensagem para e-mail inexistente e senha errada |
 | `POST` | `/auth/cadastro` | Auto-cadastro; **rota aberta**. Devolve token só se for a 1ª conta da base |
 | `GET` `POST` | `/painel/competicoes` | Lista e wizard de criação |
+| `GET` `POST` | `/equipe` | Usuários da conta; POST devolve a senha uma vez |
+| `GET` | `/equipe/perfis` | Perfis oferecidos e o que cada um escreve |
+| `PATCH` | `/equipe/:id` | Troca o perfil, bloqueia ou reativa |
+| `POST` | `/minha-conta/senha` | Nova senha do próprio usuário |
 | `PATCH` | `/painel/competicoes/:id/status` | Publicação controlada |
 | `PUT` | `/painel/competicoes/:id/dominio` | CNAME próprio; 409 se já usado |
 | `PUT` | `/painel/competicoes/:id/imagens` | Logo e banner |
@@ -875,6 +919,8 @@ outro — falhava de verdade, com corrida real.
 | `mata-mata.e2e.spec.ts` | Avanço do vencedor, correção de resultado |
 | `classificados.e2e.spec.ts` | Grupos → mata-mata: vaga, empate, reexecução |
 | `suspensoes.e2e.spec.ts` | Acúmulo, vermelho, cumprimento, bloqueio, cartão lançado pela API, punição retroativa |
+| `equipe.e2e.spec.ts` | Convite, o que cada perfil escreve, teto do convite, senha provisória |
+| `auth/permissoes.spec.ts` | A matriz de permissão, sem banco nem HTTP |
 | `uploads.e2e.spec.ts` | Envio, entrega, travessia de caminho |
 | `escudo.e2e.spec.ts` | O escudo saindo em **toda** rota que expõe equipe |
 | `exportacao.e2e.spec.ts` | CSVs e premiações |
@@ -1003,6 +1049,8 @@ operacional — seção 8 — e um item de tela:
 
 | Item | Situação |
 |---|---|
+| Vincular funcionário a competições específicas | O perfil vale para TODAS as competições da conta. Decidido assim com o cliente: é o que a operação real pede, e por competição exigiria tabela de vínculo e RLS filtrando por competição, não só por organização |
+| Recuperar senha esquecida | Continua sem fluxo por e-mail. Convidado que perde a senha depende do ADM do sistema redefinir — o convite não pode ser reemitido para o mesmo e-mail |
 | Edição manual do jogo (`modalJogo` do protótipo, RF016) | **Não existe.** O protótipo deixa o organizador escolher mandante e visitante à mão, e criar jogo avulso. Aqui só data, hora, campo e árbitro são editáveis. A lacuna que isso abria — a vaga do mata-mata sem ninguém para preencher — foi fechada por `POST /painel/categorias/:id/classificados`, mas o caso de exceção (sorteio, W.O., decisão fora do sistema) continua sem saída |
 
 ### Deixado de fora de propósito

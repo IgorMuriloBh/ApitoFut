@@ -10,6 +10,7 @@ import {
 import { formataData } from '../lib/dominio';
 import { EquipeComEscudo } from '../componentes/Escudo';
 import { ConfigurarFases } from './ConfigurarFases';
+import { podeEscrever } from '../lib/permissoes';
 
 /**
  * Tabela de jogos da categoria (RF015/RF017): geração automática e
@@ -182,19 +183,25 @@ export function Tabela({
             {/* configurar fases fica ao lado de gerar: são as duas coisas
                 que mudam a forma da tabela, e o organizador chega nelas
                 pelo mesmo caminho */}
-            <Botao variante="neutro" onClick={() => setConfigurandoFases(true)}>
-              🗂 Configurar fases
-            </Botao>
-            {vagasAbertas && (
-              <Botao
-                variante="neutro"
-                onClick={() => void definirClassificados()}
-                disabled={definindo}
-              >
-                {definindo ? 'Definindo…' : '🎟 Definir classificados'}
-              </Botao>
+            {/* montar e refazer a tabela é do gestor: o mesário opera os
+                jogos que já existem, e gerar de novo SUBSTITUI a tabela */}
+            {podeEscrever('tabela') && (
+              <>
+                <Botao variante="neutro" onClick={() => setConfigurandoFases(true)}>
+                  🗂 Configurar fases
+                </Botao>
+                {vagasAbertas && (
+                  <Botao
+                    variante="neutro"
+                    onClick={() => void definirClassificados()}
+                    disabled={definindo}
+                  >
+                    {definindo ? 'Definindo…' : '🎟 Definir classificados'}
+                  </Botao>
+                )}
+                <Botao onClick={() => setGerando(true)}>⚙ Gerar tabela</Botao>
+              </>
             )}
-            <Botao onClick={() => setGerando(true)}>⚙ Gerar tabela</Botao>
           </span>
         }
       >
@@ -312,12 +319,14 @@ function LinhaDeJogo({
           {j.data ? formataData(j.data) : 'sem data'}
         </span>
 
-        <button
-          onClick={() => setEditando((v) => !v)}
-          className="text-xs text-slate-500 hover:text-slate-900"
-        >
-          programar
-        </button>
+        {podeEscrever('tabela') && (
+          <button
+            onClick={() => setEditando((v) => !v)}
+            className="text-xs text-slate-500 hover:text-slate-900"
+          >
+            programar
+          </button>
+        )}
         {/* a súmula em branco é o papel que vai para a mesa (RF018); a
             "operar súmula" é a digitação depois do jogo */}
         <button

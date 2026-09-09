@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { urlPublica } from '../arquivos/armazenamento';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
+import { Exige, PermissaoGuard } from '../auth/permissao.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ConfiguracaoService,
@@ -26,7 +27,8 @@ import { WizardCompeticao } from './wizard';
  * escrito à mão. A organização vem do token, nunca de parâmetro.
  */
 @Controller('painel')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, PermissaoGuard)
+@Exige('estrutura')
 export class PainelController {
   constructor(
     private readonly prisma: PrismaService,
@@ -35,12 +37,14 @@ export class PainelController {
   ) {}
 
   /** POST /painel/competicoes — wizard "Criar campeonato" (RF003/RF004). */
+  @Exige('competicao')
   @Post('competicoes')
   criar(@Req() req: RequestAutenticado, @Body() corpo: WizardCompeticao) {
     return this.competicoes.criar(req.sessao.org, req.sessao.sub, corpo);
   }
 
   /** PATCH /painel/competicoes/:id/status — publicação controlada (RF025). */
+  @Exige('competicao')
   @Patch('competicoes/:id/status')
   mudarStatus(
     @Req() req: RequestAutenticado,
@@ -51,6 +55,7 @@ export class PainelController {
   }
 
   /** PUT /painel/competicoes/:id/dominio — CNAME próprio (RF002). */
+  @Exige('competicao')
   @Put('competicoes/:id/dominio')
   definirDominio(
     @Req() req: RequestAutenticado,
@@ -61,6 +66,7 @@ export class PainelController {
   }
 
   /** PUT /painel/competicoes/:id/imagens — logo e banner (RF003). */
+  @Exige('competicao')
   @Put('competicoes/:id/imagens')
   definirImagens(
     @Req() req: RequestAutenticado,

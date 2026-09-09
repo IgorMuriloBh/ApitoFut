@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alerta, Botao, Cartao, classeEntrada } from '../componentes/ui';
 import { api, type ConfiguracaoDaCategoria, type CompeticaoDoPainel } from '../lib/api';
+import { podeEscrever } from '../lib/permissoes';
 
 /**
  * Configuração da categoria (RF005) — `VIEWS.configuracao` no protótipo.
@@ -275,11 +276,15 @@ export function Configuracao({ competicao }: { competicao: CompeticaoDoPainel })
             </span>
           )}
           {competicao.categorias.length > 1 && (
-            <Botao variante="neutro" disabled={salvando} onClick={replicar}>
+            <Botao
+              variante="neutro"
+              disabled={salvando || !podeEscrever('estrutura')}
+              onClick={replicar}
+            >
               ⧉ Replicar para as outras
             </Botao>
           )}
-          <Botao disabled={salvando} onClick={salvar}>
+          <Botao disabled={salvando || !podeEscrever('estrutura')} onClick={salvar}>
             {salvando ? 'Salvando…' : 'Salvar configuração'}
           </Botao>
         </div>

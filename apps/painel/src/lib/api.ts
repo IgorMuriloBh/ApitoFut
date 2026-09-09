@@ -55,13 +55,45 @@ export function portalUrl(): string {
 
 export interface Sessao {
   token: string;
-  usuario: { id: string; nome: string; perfil: string; organizacaoId: string };
+  usuario: {
+    id: string;
+    nome: string;
+    perfil: string;
+    organizacaoId: string;
+    /**
+     * Convite recém-aceito: a senha ainda é a que o responsável gerou e
+     * entregou. Enquanto for `true`, o painel não abre outra tela — o dono
+     * conhece essa senha, e enquanto ela valer não há autoria de
+     * lançamento que se sustente.
+     */
+    senhaProvisoria?: boolean;
+  };
   /**
    * Preenchido quando o ADM assumiu a organização de outro organizador.
    * É o que acende a tarja de aviso e o botão de voltar — o token também
    * carrega essa informação, mas a tela precisa do nome para exibir.
    */
   assumida?: { competicaoId: string; organizacao: string } | null;
+}
+
+/** Um usuário da conta, como `GET /equipe` devolve. */
+export interface UsuarioDaEquipe {
+  id: string;
+  nome: string;
+  email: string;
+  perfil: string;
+  situacao: string;
+  senhaProvisoria: boolean;
+  ultimoAcesso: string | null;
+  criadoEm: string;
+  ehDono: boolean;
+}
+
+export interface PerfilOferecido {
+  chave: string;
+  rotulo: string;
+  descricao: string;
+  podeEscrever: string[];
 }
 
 export const sessao = {
@@ -798,6 +830,35 @@ export const api = {
       metodo: 'POST',
       corpo: dados,
       autenticado: false,
+    }),
+
+  /** A equipe da própria conta (migration 22). Só o responsável alcança. */
+  equipe: {
+    listar: () =>
+      requisitar<{ usuarios: UsuarioDaEquipe[] }>('/equipe'),
+
+    perfis: () =>
+      requisitar<{ perfis: PerfilOferecido[] }>('/equipe/perfis'),
+
+    convidar: (dados: { nome: string; email: string; perfil: string }) =>
+      requisitar<{
+        usuario: { id: string; nome: string; email: string; perfil: string };
+        senhaProvisoria: string;
+        aviso: string;
+      }>('/equipe', { metodo: 'POST', corpo: dados }),
+
+    alterar: (id: string, dados: { perfil?: string; situacao?: string }) =>
+      requisitar<{ id: string; perfil: string; situacao: string }>(
+        `/equipe/${id}`,
+        { metodo: 'PATCH', corpo: dados },
+      ),
+  },
+
+  /** Troca da própria senha — o id sai da sessão, nunca do corpo. */
+  trocarMinhaSenha: (senha: string) =>
+    requisitar<{ trocada: boolean }>('/minha-conta/senha', {
+      metodo: 'POST',
+      corpo: { senha },
     }),
 
   admin: {

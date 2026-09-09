@@ -16,6 +16,7 @@ interface LinhaLogin {
   senha_hash: string;
   perfil: perfil_usuario;
   situacao: situacao_usuario;
+  senha_provisoria: boolean;
 }
 
 @Injectable()
@@ -67,6 +68,9 @@ export class AuthService {
         nome: usuario.nome,
         perfil: usuario.perfil,
         organizacaoId: usuario.organizacao_id,
+        // convite recém-aceito: o painel prende o usuário na troca de
+        // senha antes de qualquer outra tela (migration 22)
+        senhaProvisoria: usuario.senha_provisoria,
       },
     };
   }
@@ -127,6 +131,8 @@ export class AuthService {
             nome: dados.nome,
             perfil: criado.perfil,
             organizacaoId: criado.organizacao_id,
+            // quem se auto-cadastra escolheu a própria senha
+            senhaProvisoria: false,
           }
         : null,
     };

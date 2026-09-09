@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alerta, Botao, Cartao, Selo } from '../componentes/ui';
 import { api, type CompeticaoDoPainel } from '../lib/api';
 import { STATUS, formataData, iniciais } from '../lib/dominio';
+import { podeEscrever } from '../lib/permissoes';
 
 interface Props {
   aoCriar: () => void;
@@ -40,7 +41,12 @@ export function Painel({ aoCriar, aoAbrir, recarregarEm }: Props) {
           <h1 className="text-xl font-bold">Painel do Organizador</h1>
           <p className="text-sm text-slate-500">Visão consolidada da sua conta</p>
         </div>
-        <Botao onClick={aoCriar}>+ Criar novo campeonato</Botao>
+        {/* mesário e secretaria não criam competição: o botão sumiria
+            em 403 de qualquer jeito, e oferecer o que não se pode é pior
+            que não oferecer */}
+        {podeEscrever('competicao') && (
+          <Botao onClick={aoCriar}>+ Criar novo campeonato</Botao>
+        )}
       </header>
 
       {erro && <Alerta tom="erro">{erro}</Alerta>}
@@ -83,7 +89,9 @@ export function Painel({ aoCriar, aoAbrir, recarregarEm }: Props) {
             <p className="text-sm text-slate-500 mt-1 mb-4">
               Crie o primeiro para começar a montar as categorias.
             </p>
-            <Botao onClick={aoCriar}>+ Criar campeonato</Botao>
+            {podeEscrever('competicao') && (
+              <Botao onClick={aoCriar}>+ Criar campeonato</Botao>
+            )}
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 p-5">
