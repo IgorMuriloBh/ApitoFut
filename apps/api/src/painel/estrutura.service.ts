@@ -7,6 +7,10 @@ import {
 import { funcao_arbitro } from '@prisma/client';
 import { paraCaminho, urlPublica } from '../arquivos/armazenamento';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  exigirArbitroDaCompeticao,
+  exigirCampoDaCompeticao,
+} from './mesma-competicao';
 
 /**
  * Campos e árbitros da competição (RF013, RF014).
@@ -319,24 +323,8 @@ export class EstruturaService {
       if (!jogo) throw new NotFoundException('Jogo não encontrado.');
       const competicaoId = jogo.categorias.competicao_id;
 
-      if (dados.campoId) {
-        const campo = await tx.campos.findUnique({ where: { id: dados.campoId } });
-        if (!campo || campo.competicao_id !== competicaoId) {
-          throw new BadRequestException(
-            'Campo não pertence a esta competição.',
-          );
-        }
-      }
-      if (dados.arbitroId) {
-        const arbitro = await tx.arbitros.findUnique({
-          where: { id: dados.arbitroId },
-        });
-        if (!arbitro || arbitro.competicao_id !== competicaoId) {
-          throw new BadRequestException(
-            'Árbitro não pertence a esta competição.',
-          );
-        }
-      }
+      await exigirCampoDaCompeticao(tx, dados.campoId, competicaoId);
+      await exigirArbitroDaCompeticao(tx, dados.arbitroId, competicaoId);
 
       const atualizado = await tx.jogos.update({
         where: { id: jogoId },

@@ -231,7 +231,9 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
   banco deixaria, esvaziando o local de jogos já programados sem aviso
 - **Escalar campo/árbitro exige mesma competição**: duas competições da
   mesma organização passam igual pelo RLS, e sem a checagem o id de outra
-  entraria pela porta lateral
+  entraria pela porta lateral. São **duas** rotas que gravam `campo_id` —
+  `PUT /jogos/:id/escalacao` e `PATCH /jogos/:id/programacao` —, e a
+  checagem mora num lugar só (`painel/mesma-competicao.ts`)
 - **Cidade sai do cadastro do IBGE, nunca de campo livre** — e a ordenação
   é pelo nome sem acento, senão "Mâncio Lima" cai depois de "Marechal
   Thaumaturgo" (o collation compara byte, não letra)

@@ -76,6 +76,10 @@ before(async () => {
 after(async () => {
   await admin.categorias.deleteMany({ where: { nome: { startsWith: PREFIXO } } });
   await admin.times.deleteMany({ where: { nome: { startsWith: PREFIXO } } });
+  // campos e a competição do teste de local: sem isto eles sobram no banco
+  // de desenvolvimento e aparecem no seletor de local das telas reais
+  await admin.campos.deleteMany({ where: { nome: { startsWith: PREFIXO } } });
+  await admin.competicoes.deleteMany({ where: { nome: { startsWith: PREFIXO } } });
   await admin.$disconnect();
   await app.close();
 });
@@ -222,6 +226,90 @@ describe('programação posterior', () => {
     const t = await api(`/painel/categorias/${categoria}/tabela`);
     const r = await api(`/painel/jogos/${t.corpo[0].id}/programacao`, 'PATCH', {
       data: '01/05/2027',
+    });
+    assert.equal(r.code, 400);
+  });
+});
+
+describe('local do jogo na programação', () => {
+  /**
+   * A tela de programar passou a oferecer o campo, e esta rota grava
+   * `campo_id`. Antes disso a checagem de "mesma competição" existia só em
+   * `PUT /jogos/:id/escalacao` — aqui ficava aberta.
+   */
+  let campoDaCasa: string;
+  let campoAlheio: string;
+  let jogo: string;
+
+  before(async () => {
+    const t = await api(`/painel/categorias/${categoria}/tabela`);
+    jogo = t.corpo[0].id;
+
+    const meu = await admin.campos.create({
+      data: { competicao_id: COMP, nome: `${PREFIXO} Campo da Casa` },
+    });
+    campoDaCasa = meu.id;
+
+    // outra competição DA MESMA ORGANIZAÇÃO: é o caso que o RLS não barra
+    const outra = await admin.competicoes.create({
+      data: {
+        organizacao_id: (
+          await admin.competicoes.findUniqueOrThrow({ where: { id: COMP } })
+        ).organizacao_id,
+        nome: `${PREFIXO} Outra Copa`,
+        slug: `${PREFIXO.toLowerCase().replace(/ /g, '-')}-outra-copa`,
+        data_inicio: new Date('2027-01-01T00:00:00Z'),
+        temporada: 2027,
+        cidade: 'Belo Horizonte',
+        estado: 'MG',
+      },
+    });
+    const alheio = await admin.campos.create({
+      data: { competicao_id: outra.id, nome: `${PREFIXO} Campo Alheio` },
+    });
+    campoAlheio = alheio.id;
+  });
+
+  test('grava o campo junto com data e hora', async () => {
+    const r = await api(`/painel/jogos/${jogo}/programacao`, 'PATCH', {
+      data: '2027-05-01',
+      hora: '16:45',
+      campoId: campoDaCasa,
+    });
+    assert.equal(r.code, 200, JSON.stringify(r.corpo));
+    assert.equal(r.corpo.campoId, campoDaCasa);
+
+    const t = await api(`/painel/categorias/${categoria}/tabela`);
+    const dele = t.corpo.find((j: any) => j.id === jogo);
+    assert.equal(dele.campo?.nome, `${PREFIXO} Campo da Casa`);
+  });
+
+  test('campo vazio desmarca o local', async () => {
+    const r = await api(`/painel/jogos/${jogo}/programacao`, 'PATCH', {
+      campoId: null,
+    });
+    assert.equal(r.code, 200);
+    assert.equal(r.corpo.campoId, null);
+  });
+
+  test('campo de OUTRA competição é recusado — o RLS não barra sozinho', async () => {
+    const r = await api(`/painel/jogos/${jogo}/programacao`, 'PATCH', {
+      campoId: campoAlheio,
+    });
+    assert.equal(r.code, 400, JSON.stringify(r.corpo));
+    assert.match(r.corpo.message, /não pertence a esta competição/i);
+
+    const t = await api(`/painel/categorias/${categoria}/tabela`);
+    assert.equal(
+      t.corpo.find((j: any) => j.id === jogo).campo,
+      null,
+      'o campo alheio entrou mesmo assim',
+    );
+  });
+
+  test('campo inexistente é recusado do mesmo jeito', async () => {
+    const r = await api(`/painel/jogos/${jogo}/programacao`, 'PATCH', {
+      campoId: '00000000-0000-0000-0000-000000000000',
     });
     assert.equal(r.code, 400);
   });

@@ -4,6 +4,7 @@ import {
   ErroDaApi,
   api,
   type CompeticaoDoPainel,
+  type CampoDoPainel,
   type JogoDaTabela,
   type ResultadoDosClassificados,
 } from '../lib/api';
@@ -30,6 +31,9 @@ export function Tabela({
   const [erro, setErro] = useState<string | null>(null);
   const [gerando, setGerando] = useState(false);
   const [definindo, setDefinindo] = useState(false);
+  // os campos da competição, para o editor de programação oferecer o local.
+  // Carregados uma vez: a lista muda em Campos e árbitros, não aqui.
+  const [campos, setCampos] = useState<CampoDoPainel[]>([]);
   const [classificados, setClassificados] =
     useState<ResultadoDosClassificados | null>(null);
 
@@ -70,6 +74,12 @@ export function Tabela({
     void carregar(categoriaId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoriaId]);
+
+  useEffect(() => {
+    // sem campos cadastrados a tela avisa e aponta o caminho, em vez de
+    // mostrar uma lista vazia sem explicação
+    api.campos(competicao.id).then(setCampos).catch(() => setCampos([]));
+  }, [competicao.id]);
 
   if (!competicao.categorias.length) {
     return <Alerta tom="aviso">Crie uma categoria antes de gerar a tabela.</Alerta>;
@@ -265,6 +275,7 @@ export function Tabela({
                     key={j.id}
                     jogo={j}
                     competicao={competicao.nome}
+                    campos={campos}
                     aoOperar={() => aoOperar(j, categoriaId)}
                     aoProgramar={carregar}
                     aoFalhar={setErro}
@@ -333,12 +344,14 @@ function BotaoDeArte({
 function LinhaDeJogo({
   jogo: j,
   competicao,
+  campos,
   aoOperar,
   aoProgramar,
   aoFalhar,
 }: {
   jogo: JogoDaTabela;
   competicao: string;
+  campos: CampoDoPainel[];
   aoOperar: () => void;
   aoProgramar: () => void;
   aoFalhar: (m: string) => void;
@@ -346,11 +359,17 @@ function LinhaDeJogo({
   const [editando, setEditando] = useState(false);
   const [data, setData] = useState(j.data ?? '');
   const [hora, setHora] = useState(j.hora ?? '');
+  const [campoId, setCampoId] = useState(j.campo?.id ?? '');
   const [erro, setErro] = useState<string | null>(null);
 
   async function salvar() {
     try {
-      await api.programarJogo(j.id, { data: data || null, hora: hora || null });
+      await api.programarJogo(j.id, {
+        data: data || null,
+        hora: hora || null,
+        // vazio = sem local definido, e é assim que se desmarca
+        campoId: campoId || null,
+      });
       setEditando(false);
       aoProgramar();
     } catch (e) {
@@ -382,8 +401,13 @@ function LinhaDeJogo({
           className="flex-1 min-w-52"
         />
 
-        <span className="text-xs text-slate-500 w-28 text-right">
+        <span className="text-xs text-slate-500 text-right">
           {j.data ? formataData(j.data) : 'sem data'}
+          {j.campo && (
+            <span className="block text-[11px] text-slate-400">
+              📍 {j.campo.nome}
+            </span>
+          )}
         </span>
 
         {podeEscrever('tabela') && (
@@ -441,6 +465,27 @@ function LinhaDeJogo({
             value={hora}
             onChange={(e) => setHora(e.target.value)}
           />
+          {/* o local é opcional: jogo marcado sem campo definido é comum
+              no começo da competição, e exigir travaria a programação */}
+          {campos.length > 0 ? (
+            <select
+              className={`${classeEntrada} max-w-56`}
+              value={campoId}
+              onChange={(e) => setCampoId(e.target.value)}
+              title="Local do jogo"
+            >
+              <option value="">Local a definir</option>
+              {campos.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-xs text-slate-500 self-center">
+              Nenhum campo cadastrado — cadastre em <b>Campos e árbitros</b>.
+            </span>
+          )}
           <Botao onClick={salvar}>Salvar</Botao>
           <Botao variante="neutro" onClick={() => setEditando(false)}>
             Cancelar

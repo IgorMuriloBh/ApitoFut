@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { urlPublica } from '../arquivos/armazenamento';
 import { ClassificacaoService } from '../competicoes/classificacao.service';
+import { exigirCampoDaCompeticao } from './mesma-competicao';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   FaseMata,
@@ -460,8 +461,20 @@ export class TabelaService {
     }
 
     return this.prisma.comOrganizacao(organizacaoId, async (tx) => {
-      const jogo = await tx.jogos.findUnique({ where: { id: jogoId } });
+      const jogo = await tx.jogos.findUnique({
+        where: { id: jogoId },
+        include: { categorias: true },
+      });
       if (!jogo) throw new NotFoundException('Jogo não encontrado.');
+
+      // a tela de programar passou a oferecer o campo, e esta rota grava
+      // `campo_id` — sem a checagem, o id de outra competição da mesma
+      // organização entraria por aqui (o RLS não barra)
+      await exigirCampoDaCompeticao(
+        tx,
+        dados.campoId,
+        jogo.categorias.competicao_id,
+      );
 
       const atualizado = await tx.jogos.update({
         where: { id: jogoId },

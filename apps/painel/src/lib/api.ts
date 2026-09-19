@@ -982,12 +982,14 @@ export const api = {
 
   programarJogo: (
     jogoId: string,
-    dados: { data?: string | null; hora?: string | null },
+    dados: { data?: string | null; hora?: string | null; campoId?: string | null },
   ) =>
-    requisitar<{ id: string; data: string | null; hora: string | null }>(
-      `/painel/jogos/${jogoId}/programacao`,
-      { metodo: 'PATCH', corpo: dados },
-    ),
+    requisitar<{
+      id: string;
+      data: string | null;
+      hora: string | null;
+      campoId: string | null;
+    }>(`/painel/jogos/${jogoId}/programacao`, { metodo: 'PATCH', corpo: dados }),
 
 
   iniciarJogo: (jogoId: string) =>

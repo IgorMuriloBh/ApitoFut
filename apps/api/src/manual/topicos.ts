@@ -350,13 +350,14 @@ export const TOPICOS: TopicoDoManual[] = [
     titulo: 'Programar data, campo e árbitro',
     resumo: 'Cada jogo ganha horário e local.',
     corpo: [
-      'Na tabela, cada jogo abre para receber data, hora, campo e arbitragem.',
-      'O que você programar aqui aparece no portal, embaixo de cada jogo: data, hora e campo. Jogo sem nada marcado mostra "Data e local a definir".',
+      'Na tabela, clique em **programar** no jogo: informe data, horário e o local. O local é a lista dos campos que você cadastrou em Campos e árbitros — se ainda não houver nenhum, a tela avisa e aponta o caminho.',
+      'O local é opcional. "Local a definir" é uma escolha legítima no começo da competição, e é também como se desmarca um campo já escolhido.',
+      'O que você programar aqui aparece no portal, embaixo de cada jogo: data, hora e campo. Jogo sem nada marcado mostra "Data e local a definir". Também é o que entra na arte de divulgação.',
       'Campos e árbitros são cadastrados em Campos e árbitros, e só podem ser escalados se pertencerem à mesma competição.',
       'Campo ou árbitro em uso não é excluído: apagá-lo esvaziaria o local de jogos já programados sem aviso.',
     ],
     palavras:
-      'programar jogo data hora campo local arbitro escalar agendar partida horario onde vai ser aparece no portal',
+      'programar jogo data hora campo local arbitro escalar agendar partida horario onde vai ser aparece no portal mudar local trocar campo definir onde',
     onde: ['painel'],
     destino: { painel: { tela: 'competicao', secao: 'tabela' } },
     acao: 'Ir para Tabela de jogos',

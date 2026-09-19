@@ -221,10 +221,12 @@ ETAPAS = [
              "incoerente."),
             ("Vá em <b>Campos e árbitros</b> e cadastre um campo e um árbitro.",
              "Ficam disponíveis para escalar."),
-            ("Volte à tabela e programe um jogo: data, hora, campo e árbitro. "
-             "Se você gerou <i>com programação</i>, os jogos já vêm com data e hora — "
-             "aproveite para <b>trocar</b> a de um deles.",
-             "O jogo passa a mostrar o local e o horário."),
+            ("Volte à tabela e clique em <b>programar</b> num jogo: informe data, "
+             "horário e o <b>local</b>. Se você gerou <i>com programação</i>, os jogos "
+             "já vêm com data e hora — aproveite para <b>trocar</b> a de um deles.",
+             "O local é a lista dos campos que você cadastrou. O jogo passa a "
+             "mostrar 📍 com o campo embaixo da data. \"Local a definir\" é uma "
+             "escolha válida — e é também como se desmarca um campo já escolhido."),
             ("Tente excluir o campo que acabou de escalar.",
              "<b>Recusado</b>: campo em uso não é excluído, para não esvaziar o local "
              "de jogos já programados."),

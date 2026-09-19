@@ -502,6 +502,13 @@ Zero não premia quando "maior é melhor" (artilheiro com 0 gols seria linha err
 num quadro de honra), mas premia quando "menor é melhor" — zero gol sofrido é o
 melhor resultado possível.
 
+**O local entra pela programação do jogo.** `PATCH /painel/jogos/:id/programacao`
+recebe `campoId` junto de data e hora, e a tela oferece os campos da competição
+num seletor — vazio desmarca. A regra "campo tem de ser da mesma competição"
+(CLAUDE.md) existia só em `PUT /jogos/:id/escalacao`; a tela de programar abriu a
+segunda porta, e a checagem virou `mesma-competicao.ts`, usada pelos dois. Duas
+cópias de uma regra de segurança divergem na primeira mudança.
+
 ### Artes de divulgação (RF033)
 
 `painel/arte.ts` (puro) + `arte.service.ts`. O organizador divulgava a rodada
