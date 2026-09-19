@@ -319,7 +319,7 @@ export interface AvisoDeFaixa {
 
 export interface JogoDaTabela {
   id: string;
-  fase: { chave: string; nome: string; tipo: string } | null;
+  fase: { id: string; chave: string; nome: string; tipo: string } | null;
   grupo: string | null;
   rodada: number | null;
   ordem: number;

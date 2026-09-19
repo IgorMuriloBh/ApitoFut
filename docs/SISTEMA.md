@@ -329,6 +329,8 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `GET` | `/painel/categorias/:id/elenco` | Marca quem está fora da faixa |
 | `POST` `PATCH` `DELETE` | `/painel/inscricoes[/:id]` | 409 de faixa etária é aviso |
 | `GET` `POST` | `/painel/categorias/:id/tabela` | Geração automática |
+| `GET` | `/painel/jogos/:id/arte.svg` | Arte de divulgação; com placar vira resultado |
+| `GET` | `/painel/categorias/:id/arte.svg?fase=&grupo=&rodada=` | A rodada inteira numa arte |
 | `POST` | `/painel/categorias/:id/classificados` | Grupos → primeira fase eliminatória; 409 com jogo de grupo em aberto |
 | `PATCH` | `/painel/jogos/:id/programacao` | Data, hora e campo |
 | `POST` | `/painel/jogos/:id/{iniciar,periodo,encerrar,reabrir}` | Controle da partida |
@@ -499,6 +501,46 @@ goleiro, melhor jogador, melhor defesa e fair play (vermelho vale 3 amarelos).
 Zero não premia quando "maior é melhor" (artilheiro com 0 gols seria linha errada
 num quadro de honra), mas premia quando "menor é melhor" — zero gol sofrido é o
 melhor resultado possível.
+
+### Artes de divulgação (RF033)
+
+`painel/arte.ts` (puro) + `arte.service.ts`. O organizador divulgava a rodada
+montando card no Canva, jogo a jogo, redigitando nome de equipe, horário e campo
+que o sistema já tem — e erro de digitação em arte publicada ninguém corrige
+depois.
+
+**Três artes, duas funções.** Jogo e rodada; o placar decide o resto. Jogo
+encerrado sai com o resultado no lugar do horário, e o vencedor em realce, sem
+rota nem template separado. Foi o que evitou três layouts para manter em
+sincronia.
+
+**A API desenha SVG, o painel rasteriza para PNG.** Gerar PNG no servidor pediria
+biblioteca nativa de imagem (canvas ou resvg), e o projeto evita dependência nova
+por princípio. O SVG é string: sai testável sem banco e sem navegador, como
+`sumula-impressa.ts`; quem converte é o `<canvas>` que todo navegador já tem
+(`apps/painel/src/lib/arte.ts`). PNG e não JPEG — a arte é texto grande sobre cor
+chapada, exatamente onde o JPEG serrilha.
+
+Três consequências do SVG rasterizado por `<img>`, que explicam o código:
+
+- **Nada externo.** Nesse modo o navegador não busca imagem nem fonte de fora; o
+  desenho sairia com buracos. Escudo e logo vão embutidos em `data:` (lidos do
+  disco pelo serviço) e a tipografia é pilha de fonte de sistema. Um teste
+  garante que nenhum `href` http sobreviva.
+- **Largura de texto é estimada**, não medida — não há layout engine. Os fatores
+  (`FATOR_DISPLAY` 0,74 / `FATOR_TEXTO` 0,67) foram **medidos com
+  `ctx.measureText`** no navegador, com nomes reais, e são o pior caso das
+  amostras. O primeiro chute, 0,62 para as duas fontes, fazia o nome invadir o
+  escudo do vizinho.
+- **Nome longo quebra em duas linhas** antes de encolher, e encolhe antes de
+  cortar. "Academia Atlético nacional" numa linha só cai para corpo 17 e vira
+  legenda.
+
+**Caminho de imagem externa é ignorado** ao embutir: buscar URL arbitrária a
+partir do servidor é SSRF, e o preço de recusar é uma arte sem logo.
+
+**Gerar arte é leitura** — qualquer perfil da conta, inclusive o mesário, que é
+quem encerra a partida e vai postar o resultado.
 
 ### Exportações em CSV
 
@@ -924,6 +966,8 @@ outro — falhava de verdade, com corrida real.
 | `cronologia.e2e.spec.ts` | Timeline e correção de lance |
 | `mata-mata.e2e.spec.ts` | Avanço do vencedor, correção de resultado |
 | `classificados.e2e.spec.ts` | Grupos → mata-mata: vaga, empate, reexecução |
+| `painel/arte.spec.ts` | Desenho da arte: quebra de nome, placar, nada externo |
+| `arte.e2e.spec.ts` | Arte pelas rotas reais, com dados do banco |
 | `suspensoes.e2e.spec.ts` | Acúmulo, vermelho, cumprimento, bloqueio, cartão lançado pela API, punição retroativa |
 | `equipe.e2e.spec.ts` | Convite, o que cada perfil escreve, teto do convite, senha provisória |
 | `auth/permissoes.spec.ts` | A matriz de permissão, sem banco nem HTTP |

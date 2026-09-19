@@ -231,6 +231,12 @@ ETAPAS = [
             ("Imprima a súmula de um jogo.",
              "Sai o elenco inscrito das duas equipes e a comissão técnica, em branco, "
              "para a arbitragem preencher em campo."),
+            ("Clique em <b>arte</b>, ao lado de \"súmula\", num jogo já programado.",
+             "Baixa um PNG 1080×1350 com logo e nome da competição, as duas equipes, "
+             "categoria, data, horário e local — pronto para postar. Equipe sem "
+             "escudo aparece com o círculo de iniciais."),
+            ("No cabeçalho cinza da rodada, clique em <b>arte da rodada</b>.",
+             "Uma imagem só com todos os jogos daquela rodada."),
         ],
     },
     {
@@ -388,6 +394,11 @@ ETAPAS = [
             ("Exporte a classificação para CSV e abra no Excel.",
              "As colunas ficam separadas corretamente e a acentuação aparece certa "
              "(o arquivo é preparado para o Excel em português)."),
+            ("Volte à Tabela de jogos e gere a <b>arte</b> de um jogo já encerrado.",
+             "A mesma arte, agora com o <b>placar</b> no lugar do horário e o vencedor "
+             "em destaque. Não há botão separado: o sistema usa o estado do jogo. "
+             "Com a rodada inteira encerrada, o botão da rodada vira "
+             "\"arte de resultados\"."),
             ("No arquivo, confira a coluna <b>Pos.</b> e a ordem das equipes.",
              "A numeração <b>recomeça em cada grupo</b> e a ordem é a mesma da tela, "
              "com os critérios de desempate que você configurou. Se o líder do "

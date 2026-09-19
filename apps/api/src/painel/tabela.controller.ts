@@ -2,15 +2,18 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
 import { Exige, PermissaoGuard } from '../auth/permissao.guard';
+import { ArteService } from './arte.service';
 import { OpcoesDeGeracao, TabelaService } from './tabela.service';
 
 /** Geração e programação da tabela de jogos (RF015/RF017). */
@@ -18,7 +21,46 @@ import { OpcoesDeGeracao, TabelaService } from './tabela.service';
 @UseGuards(AuthGuard, PermissaoGuard)
 @Exige('tabela')
 export class TabelaController {
-  constructor(private readonly tabela: TabelaService) {}
+  constructor(
+    private readonly tabela: TabelaService,
+    private readonly arte: ArteService,
+  ) {}
+
+  /**
+   * GET /painel/jogos/:jogoId/arte.svg — arte de divulgação do jogo
+   * (RF033). Encerrado, sai com o placar.
+   *
+   * É leitura: qualquer perfil da conta gera e compartilha, inclusive o
+   * mesário que acabou de encerrar a partida. Quem rasteriza para PNG é o
+   * painel — ver o cabeçalho de `arte.ts`.
+   */
+  @Get('jogos/:jogoId/arte.svg')
+  @Header('Content-Type', 'image/svg+xml; charset=utf-8')
+  @Header('Cache-Control', 'no-store')
+  arteDoJogo(
+    @Req() req: RequestAutenticado,
+    @Param('jogoId', ParseUUIDPipe) jogoId: string,
+  ) {
+    return this.arte.doJogo(req.sessao.org, jogoId);
+  }
+
+  /** GET /painel/categorias/:id/arte.svg — a rodada inteira numa arte só. */
+  @Get('categorias/:categoriaId/arte.svg')
+  @Header('Content-Type', 'image/svg+xml; charset=utf-8')
+  @Header('Cache-Control', 'no-store')
+  arteDaRodada(
+    @Req() req: RequestAutenticado,
+    @Param('categoriaId', ParseUUIDPipe) categoriaId: string,
+    @Query('fase') faseId?: string,
+    @Query('grupo') grupo?: string,
+    @Query('rodada') rodada?: string,
+  ) {
+    return this.arte.daRodada(req.sessao.org, categoriaId, {
+      faseId: faseId || undefined,
+      grupo: grupo || undefined,
+      rodada: rodada ? Number(rodada) : undefined,
+    });
+  }
 
   @Get('categorias/:categoriaId/tabela')
   listar(

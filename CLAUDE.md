@@ -366,9 +366,12 @@ apps/api/          NestJS — a única app existente hoje
   src/painel/sumula-impressa.ts  HTML da súmula em branco; não conhece Prisma
   src/painel/premiacoes.ts       RF024, puro; empate volta como empate
   src/painel/csv.ts              exportações; BOM e `;` por causa do Excel pt-BR
+  src/painel/arte.ts             artes de divulgação (RF033); puro, devolve SVG
+                                 — quem rasteriza para PNG é o painel
 apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/lib/api.ts     cliente autenticado; token em sessionStorage
   src/lib/dominio.ts vocabulário do protótipo (STATUS, CORES, FASES…)
+  src/lib/arte.ts    SVG da API → PNG pelo canvas do navegador (RF033)
   src/componentes/Escudo.tsx       escudo + nome; sem imagem, iniciais coloridas
   src/componentes/Timeline.tsx     cronologia da súmula, com correção de lance
   src/componentes/MenuLateral.tsx  navegação por seções, como o protótipo

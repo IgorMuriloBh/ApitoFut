@@ -301,7 +301,9 @@ export class TabelaService {
 
       return jogos.map((j) => ({
         id: j.id,
-        fase: j.fases ? { chave: j.fases.chave, nome: j.fases.nome, tipo: j.fases.tipo } : null,
+        fase: j.fases
+          ? { id: j.fases.id, chave: j.fases.chave, nome: j.fases.nome, tipo: j.fases.tipo }
+          : null,
         grupo: j.grupos?.nome.trim() ?? null,
         rodada: j.rodada,
         ordem: j.ordem,

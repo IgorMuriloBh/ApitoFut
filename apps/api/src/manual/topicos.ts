@@ -397,6 +397,25 @@ export const TOPICOS: TopicoDoManual[] = [
     acao: 'Ir para Tabela de jogos',
   },
   {
+    id: 'arte-divulgacao',
+    titulo: 'Arte de divulgação do jogo e da rodada',
+    resumo: 'O card pronto para postar, com os dados que o sistema já tem.',
+    corpo: [
+      'Na Tabela de jogos, cada partida tem o botão **arte** ao lado de "súmula": ele gera um PNG 1080×1350 (retrato, o formato do feed) com logo e nome da competição, as duas equipes, categoria, data, horário e local.',
+      'No cabeçalho de cada rodada há o botão **arte da rodada**, que põe todos os jogos daquela rodada numa imagem só.',
+      'Jogo encerrado gera a arte com o **placar** no lugar do horário, e o vencedor em destaque. Não há botão separado: o sistema usa o estado do jogo. Rodada com todos os jogos encerrados sai como arte de resultados.',
+      'Equipe sem escudo aparece com o círculo de iniciais, o mesmo das listas — a arte não fica esperando que todo mundo envie logo. Enviar o escudo da equipe e a logo da competição melhora o resultado, mas não é obrigatório.',
+      'O local sai como campo + cidade/UF. Jogo sem campo cadastrado mostra só a cidade; para aparecer o campo, cadastre em Campos e árbitros e programe o jogo.',
+      'Jogo de mata-mata sem as duas equipes definidas não gera arte: não há confronto para anunciar enquanto a vaga for "1º Grupo A".',
+      'A cor da arte vem da cor da competição, definida no cadastro dela.',
+    ],
+    palavras:
+      'arte card flyer imagem post instagram divulgacao divulgar whatsapp story png gerar imagem do jogo rodada resultado placar postar',
+    onde: ['painel'],
+    destino: { painel: { tela: 'competicao', secao: 'tabela' } },
+    acao: 'Ir para Tabela de jogos',
+  },
+  {
     id: 'sumula-impressa',
     titulo: 'Súmula impressa',
     resumo: 'A folha em branco para a arbitragem preencher em campo.',

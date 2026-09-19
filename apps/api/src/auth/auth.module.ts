@@ -19,6 +19,7 @@ import { PainelController } from '../painel/painel.controller';
 import { SumulaController } from '../painel/sumula.controller';
 import { SumulaService } from '../painel/sumula.service';
 import { TabelaController } from '../painel/tabela.controller';
+import { ArteService } from '../painel/arte.service';
 import { TabelaService } from '../painel/tabela.service';
 import { EquipeController, MinhaContaController } from '../equipe/equipe.controller';
 import { EquipeService } from '../equipe/equipe.service';
@@ -56,6 +57,7 @@ import { AuthService } from './auth.service';
     EquipesService,
     ElencoService,
     TabelaService,
+    ArteService,
     DisciplinaService,
   ],
 })

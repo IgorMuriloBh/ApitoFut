@@ -94,6 +94,8 @@ describe('busca — a dúvida escrita como o usuário escreve', () => {
     ['criar acesso para o mesario', 'equipe-da-conta'],
     ['o que cada perfil pode fazer', 'perfis'],
     ['criar campeonato', 'criar-competicao'],
+    ['arte para postar no instagram', 'arte-divulgacao'],
+    ['gerar flyer do jogo', 'arte-divulgacao'],
     ['placar do jogo ao vivo', 'central-ao-vivo'],
     // conjugação: quem pergunta escreve "inscrevo", o acervo diz
     // "inscrever". Sem a raiz comum isto caía em "Carteirinha do atleta"

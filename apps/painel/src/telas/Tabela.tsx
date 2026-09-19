@@ -11,6 +11,7 @@ import { formataData } from '../lib/dominio';
 import { EquipeComEscudo } from '../componentes/Escudo';
 import { ConfigurarFases } from './ConfigurarFases';
 import { podeEscrever } from '../lib/permissoes';
+import { arteDaRodada, arteDoJogo } from '../lib/arte';
 
 /**
  * Tabela de jogos da categoria (RF015/RF017): geração automática e
@@ -222,6 +223,29 @@ export function Tabela({
                   <span className="flex-1">{titulo}</span>
                   {/* o uso real da secretaria é imprimir a rodada inteira na
                       véspera, não jogo a jogo */}
+                  {/* a arte sai com o que houver: jogos programados viram
+                      chamada, jogos encerrados viram resultado. Por isso não
+                      há duas opções — quem decide é o estado dos jogos */}
+                  <BotaoDeArte
+                    rotulo={
+                      lista.every((j) => j.placar)
+                        ? '🖼 arte de resultados'
+                        : '🖼 arte da rodada'
+                    }
+                    titulo="Gerar a arte desta rodada em PNG"
+                    aoFalhar={setErro}
+                    gerar={() =>
+                      arteDaRodada(
+                        categoriaId,
+                        {
+                          faseId: lista[0].fase?.id,
+                          grupo: lista[0].grupo,
+                          rodada: lista[0].rodada,
+                        },
+                        `${competicao.nome} ${titulo}`,
+                      )
+                    }
+                  />
                   {lista[0]?.rodada != null && (
                     <button
                       onClick={() =>
@@ -240,8 +264,10 @@ export function Tabela({
                   <LinhaDeJogo
                     key={j.id}
                     jogo={j}
+                    competicao={competicao.nome}
                     aoOperar={() => aoOperar(j, categoriaId)}
                     aoProgramar={carregar}
+                    aoFalhar={setErro}
                   />
                 ))}
               </div>
@@ -267,14 +293,55 @@ function agrupar(jogos: JogoDaTabela[]) {
   return [...mapa.entries()].map(([titulo, lista]) => ({ titulo, lista }));
 }
 
+/**
+ * Botão que gera uma arte. Some enquanto gera — a conversão para PNG leva
+ * um instante, e sem sinal o organizador clica de novo e baixa duas vezes.
+ */
+function BotaoDeArte({
+  rotulo,
+  titulo,
+  gerar,
+  aoFalhar,
+}: {
+  rotulo: string;
+  titulo: string;
+  gerar: () => Promise<void>;
+  aoFalhar: (m: string) => void;
+}) {
+  const [gerando, setGerando] = useState(false);
+  return (
+    <button
+      disabled={gerando}
+      title={titulo}
+      onClick={async () => {
+        setGerando(true);
+        try {
+          await gerar();
+        } catch (e) {
+          aoFalhar(e instanceof Error ? e.message : 'Não foi possível gerar a arte.');
+        } finally {
+          setGerando(false);
+        }
+      }}
+      className="normal-case tracking-normal text-slate-500 hover:text-slate-900 disabled:opacity-50"
+    >
+      {gerando ? 'gerando…' : rotulo}
+    </button>
+  );
+}
+
 function LinhaDeJogo({
   jogo: j,
+  competicao,
   aoOperar,
   aoProgramar,
+  aoFalhar,
 }: {
   jogo: JogoDaTabela;
+  competicao: string;
   aoOperar: () => void;
   aoProgramar: () => void;
+  aoFalhar: (m: string) => void;
 }) {
   const [editando, setEditando] = useState(false);
   const [data, setData] = useState(j.data ?? '');
@@ -336,6 +403,23 @@ function LinhaDeJogo({
         >
           🖨 súmula
         </button>
+        {/* sem as duas equipes não há confronto para anunciar: a vaga do
+            mata-mata ainda em "1º Grupo A" viraria uma arte sem informação */}
+        {j.mandante.id && j.visitante.id && (
+          <span className="text-xs">
+            <BotaoDeArte
+              rotulo={j.placar ? '🖼 arte do resultado' : '🖼 arte'}
+              titulo="Gerar a arte deste jogo em PNG"
+              aoFalhar={aoFalhar}
+              gerar={() =>
+                arteDoJogo(
+                  j.id,
+                  `${competicao} ${j.mandante.nome} x ${j.visitante.nome}`,
+                )
+              }
+            />
+          </span>
+        )}
         {podeOperar && (
           <button onClick={aoOperar} className="text-xs text-marca font-medium">
             operar súmula →
