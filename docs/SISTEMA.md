@@ -333,6 +333,7 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `GET` | `/painel/categorias/:id/arte.svg?fase=&grupo=&rodada=` | A rodada inteira numa arte |
 | `POST` | `/painel/categorias/:id/classificados` | Grupos → primeira fase eliminatória; 409 com jogo de grupo em aberto |
 | `PATCH` | `/painel/jogos/:id/programacao` | Data, hora e campo |
+| `PATCH` | `/painel/jogos/:id/confronto` | Equipes do mata-mata à mão; só fase `mata` e jogo agendado |
 | `POST` | `/painel/jogos/:id/{iniciar,periodo,encerrar,reabrir}` | Controle da partida |
 | `GET` | `/painel/jogos/:id/lances` | Cronologia para a timeline do operador |
 | `POST` `PATCH` `DELETE` | `/painel/jogos/:id/lances[/:lanceId]` | Súmula |
@@ -638,6 +639,45 @@ classificação. Decisões que valem a pena conhecer antes de mexer:
   intermediário que viola o check ao reexecutar sobre chaveamento já preenchido.
 - **Jogo que já saiu do agendado não é tocado** — trocar a equipe deixaria a
   súmula falando de quem não entrou em campo.
+
+### Quando o automático não alcança (`PATCH /painel/jogos/:id/confronto`)
+
+Os dois caminhos automáticos — o gatilho e os classificados — dependem do
+rótulo da vaga casar com o chaveamento. **Há chaveamento legítimo em que
+isso nunca acontece**: uma categoria montada com fase de grupos e FINAL
+direta, sem semifinal, nasce com a final esperando "Vencedor Semifinal 1".
+Nenhum jogo vai resolver aquele rótulo, e a competição não termina. Achado
+numa competição real em produção (Copa do Mundo de Futsal Monte Sião).
+
+A rota deixa o organizador escolher mandante e visitante entre as equipes
+inscritas na categoria. Serve também para corrigir vaga empatada e para
+montar um cruzamento que o regulamento define de outro jeito.
+
+O que ela recusa, e por quê:
+
+- **Fase de grupos** (400). Lá o confronto vem do rodízio; mover uma equipe
+  quebraria "ninguém joga duas vezes na mesma rodada" sem avisar ninguém.
+- **Jogo fora de `agendado`/`adiado`** (409) — mesma postura dos
+  classificados.
+- **Jogo com escalação ou lance** (409). Pela API esse estado não se alcança
+  hoje: nenhuma rota devolve a `agendado` um jogo que já começou. A checagem
+  fica porque `adiado` existe no enum sem dono e porque correção por SQL é
+  caminho previsto aqui (migration 13); o que ela evita é escalação órfã,
+  visível só na súmula impressa.
+- **Equipe fora da categoria** (400). O RLS não barra — duas categorias da
+  mesma organização passam igual por ele, mesma classe de falha que campo e
+  árbitro já tinham.
+
+Duas decisões que não são óbvias no código:
+
+- **Os dois lados vão numa UPDATE só.** Inverter mandante e visitante em duas
+  UPDATEs violaria `ck_adversarios` no estado intermediário.
+- **Lançar à mão não desliga o gatilho.** Se o jogo é alimentado por uma fase
+  de mata-mata anterior, encerrar aquele jogo sobrescreve a escolha. O que
+  aconteceu em campo vale mais que a previsão feita antes — e a alternativa
+  (uma coluna "travado à mão" e um gatilho que a respeite) é maquinário para
+  um caso que ninguém pediu. A tela avisa quando o jogo está nessa situação,
+  que é o que evita a surpresa.
 
 `interpretarRotulo` (em `chaveamento.ts`) é o par de leitura de
 `paresPrimeiraFase`; um teste percorre tudo que a geração escreve e exige que o
@@ -1108,7 +1148,7 @@ operacional — seção 8 — e um item de tela:
 |---|---|
 | Vincular funcionário a competições específicas | O perfil vale para TODAS as competições da conta. Decidido assim com o cliente: é o que a operação real pede, e por competição exigiria tabela de vínculo e RLS filtrando por competição, não só por organização |
 | Recuperar senha esquecida | Continua sem fluxo por e-mail. Convidado que perde a senha depende do ADM do sistema redefinir — o convite não pode ser reemitido para o mesmo e-mail |
-| Edição manual do jogo (`modalJogo` do protótipo, RF016) | **Não existe.** O protótipo deixa o organizador escolher mandante e visitante à mão, e criar jogo avulso. Aqui só data, hora, campo e árbitro são editáveis. A lacuna que isso abria — a vaga do mata-mata sem ninguém para preencher — foi fechada por `POST /painel/categorias/:id/classificados`, mas o caso de exceção (sorteio, W.O., decisão fora do sistema) continua sem saída |
+| Edição manual do jogo (`modalJogo` do protótipo, RF016) | **Parcial.** Escolher mandante e visitante à mão existe desde `PATCH /painel/jogos/:id/confronto`, mas **só no mata-mata**. Continua sem equivalente: criar jogo avulso, e mover equipe dentro da fase de grupos — lá o confronto vem do rodízio, e trocar um nome de lugar desmontaria a rodada |
 
 ### Deixado de fora de propósito
 

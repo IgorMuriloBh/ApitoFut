@@ -95,6 +95,24 @@ export class TabelaController {
     return this.tabela.definirClassificados(req.sessao.org, categoriaId);
   }
 
+  /**
+   * PATCH /painel/jogos/:id/confronto — lança ou troca as equipes de um
+   * jogo de mata-mata à mão (RF017).
+   *
+   * Existe porque o automático não alcança todo chaveamento: uma
+   * categoria com grupos e final direta nasce com a final presa em
+   * "Vencedor Semifinal 1". Omitir um lado o deixa como está; mandar
+   * `null` desmarca e a vaga volta ao rótulo.
+   */
+  @Patch('jogos/:jogoId/confronto')
+  definirConfronto(
+    @Req() req: RequestAutenticado,
+    @Param('jogoId', ParseUUIDPipe) jogoId: string,
+    @Body() corpo: { mandanteId?: string | null; visitanteId?: string | null },
+  ) {
+    return this.tabela.definirConfronto(req.sessao.org, jogoId, corpo ?? {});
+  }
+
   /** Lançamento posterior de data, hora e campo. */
   @Patch('jogos/:jogoId/programacao')
   programar(

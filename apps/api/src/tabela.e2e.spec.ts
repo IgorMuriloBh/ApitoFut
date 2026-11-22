@@ -314,3 +314,196 @@ describe('local do jogo na programação', () => {
     assert.equal(r.code, 400);
   });
 });
+
+/**
+ * Lançar o confronto do mata-mata à mão (RF017).
+ *
+ * A categoria aqui reproduz o caso que fez a funcionalidade existir: fase
+ * de grupos e FINAL, sem semifinal. A final nasce esperando "Vencedor
+ * Semifinal 1", rótulo que nem `definirClassificados` nem
+ * `trg_avanca_mata_mata` sabem resolver — sem esta rota a competição não
+ * termina nunca.
+ */
+describe('confronto do mata-mata lançado à mão', () => {
+  let cat2: string;
+  let final: string;
+  let deGrupo: string;
+  let times: string[] = [];
+  let intruso: string;
+
+  before(async () => {
+    const nova = await admin.categorias.create({
+      data: { competicao_id: COMP, nome: `${PREFIXO} Final Direta` },
+    });
+    cat2 = nova.id;
+
+    for (let i = 1; i <= 3; i++) {
+      const t = await admin.times.create({
+        data: { competicao_id: COMP, nome: `${PREFIXO} FD ${i}` },
+      });
+      await admin.categoria_times.create({
+        data: { categoria_id: cat2, time_id: t.id },
+      });
+      times.push(t.id);
+    }
+
+    // inscrito em OUTRA categoria da mesma competição: o RLS deixa passar
+    const fora = await admin.times.create({
+      data: { competicao_id: COMP, nome: `${PREFIXO} FD Intruso` },
+    });
+    intruso = fora.id;
+
+    const fGrupos = await admin.fases.create({
+      data: { categoria_id: cat2, chave: 'grupos', nome: 'Fase de Grupos', tipo: 'grupos', ordem: 1 },
+    });
+    const fFinal = await admin.fases.create({
+      data: { categoria_id: cat2, chave: 'final', nome: 'Final', tipo: 'mata', ordem: 2 },
+    });
+
+    const jg = await admin.jogos.create({
+      data: {
+        categoria_id: cat2, fase_id: fGrupos.id, rodada: 1, ordem: 0,
+        mandante_id: times[0], visitante_id: times[1], status: 'agendado',
+      },
+    });
+    deGrupo = jg.id;
+
+    const jf = await admin.jogos.create({
+      data: {
+        categoria_id: cat2, fase_id: fFinal.id, ordem: 0,
+        mandante_rotulo: 'Vencedor Semifinal 1',
+        visitante_rotulo: 'Vencedor Semifinal 2',
+        status: 'agendado',
+      },
+    });
+    final = jf.id;
+  });
+
+  test('preenche a vaga que o automático nunca resolveria', async () => {
+    const r = await api(`/painel/jogos/${final}/confronto`, 'PATCH', {
+      mandanteId: times[0],
+      visitanteId: times[1],
+    });
+    assert.equal(r.code, 200, JSON.stringify(r.corpo));
+    assert.equal(r.corpo.mandante.id, times[0]);
+    assert.equal(r.corpo.visitante.id, times[1]);
+
+    const t = await api(`/painel/categorias/${cat2}/tabela`);
+    const naTela = t.corpo.find((j: any) => j.id === final);
+    assert.equal(naTela.mandante.nome, `${PREFIXO} FD 1`);
+  });
+
+  test('troca uma equipe já definida sem tocar na outra', async () => {
+    const r = await api(`/painel/jogos/${final}/confronto`, 'PATCH', {
+      visitanteId: times[2],
+    });
+    assert.equal(r.code, 200);
+    assert.equal(r.corpo.mandante.id, times[0], 'o lado omitido mudou');
+    assert.equal(r.corpo.visitante.id, times[2]);
+  });
+
+  test('inverter os lados passa — a gravação é uma UPDATE só', async () => {
+    // em duas UPDATEs isto violaria ck_adversarios no meio do caminho
+    const r = await api(`/painel/jogos/${final}/confronto`, 'PATCH', {
+      mandanteId: times[2],
+      visitanteId: times[0],
+    });
+    assert.equal(r.code, 200, JSON.stringify(r.corpo));
+    assert.equal(r.corpo.mandante.id, times[2]);
+    assert.equal(r.corpo.visitante.id, times[0]);
+  });
+
+  test('null desmarca e a vaga volta a mostrar o rótulo', async () => {
+    const r = await api(`/painel/jogos/${final}/confronto`, 'PATCH', {
+      mandanteId: null,
+    });
+    assert.equal(r.code, 200);
+    assert.equal(r.corpo.mandante.id, null);
+    assert.equal(r.corpo.mandante.nome, 'Vencedor Semifinal 1');
+    assert.equal(r.corpo.visitante.id, times[0], 'desmarcou o lado errado');
+  });
+
+  test('equipe fora da categoria é recusada — o RLS não barra sozinho', async () => {
+    const r = await api(`/painel/jogos/${final}/confronto`, 'PATCH', {
+      mandanteId: intruso,
+    });
+    assert.equal(r.code, 400);
+    assert.match(r.corpo.message, /inscrita nesta categoria/i);
+  });
+
+  test('a mesma equipe dos dois lados é recusada com mensagem, não com 500', async () => {
+    const r = await api(`/painel/jogos/${final}/confronto`, 'PATCH', {
+      mandanteId: times[0],
+      visitanteId: times[0],
+    });
+    assert.equal(r.code, 400);
+    assert.match(r.corpo.message, /contra ela mesma/i);
+  });
+
+  test('jogo de fase de grupos é recusado: lá o confronto vem do rodízio', async () => {
+    const r = await api(`/painel/jogos/${deGrupo}/confronto`, 'PATCH', {
+      mandanteId: times[2],
+    });
+    assert.equal(r.code, 400);
+    assert.match(r.corpo.message, /mata-mata/i);
+  });
+
+  test('corpo vazio não apaga as duas equipes por engano', async () => {
+    const r = await api(`/painel/jogos/${final}/confronto`, 'PATCH', {});
+    assert.equal(r.code, 400);
+  });
+
+  test('jogo encerrado é recusado — a súmula falaria de quem não jogou', async () => {
+    await admin.jogos.update({
+      where: { id: final },
+      data: { mandante_id: times[0], visitante_id: times[1], status: 'encerrado' },
+    });
+    const r = await api(`/painel/jogos/${final}/confronto`, 'PATCH', {
+      mandanteId: times[2],
+    });
+    assert.equal(r.code, 409);
+    await admin.jogos.update({ where: { id: final }, data: { status: 'agendado' } });
+  });
+
+  test('agendado mas com lance registrado também é recusado', async () => {
+    // estado que a API não produz hoje (nada devolve um jogo a `agendado`
+    // depois de começar); chega-se a ele por correção em SQL, e é contra
+    // isso que a checagem existe — o lance ficaria apontando para quem saiu
+    const lance = await admin.jogo_eventos.create({
+      data: { jogo_id: final, tipo: 'escanteio', time_id: times[0], minuto: 5, periodo: 1 },
+    });
+    const r = await api(`/painel/jogos/${final}/confronto`, 'PATCH', {
+      mandanteId: times[2],
+    });
+    assert.equal(r.code, 409);
+    assert.match(r.corpo.message, /escalação ou lance/i);
+    await admin.jogo_eventos.delete({ where: { id: lance.id } });
+  });
+
+  test('o mesário não troca equipe: é configuração, não operação', async () => {
+    const email = `${PREFIXO.toLowerCase().replace(/ /g, '-')}-mesario@teste.com`;
+    const convite = await api('/equipe', 'POST', {
+      nome: `${PREFIXO} Mesário`,
+      email,
+      perfil: 'mesario',
+    });
+    const login = await fetch(`${base}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, senha: convite.corpo.senhaProvisoria }),
+    });
+    const doMesario = ((await login.json()) as any).token;
+
+    const r = await fetch(`${base}/painel/jogos/${final}/confronto`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${doMesario}`,
+      },
+      body: JSON.stringify({ mandanteId: times[2] }),
+    });
+    assert.equal(r.status, 403);
+
+    await admin.usuarios.deleteMany({ where: { nome: { startsWith: PREFIXO } } });
+  });
+});

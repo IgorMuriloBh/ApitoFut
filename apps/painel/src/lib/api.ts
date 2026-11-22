@@ -317,9 +317,16 @@ export interface AvisoDeFaixa {
 }
 
 
+/** Equipe do jogo, ou a vaga ainda por preencher ("Vencedor Semifinal 1"). */
+export interface LadoDoJogo {
+  id: string | null;
+  nome: string;
+  escudoUrl?: string | null;
+}
+
 export interface JogoDaTabela {
   id: string;
-  fase: { id: string; chave: string; nome: string; tipo: string } | null;
+  fase: { id: string; chave: string; nome: string; tipo: string; ordem: number } | null;
   grupo: string | null;
   rodada: number | null;
   ordem: number;
@@ -327,8 +334,8 @@ export interface JogoDaTabela {
   hora: string | null;
   campo: { id: string; nome: string } | null;
   status: string;
-  mandante: { id: string | null; nome: string; escudoUrl?: string | null };
-  visitante: { id: string | null; nome: string; escudoUrl?: string | null };
+  mandante: LadoDoJogo;
+  visitante: LadoDoJogo;
   placar: { mandante: number; visitante: number } | null;
 }
 
@@ -540,8 +547,8 @@ export interface JogoDaCentral {
   campo: string | null;
   status: string;
   periodo: number;
-  mandante: { id: string | null; nome: string; escudoUrl?: string | null };
-  visitante: { id: string | null; nome: string; escudoUrl?: string | null };
+  mandante: LadoDoJogo;
+  visitante: LadoDoJogo;
   placar: { mandante: number; visitante: number };
 }
 
@@ -990,6 +997,20 @@ export const api = {
       hora: string | null;
       campoId: string | null;
     }>(`/painel/jogos/${jogoId}/programacao`, { metodo: 'PATCH', corpo: dados }),
+
+  /**
+   * Lança ou troca as equipes de um jogo de mata-mata. Lado omitido fica
+   * como está; `null` desmarca e a vaga volta ao rótulo do chaveamento.
+   */
+  definirConfronto: (
+    jogoId: string,
+    dados: { mandanteId?: string | null; visitanteId?: string | null },
+  ) =>
+    requisitar<{
+      id: string;
+      mandante: LadoDoJogo;
+      visitante: LadoDoJogo;
+    }>(`/painel/jogos/${jogoId}/confronto`, { metodo: 'PATCH', corpo: dados }),
 
 
   iniciarJogo: (jogoId: string) =>

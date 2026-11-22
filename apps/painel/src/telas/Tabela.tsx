@@ -36,6 +36,20 @@ export function Tabela({
   const [campos, setCampos] = useState<CampoDoPainel[]>([]);
   const [classificados, setClassificados] =
     useState<ResultadoDosClassificados | null>(null);
+  // equipes inscritas na categoria, para lançar o confronto do mata-mata
+  // à mão. Buscadas só quando alguém abre o editor: a lista vem dentro do
+  // elenco, com todos os atletas junto, e seria peso inútil em toda troca
+  // de categoria
+  const [equipes, setEquipes] = useState<{ id: string; nome: string }[] | null>(
+    null,
+  );
+
+  async function garantirEquipes() {
+    const atual = await api.elenco(categoriaId);
+    const lista = atual.equipes.map((e) => ({ id: e.id, nome: e.nome }));
+    setEquipes(lista);
+    return lista;
+  }
 
   /**
    * Leva os classificados dos grupos para a primeira fase eliminatória.
@@ -71,6 +85,7 @@ export function Tabela({
 
   useEffect(() => {
     setClassificados(null);
+    setEquipes(null);
     void carregar(categoriaId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoriaId]);
@@ -276,6 +291,17 @@ export function Tabela({
                     jogo={j}
                     competicao={competicao.nome}
                     campos={campos}
+                    equipes={equipes}
+                    carregarEquipes={garantirEquipes}
+                    // quando existe mata-mata ANTES desta fase, o gatilho
+                    // sobrescreve a vaga ao encerrar aquele jogo — a
+                    // escolha manual aqui é provisória, e a tela diz isso
+                    alimentadoPorMata={(jogos ?? []).some(
+                      (x) =>
+                        x.fase?.tipo === 'mata' &&
+                        j.fase != null &&
+                        x.fase.ordem < j.fase.ordem,
+                    )}
                     aoOperar={() => aoOperar(j, categoriaId)}
                     aoProgramar={carregar}
                     aoFalhar={setErro}
@@ -345,6 +371,9 @@ function LinhaDeJogo({
   jogo: j,
   competicao,
   campos,
+  equipes,
+  carregarEquipes,
+  alimentadoPorMata,
   aoOperar,
   aoProgramar,
   aoFalhar,
@@ -352,6 +381,9 @@ function LinhaDeJogo({
   jogo: JogoDaTabela;
   competicao: string;
   campos: CampoDoPainel[];
+  equipes: { id: string; nome: string }[] | null;
+  carregarEquipes: () => Promise<{ id: string; nome: string }[]>;
+  alimentadoPorMata: boolean;
   aoOperar: () => void;
   aoProgramar: () => void;
   aoFalhar: (m: string) => void;
@@ -361,6 +393,44 @@ function LinhaDeJogo({
   const [hora, setHora] = useState(j.hora ?? '');
   const [campoId, setCampoId] = useState(j.campo?.id ?? '');
   const [erro, setErro] = useState<string | null>(null);
+
+  const [editandoConfronto, setEditandoConfronto] = useState(false);
+  const [mandanteId, setMandanteId] = useState(j.mandante.id ?? '');
+  const [visitanteId, setVisitanteId] = useState(j.visitante.id ?? '');
+  const [salvandoConfronto, setSalvandoConfronto] = useState(false);
+
+  async function abrirConfronto() {
+    if (editandoConfronto) return setEditandoConfronto(false);
+    setErro(null);
+    setMandanteId(j.mandante.id ?? '');
+    setVisitanteId(j.visitante.id ?? '');
+    setEditandoConfronto(true);
+    if (!equipes) {
+      try {
+        await carregarEquipes();
+      } catch {
+        setErro('Não foi possível carregar as equipes da categoria.');
+      }
+    }
+  }
+
+  async function salvarConfronto() {
+    setSalvandoConfronto(true);
+    try {
+      await api.definirConfronto(j.id, {
+        // vazio = vaga sem dono; volta a mostrar o rótulo do chaveamento
+        mandanteId: mandanteId || null,
+        visitanteId: visitanteId || null,
+      });
+      setEditandoConfronto(false);
+      setErro(null);
+      aoProgramar();
+    } catch (e) {
+      setErro(e instanceof ErroDaApi ? e.message : 'Falha ao salvar o confronto.');
+    } finally {
+      setSalvandoConfronto(false);
+    }
+  }
 
   async function salvar() {
     try {
@@ -379,6 +449,11 @@ function LinhaDeJogo({
 
   // só faz sentido operar jogo com as duas equipes definidas
   const podeOperar = j.mandante.id && j.visitante.id && j.status !== 'encerrado';
+
+  // o jogo que já começou não troca de equipe: a súmula passaria a falar
+  // de quem não entrou em campo. A API recusa igual — isto é só a tela
+  const podeTrocarConfronto =
+    j.fase?.tipo === 'mata' && (j.status === 'agendado' || j.status === 'adiado');
 
   return (
     <div className="px-5 py-2.5 border-t border-slate-100 text-sm">
@@ -418,6 +493,17 @@ function LinhaDeJogo({
             programar
           </button>
         )}
+        {/* só no mata-mata: na fase de grupos o confronto vem do rodízio,
+            e trocar uma equipe de lugar desmonta a rodada inteira */}
+        {podeEscrever('tabela') && podeTrocarConfronto && (
+          <button
+            onClick={() => void abrirConfronto()}
+            className="text-xs text-slate-500 hover:text-slate-900"
+            title="Lançar ou trocar as equipes deste jogo"
+          >
+            {j.mandante.id && j.visitante.id ? 'trocar equipes' : '⚔ definir equipes'}
+          </button>
+        )}
         {/* a súmula em branco é o papel que vai para a mesa (RF018); a
             "operar súmula" é a digitação depois do jogo */}
         <button
@@ -450,6 +536,67 @@ function LinhaDeJogo({
           </button>
         )}
       </div>
+
+      {editandoConfronto && (
+        <div className="mt-2 pl-2 border-l-2 border-amber-300 space-y-1.5">
+          <div className="flex flex-wrap items-end gap-2">
+            <select
+              className={`${classeEntrada} max-w-56`}
+              value={mandanteId}
+              onChange={(e) => setMandanteId(e.target.value)}
+              title="Equipe mandante"
+            >
+              <option value="">{j.mandante.id ? 'Sem equipe' : 'A definir'}</option>
+              {(equipes ?? []).map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.nome}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-slate-500 self-center pb-2">×</span>
+            <select
+              className={`${classeEntrada} max-w-56`}
+              value={visitanteId}
+              onChange={(e) => setVisitanteId(e.target.value)}
+              title="Equipe visitante"
+            >
+              <option value="">{j.visitante.id ? 'Sem equipe' : 'A definir'}</option>
+              {(equipes ?? []).map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.nome}
+                </option>
+              ))}
+            </select>
+            <Botao onClick={() => void salvarConfronto()} disabled={salvandoConfronto}>
+              {salvandoConfronto ? 'Salvando…' : 'Salvar'}
+            </Botao>
+            <Botao variante="neutro" onClick={() => setEditandoConfronto(false)}>
+              Cancelar
+            </Botao>
+          </div>
+          {/* a recusa precisa aparecer AQUI: o `erro` é compartilhado com o
+              editor de programar, e lá ele só é renderizado quando aquele
+              editor está aberto — a mensagem morria sem ninguém ver */}
+          {erro && <p className="text-xs text-red-600">{erro}</p>}
+          {equipes === null && (
+            <p className="text-xs text-slate-500">Carregando as equipes…</p>
+          )}
+          {equipes?.length === 0 && (
+            <p className="text-xs text-slate-500">
+              Nenhuma equipe inscrita nesta categoria — vincule em <b>Equipes</b>.
+            </p>
+          )}
+          {/* dizer isto aqui é o que evita a surpresa: o organizador lança
+              a final, a semifinal termina e o vencedor toma o lugar */}
+          {alimentadoPorMata && (
+            <p className="text-xs text-amber-700">
+              ⚠ Este jogo recebe o vencedor de uma fase anterior. Quando
+              aquele jogo for encerrado, o vencedor substitui o que você
+              lançar aqui.
+            </p>
+          )}
+        </div>
+      )}
 
       {editando && (
         <div className="flex flex-wrap items-end gap-2 mt-2 pl-2 border-l-2 border-slate-200">

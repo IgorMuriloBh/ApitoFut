@@ -302,8 +302,17 @@ export class TabelaService {
 
       return jogos.map((j) => ({
         id: j.id,
+        // `ordem` vai junto porque a tela precisa saber se o jogo é
+        // alimentado por uma fase anterior de mata-mata — é o caso em que
+        // o gatilho sobrescreve o confronto lançado à mão
         fase: j.fases
-          ? { id: j.fases.id, chave: j.fases.chave, nome: j.fases.nome, tipo: j.fases.tipo }
+          ? {
+              id: j.fases.id,
+              chave: j.fases.chave,
+              nome: j.fases.nome,
+              tipo: j.fases.tipo,
+              ordem: j.fases.ordem,
+            }
           : null,
         grupo: j.grupos?.nome.trim() ?? null,
         rodada: j.rodada,
@@ -444,6 +453,139 @@ export class TabelaService {
       }
 
       return { definidos, pendencias, bloqueados };
+    });
+  }
+
+  /**
+   * Lança à mão as equipes de um jogo de mata-mata (RF017).
+   *
+   * O automático cobre dois caminhos: `definirClassificados` leva os
+   * classificados dos grupos para a primeira eliminatória, e
+   * `trg_avanca_mata_mata` sobe o vencedor de uma fase para a seguinte.
+   * Ambos dependem do rótulo da vaga casar com o chaveamento, e há
+   * chaveamento legítimo em que isso não acontece — uma categoria com
+   * fase de grupos e FINAL, sem semifinal, nasce com a final esperando
+   * "Vencedor Semifinal 1" para sempre. Sem esta porta a competição não
+   * termina, e foi assim que o caso apareceu.
+   *
+   * Serve também para corrigir: vaga que voltou empatada como pendência,
+   * ou confronto que o organizador resolveu montar de outro jeito.
+   *
+   * O que ele recusa, de propósito:
+   *  - fase de grupos. Lá o confronto vem do rodízio, e mover uma equipe
+   *    quebra o "ninguém joga duas vezes na mesma rodada" sem avisar;
+   *  - jogo fora de `agendado`/`adiado` — mesma postura de
+   *    `definirClassificados`;
+   *  - jogo que já tem escalação ou lance, ainda que agendado: os dois
+   *    guardam `time_id` e ficariam apontando para quem saiu do jogo.
+   *    Pela API esse estado não se alcança hoje — nenhuma rota devolve um
+   *    jogo a `agendado`/`adiado` depois de ele ter começado. A checagem
+   *    fica porque `adiado` existe no enum sem dono, e porque correção
+   *    por SQL é caminho previsto neste projeto (ver migration 13); o que
+   *    ela evita é escalação órfã, que só apareceria na súmula impressa;
+   *  - equipe não inscrita NA CATEGORIA. O RLS não barra — duas
+   *    categorias da mesma organização passam igual por ele, como já
+   *    acontecia com campo e árbitro.
+   *
+   * O gatilho continua valendo: se este jogo é alimentado por uma fase
+   * anterior de mata-mata, encerrar aquele jogo sobrescreve a vaga com o
+   * vencedor. O que aconteceu em campo vale mais que a escolha feita
+   * antes — a tela avisa quando é o caso.
+   */
+  definirConfronto(
+    organizacaoId: string,
+    jogoId: string,
+    dados: { mandanteId?: string | null; visitanteId?: string | null },
+  ) {
+    exigir(
+      dados.mandanteId !== undefined || dados.visitanteId !== undefined,
+      'Informe ao menos uma das equipes.',
+    );
+
+    return this.prisma.comOrganizacao(organizacaoId, async (tx) => {
+      const jogo = await tx.jogos.findUnique({
+        where: { id: jogoId },
+        include: { fases: true },
+      });
+      if (!jogo) throw new NotFoundException('Jogo não encontrado.');
+
+      exigir(
+        jogo.fases?.tipo === 'mata',
+        'Só jogo de mata-mata tem as equipes lançadas à mão: na fase de ' +
+          'grupos o confronto vem do rodízio da geração da tabela.',
+      );
+
+      if (jogo.status !== 'agendado' && jogo.status !== 'adiado') {
+        throw new ConflictException(
+          'O jogo já saiu do agendado. Reabra-o antes de trocar as equipes.',
+        );
+      }
+
+      const [escalados, lances] = await Promise.all([
+        tx.jogo_escalacoes.count({ where: { jogo_id: jogoId } }),
+        tx.jogo_eventos.count({ where: { jogo_id: jogoId } }),
+      ]);
+      if (escalados > 0 || lances > 0) {
+        throw new ConflictException(
+          'Este jogo já tem escalação ou lance registrado. Apague-os antes ' +
+            'de trocar as equipes — eles ficariam vinculados a quem saiu.',
+        );
+      }
+
+      // o lado que não veio no corpo fica como está; `null` desmarca e a
+      // vaga volta a mostrar o rótulo do chaveamento
+      const mandanteId =
+        dados.mandanteId !== undefined ? dados.mandanteId : jogo.mandante_id;
+      const visitanteId =
+        dados.visitanteId !== undefined ? dados.visitanteId : jogo.visitante_id;
+
+      for (const timeId of [mandanteId, visitanteId]) {
+        if (!timeId) continue;
+        const inscrita = await tx.categoria_times.findFirst({
+          where: { categoria_id: jogo.categoria_id, time_id: timeId },
+        });
+        if (!inscrita) {
+          throw new BadRequestException(
+            'Equipe não está inscrita nesta categoria.',
+          );
+        }
+      }
+
+      exigir(
+        !mandanteId || !visitanteId || mandanteId !== visitanteId,
+        'Uma equipe não joga contra ela mesma.',
+      );
+
+      // os dois lados numa UPDATE só: inverter mandante e visitante
+      // passaria por um estado intermediário que viola `ck_adversarios`
+      await tx.jogos.update({
+        where: { id: jogoId },
+        data: { mandante_id: mandanteId, visitante_id: visitanteId },
+      });
+
+      const atualizado = await tx.jogos.findUniqueOrThrow({
+        where: { id: jogoId },
+        include: {
+          times_jogos_mandante_idTotimes: {
+            select: { id: true, nome: true, escudo_url: true },
+          },
+          times_jogos_visitante_idTotimes: {
+            select: { id: true, nome: true, escudo_url: true },
+          },
+        },
+      });
+
+      return {
+        id: atualizado.id,
+        mandante: ladoDoJogo(
+          atualizado.times_jogos_mandante_idTotimes,
+          atualizado.mandante_rotulo,
+        ),
+        visitante: ladoDoJogo(
+          atualizado.times_jogos_visitante_idTotimes,
+          atualizado.visitante_rotulo,
+        ),
+      };
     });
   }
 

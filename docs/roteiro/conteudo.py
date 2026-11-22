@@ -371,13 +371,33 @@ ETAPAS = [
              "A vaga que o vencedor tinha preenchido <b>é esvaziada</b>."),
             ("Encerre novamente e dispute a final.",
              "O campeão fica definido."),
+            ("Num jogo de mata-mata ainda <b>agendado</b>, clique em "
+             "<b>definir equipes</b> (ou <b>trocar equipes</b>) e escolha mandante "
+             "e visitante.",
+             "As equipes entram no jogo. É a saída para o chaveamento que o "
+             "automático não alcança — uma categoria com grupos e <b>final "
+             "direta</b>, sem semifinal, nasce com a final presa em “Vencedor "
+             "Semifinal 1” e não terminaria nunca."),
+            ("Nesse mesmo editor, escolha a <b>mesma equipe</b> dos dois lados.",
+             "<b>Recusado</b>, com mensagem — não é erro de sistema."),
+            ("Deixe um dos lados em branco e salve.",
+             "A vaga <b>volta a mostrar o rótulo</b> do chaveamento."),
+            ("Tente <b>definir equipes</b> num jogo da fase de grupos.",
+             "A opção <b>não aparece</b>. Lá o confronto vem do rodízio, e mover "
+             "uma equipe quebraria a rodada."),
+            ("Tente <b>trocar equipes</b> num jogo já encerrado.",
+             "A opção <b>não aparece</b>: a súmula passaria a falar de quem não "
+             "entrou em campo. Reabra o jogo antes, se for mesmo o caso."),
         ],
         "observar": "Se duas equipes empatarem em todos os critérios na posição que "
                     "decide a vaga, o sistema <b>não escolhe</b>: mostra as duas e "
                     "espera. O desempate é seu, em Classificação → “Ajustar Coluna "
                     "Extra” (é onde entra o confronto direto). Para a coluna valer, "
                     "ela precisa estar visível e entre os critérios, em Configurações. "
-                    "Depois é só clicar em Definir classificados de novo.",
+                    "Depois é só clicar em Definir classificados de novo. "
+                    "Quando o jogo recebe o vencedor de uma fase anterior, lançar "
+                    "as equipes à mão é <b>provisório</b>: encerrada aquela fase, o "
+                    "vencedor substitui a escolha — e a tela avisa antes.",
     },
     {
         "n": 13,

@@ -200,6 +200,17 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
   (migration 12). O RLS já esconde o excluído; restaurar é `fn_restaurar_competicao`
 - **O vencedor do mata-mata sobe sozinho** ao encerrar o jogo — trigger
   `trg_avanca_mata_mata`. Reabrir o jogo esvazia a vaga que ele preencheu
+- **O confronto do mata-mata também se lança à mão**
+  (`PATCH /painel/jogos/:id/confronto`). O automático não cobre todo
+  chaveamento: grupos + FINAL direta nasce com a final presa em "Vencedor
+  Semifinal 1", rótulo que nenhum jogo resolve, e sem esta porta a
+  competição não termina. Vale **só** para fase `mata` — na de grupos o
+  confronto vem do rodízio — e só com o jogo em `agendado`/`adiado`. A
+  equipe tem de estar inscrita **na categoria**: o RLS não barra, duas
+  categorias da mesma organização passam igual por ele. Os dois lados são
+  gravados numa UPDATE só, senão inverter mandante e visitante violaria
+  `ck_adversarios` no meio do caminho. Lançar à mão **não desliga o
+  gatilho**: havendo fase de mata-mata anterior, o vencedor sobrescreve
 - **Suspensão é persistida e se cumpre** (migration 14): o cartão gera, cada jogo
   que a equipe disputa sem o atleta desconta, e atleta suspenso não é escalado.
   Corrigir ou apagar o cartão desfaz a suspensão que ele originou
