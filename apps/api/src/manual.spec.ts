@@ -17,8 +17,8 @@ import { TOPICOS } from './manual/topicos';
 
 /** Telas e seções que o painel realmente tem (App.tsx e Competicao.tsx). */
 const TELAS = new Set(['painel', 'wizard', 'base', 'ranking', 'ajuda',
-  'equipe', 'competicao', 'admin:plataforma', 'admin:usuarios',
-  'admin:competicoes']);
+  'equipe', 'eventos', 'portao', 'competicao', 'admin:plataforma',
+  'admin:usuarios', 'admin:competicoes']);
 const SECOES = new Set(['visao', 'categorias', 'equipes', 'atletas', 'tabela',
   'aovivo', 'classificacao', 'estatisticas', 'suspensoes', 'estrutura',
   'config', 'ajuda']);
@@ -97,6 +97,11 @@ describe('busca — a dúvida escrita como o usuário escreve', () => {
     ['arte para postar no instagram', 'arte-divulgacao'],
     ['gerar flyer do jogo', 'arte-divulgacao'],
     ['placar do jogo ao vivo', 'central-ao-vivo'],
+    // RF035. "vender ingresso" e "ler o qr na entrada" são dois turnos
+    // diferentes do mesmo módulo, e cada um tem a sua tela
+    ['vender ingresso', 'evento-ingressos'],
+    ['ler o qr na entrada', 'portao-leitura'],
+    ['comprei ingresso e perdi o link', 'meu-ingresso'],
     // conjugação: quem pergunta escreve "inscrevo", o acervo diz
     // "inscrever". Sem a raiz comum isto caía em "Carteirinha do atleta"
     ['como inscrevo um atleta', 'inscrever-atleta'],

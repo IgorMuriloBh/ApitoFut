@@ -11,7 +11,7 @@ sem servidor, dados em `localStorage`. Todas as telas e regras de negócio foram
 ali com o cliente.
 
 **O protótipo já foi reimplementado por inteiro.** As 23 telas dele têm equivalente
-na API, no painel e no portal, com 368 testes automatizados. O protótipo continua
+na API, no painel e no portal, com 572 testes automatizados. O protótipo continua
 sendo a **especificação executável**: antes de decidir o comportamento de uma tela,
 consulte-o — várias regras deste sistema só existem porque foram lidas de lá, não da
 documentação. Use as âncoras do *Mapa do protótipo*, abaixo.
@@ -32,7 +32,7 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
   Consulte ao voltar a um trecho depois de um tempo ou antes de refazer uma
   decisão já tomada; este CLAUDE.md continua sendo a referência das regras.
 - `docs/roteiro-de-teste-apitofut.pdf` — percurso manual do sistema de ponta a
-  ponta, em 16 etapas, com o resultado esperado de cada passo. **É gerado**:
+  ponta, em 17 etapas, com o resultado esperado de cada passo. **É gerado**:
   edite `docs/roteiro/conteudo.py` e rode `python3 docs/roteiro/gerar.py`.
   Mudou tela ou fluxo? O roteiro entra na mesma revisão que o manual
 - `docs/especificacao-completa.docx` — requisitos funcionais RF001 a RF034
@@ -315,6 +315,28 @@ do código — é o único lugar que resiste a duas requisições simultâneas:
   gateway. No balcão o organizador recebeu em dinheiro e a plataforma não
   intermediou nada. O modelo de taxa nasce com o gateway, não antes
 
+E as que vieram das telas:
+
+- **A tela do portão é um semáforo, não um formulário.** Três respostas —
+  entra, não entra, já entrou —, faixa colorida ocupando a tela e frase
+  pronta para ler em voz alta. Nenhum caminho responde 404 ou 409: quem
+  está no portão não lê código HTTP. O resultado rola para a tela
+  sozinho, senão quem digita o código (campo no fim do cartão) não vê a
+  resposta no celular
+- **A digitação manual não é plano B escondido.** Câmera exige https,
+  permissão e lente limpa. O campo fica sempre visível e aceita o link
+  inteiro colado — quem lê o QR com a câmera nativa recebe uma URL
+- **O leitor ignora o mesmo código por 15 s.** São oito quadros por
+  segundo: segurar o celular sobre o ingresso daria a primeira leitura
+  "liberado" e a segunda "já entrou" — e o operador leria a segunda
+- **A câmera usa o detector nativo quando existe** (`BarcodeDetector`) e
+  o `jsQR` quando não. O Safari do iPhone não tem o nativo, e iPhone no
+  portão não é hipótese remota. O `jsQR` entra por `import()` dinâmico:
+  são 45 kB que o painel inteiro baixaria por causa de uma tela
+- **A página do evento não tem botão "Comprar".** A compra on-line
+  depende do gateway, que é a etapa seguinte; a página diz isso com
+  todas as letras em vez de oferecer um botão que abre tela inexistente
+
 ## Visibilidade do portal público
 
 O `status` da competição governa o que aparece:
@@ -426,6 +448,8 @@ apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/lib/api.ts     cliente autenticado; token em sessionStorage
   src/lib/dominio.ts vocabulário do protótipo (STATUS, CORES, FASES…)
   src/lib/arte.ts    SVG da API → PNG pelo canvas do navegador (RF033)
+  src/lib/leitor-qr.ts  câmera → código: BarcodeDetector quando existe, jsQR
+                     quando não (o Safari do iPhone não tem o nativo)
   src/componentes/Escudo.tsx       escudo + nome; sem imagem, iniciais coloridas
   src/componentes/Timeline.tsx     cronologia da súmula, com correção de lance
   src/componentes/MenuLateral.tsx  navegação por seções, como o protótipo
@@ -434,16 +458,22 @@ apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
                      Equipes · Atletas · Tabela · Sumula · Classificacao ·
                      Estatisticas · Suspensoes · Estrutura · Configuracao ·
                      Categorias · AoVivo · BaseDeAtletas · RankingGeral ·
-                     ConfigurarFases (modal da tabela de jogos)
+                     ConfigurarFases (modal da tabela de jogos) ·
+                     Eventos/Evento e Portao (RF035) — telas da CONTA,
+                     fora do menu da competição
 apps/portal/       Next.js 16 (App Router) — portal público SSR
   lib/api.ts         cliente dos endpoints públicos (o portal nunca autentica)
   proxy.ts           domínio próprio: host → slug por rewrite (Next 16 renomeou
-                     middleware.ts para proxy.ts)
+                     middleware.ts para proxy.ts). `/api`, `/ajuda`, `/c`,
+                     `/e` e `/i` não levam prefixo: não são da competição
   app/[slug]/        competição em abas (?aba=&cat=) · [categoriaId]/[jogoId] detalhe
   app/[slug]/inscricao/  área da equipe (client component, noindex) — abas
                      por categoria; FormularioDeAtleta desenha a ficha que
                      a categoria configurou, com busca na base única
   app/c/[comp]/[atleta]/ validação da carteirinha (destino do QR, noindex)
+  app/e/[slug]/      página pública do evento (RF035); indexável
+  app/i/[codigo]/    o ingresso do comprador: QR grande, noindex. Sem e-mail,
+                     documento ou valor — quem tem o link abre
   AoVivo.tsx         client component: EventSource no feed SSE + router.refresh()
 ```
 

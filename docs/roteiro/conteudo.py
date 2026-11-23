@@ -462,6 +462,64 @@ ETAPAS = [
     },
     {
         "n": 16,
+        "titulo": "Evento com venda de ingresso",
+        "objetivo": "Emitir ingresso com QR e queimá-lo no portão — inclusive "
+                    "provando que o mesmo ingresso não entra duas vezes no mesmo dia.",
+        "passos": [
+            ("No menu da conta, abra <b>Eventos</b> e clique em “Novo evento”. "
+             "Crie um evento de <b>dois dias</b>, começando hoje. Preencha o "
+             "<b>estado</b>.",
+             "O evento é criado e abre direto na tela dele, em <b>Rascunho</b>. "
+             "O estado não é detalhe de endereço: é ele que diz ao portão em que "
+             "fuso horário o dia vira."),
+            ("Tente publicar sem criar lote.",
+             "<b>Recusado</b>, com explicação: a página pública ficaria sem nada "
+             "à venda."),
+            ("Crie um lote “Inteira” com preço e quantidade 2, e um lote "
+             "“Passe dos 2 dias” sem quantidade.",
+             "Os dois aparecem na lista, com preço e quanto resta."),
+            ("Publique o evento e abra a página pública pelo link da tela.",
+             "O evento aparece com data, local e os dois lotes com preço."),
+            ("Volte ao painel e emita <b>2 ingressos</b> da Inteira para um "
+             "comprador de teste.",
+             "Aparecem dois códigos, cada um com link para o ingresso. O lote "
+             "passa a mostrar “2 emitido(s) de 2 · 0 restante(s)”."),
+            ("Tente emitir mais um ingresso desse mesmo lote.",
+             "<b>Recusado</b>: lote esgotado. Isso é garantido pelo banco, não "
+             "pela tela."),
+            ("Abra o link de um dos ingressos no celular.",
+             "Página com o QR grande, o código escrito embaixo e os dados do "
+             "evento. Nenhum dado de quem comprou além do nome no ingresso — "
+             "sem e-mail, sem documento, sem valor pago."),
+            ("No menu, abra <b>Portão</b> e clique em “Ligar a câmera”. Aponte "
+             "para o QR do ingresso aberto no celular.",
+             "Faixa verde: <b>PODE ENTRAR</b>, com o nome e o lote. O contador "
+             "de presentes sobe."),
+            ("Leia <b>o mesmo</b> QR de novo.",
+             "Faixa âmbar: <b>JÁ ENTROU HOJE</b>, com a hora da primeira leitura. "
+             "O contador <b>não</b> sobe."),
+            ("Se a câmera não funcionar, digite o código do ingresso no campo "
+             "abaixo dela — ou cole o link inteiro do ingresso.",
+             "Mesmo resultado. A digitação não é plano B escondido: é o caminho "
+             "que funciona sem câmera, sem permissão e sem https."),
+            ("Desmarque “dar baixa na leitura” e leia um ingresso ainda não "
+             "usado.",
+             "Diz que pode entrar e avisa, em negrito, que <b>não</b> deu baixa. "
+             "O contador não sobe."),
+            ("Digite um código inventado.",
+             "Faixa vermelha: ingresso não encontrado. Nunca uma tela de erro — "
+             "quem está no portão não lê código de erro."),
+            ("Volte ao evento, cancele o pedido daquele comprador e leia o QR "
+             "do outro ingresso dele.",
+             "<b>Recusado</b>: cancelar o pedido invalida os ingressos na hora."),
+            ("Entre com um usuário <b>mesário</b> (etapa 1 da sua equipe) e "
+             "olhe o menu.",
+             "Ele vê <b>Portão</b> e não vê <b>Eventos</b>: opera a entrada sem "
+             "enxergar preço nem emitir ingresso."),
+        ],
+    },
+    {
+        "n": 17,
         "titulo": "A ajuda do sistema",
         "objetivo": "Testar se o manual responde de verdade.",
         "passos": [
@@ -472,6 +530,9 @@ ETAPAS = [
              "Você é levado direto para a tela correspondente."),
             ("Faça o mesmo estando <b>dentro</b> de uma competição.",
              "O botão salta direto para a seção, sem sair da competição."),
+            ("Pergunte “como vendo ingresso” e “como leio o qr na entrada”.",
+             "Vêm os dois tópicos do módulo de eventos, cada um com botão para a "
+             "sua tela — são turnos diferentes do mesmo trabalho."),
             ("Teste com dúvidas suas, escritas do seu jeito.",
              "<b>Anote as perguntas que o manual NÃO respondeu bem.</b> Isso é o "
              "resultado mais valioso deste passo."),

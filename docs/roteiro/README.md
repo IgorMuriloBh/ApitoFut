@@ -5,7 +5,7 @@ edite o PDF, edite o texto aqui.
 
 | arquivo | o que é |
 |---|---|
-| `conteudo.py` | o texto: introdução, endereços, avisos, as 16 etapas e o fechamento. É onde se mexe |
+| `conteudo.py` | o texto: introdução, endereços, avisos, as 17 etapas e o fechamento. É onde se mexe |
 | `gerar.py` | a diagramação em reportlab. Só mexer para mudar aparência |
 
 ```bash

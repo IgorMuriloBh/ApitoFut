@@ -75,7 +75,12 @@ export function Competicao({
   aoMudar,
 }: {
   competicao: CompeticaoDoPainel;
-  aoVoltar: () => void;
+  /**
+   * Sai da competição. Com `tela`, sai para uma tela global da conta —
+   * é como a ajuda leva a Eventos, Portão ou Base de atletas a partir
+   * daqui dentro. Sem isso o botão do tópico não fazia nada.
+   */
+  aoVoltar: (tela?: string) => void;
   aoMudar: () => void;
 }) {
   const [status, setStatus] = useState(competicao.status);
@@ -159,7 +164,8 @@ export function Competicao({
         topo={
           <>
             <button
-              onClick={aoVoltar}
+              /* sem a seta, o evento de clique entraria como `tela` */
+              onClick={() => aoVoltar()}
               className="text-xs text-slate-500 hover:text-slate-800"
             >
               ← Meus campeonatos
@@ -249,7 +255,8 @@ export function Competicao({
             temCompeticaoAberta
             aoNavegar={(d) => {
               if (d.secao) setAba(d.secao as Aba);
-              else if (d.tela === 'painel') aoVoltar();
+              else if (d.tela === 'painel' || d.tela === 'competicao') aoVoltar();
+              else aoVoltar(d.tela);
             }}
           />
         )}

@@ -16,6 +16,9 @@ import { Painel } from './telas/Painel';
 import { Wizard } from './telas/Wizard';
 import { Ajuda, type DestinoDaAjuda } from './telas/Ajuda';
 import { Equipe } from './telas/Equipe';
+import { Eventos } from './telas/Eventos';
+import { Portao } from './telas/Portao';
+import { podeEscrever } from './lib/permissoes';
 import { TrocarSenha } from './telas/TrocarSenha';
 
 type Tela =
@@ -26,6 +29,8 @@ type Tela =
   | { nome: 'competicao'; competicao: CompeticaoDoPainel }
   | { nome: 'ajuda' }
   | { nome: 'equipe' }
+  | { nome: 'eventos' }
+  | { nome: 'portao' }
   | { nome: 'admin'; aba: AbaDoAdm };
 
 /**
@@ -53,6 +58,29 @@ function navGlobal(ehDono: boolean): SecaoDoMenu[] {
         { chave: 'ajuda', icone: '❓', rotulo: 'Ajuda' },
       ],
     },
+    /**
+     * Bilheteria (RF035). Seção à parte, e não item de "Minha conta",
+     * porque é o único lugar do painel que mexe com dinheiro — e porque o
+     * mesário chega aqui só pelo Portão, sem enxergar preço nem emissão.
+     *
+     * Itens escondidos por perfil: oferecer e responder 403 é pior que não
+     * oferecer. Quem decide é o `PermissaoGuard`, sempre.
+     */
+    ...(podeEscrever('evento') || podeEscrever('portaria')
+      ? [
+          {
+            titulo: 'Eventos e ingressos',
+            itens: [
+              ...(podeEscrever('evento')
+                ? [{ chave: 'eventos', icone: '🎟', rotulo: 'Eventos' }]
+                : []),
+              ...(podeEscrever('portaria')
+                ? [{ chave: 'portao', icone: '🚪', rotulo: 'Portão' }]
+                : []),
+            ],
+          },
+        ]
+      : []),
   ];
 }
 
@@ -236,7 +264,14 @@ export function App() {
                 setTela({ nome: 'admin', aba: chave.slice(6) as AbaDoAdm });
               } else {
                 setTela({
-                  nome: chave as 'painel' | 'base' | 'ranking' | 'ajuda' | 'equipe',
+                  nome: chave as
+                    | 'painel'
+                    | 'base'
+                    | 'ranking'
+                    | 'ajuda'
+                    | 'equipe'
+                    | 'eventos'
+                    | 'portao',
                 });
               }
             }}
@@ -265,13 +300,30 @@ export function App() {
       {tela.nome === 'competicao' && (
         <Competicao
           competicao={tela.competicao}
-          aoVoltar={() =>
+          aoVoltar={(destino) => {
+            // a ajuda de dentro da competição pode apontar para uma tela
+            // da conta (Eventos, Portão, Base de atletas): sair para ela
+            // em vez de descartar o destino
+            if (destino) {
+              setTela({
+                nome: destino as
+                  | 'painel'
+                  | 'base'
+                  | 'ranking'
+                  | 'ajuda'
+                  | 'equipe'
+                  | 'eventos'
+                  | 'portao'
+                  | 'wizard',
+              });
+              return;
+            }
             setTela(
               atual.assumida
                 ? { nome: 'admin', aba: 'competicoes' }
                 : { nome: 'painel' },
-            )
-          }
+            );
+          }}
           aoMudar={recarregar}
         />
       )}
@@ -287,13 +339,23 @@ export function App() {
             } else if (d.tela === 'competicao' || d.tela === 'painel') {
               setTela({ nome: 'painel' });
             } else {
-              setTela({ nome: d.tela as 'painel' | 'base' | 'ranking' | 'wizard' });
+              setTela({
+                nome: d.tela as
+                  | 'painel'
+                  | 'base'
+                  | 'ranking'
+                  | 'wizard'
+                  | 'eventos'
+                  | 'portao',
+              });
             }
           }}
         />
       )}
 
       {tela.nome === 'equipe' && <Equipe />}
+      {tela.nome === 'eventos' && <Eventos />}
+      {tela.nome === 'portao' && <Portao />}
       {tela.nome === 'base' && <BaseDeAtletas />}
       {tela.nome === 'ranking' && <RankingGeral />}
 

@@ -807,6 +807,108 @@ export interface RespostaDeCadastro {
   usuario: Sessao['usuario'] | null;
 }
 
+// ── Eventos e ingressos (RF035) ──────────────────────────────────────
+
+/** O que toda tela de evento precisa saber — o `resumoDoEvento` da API. */
+export interface ResumoDoEvento {
+  id: string;
+  nome: string;
+  slug: string;
+  status: string;
+  dataInicio: string;
+  dataFim: string;
+  aberturaPortoes: string | null;
+  local: string | null;
+  campoId: string | null;
+  cidade: string | null;
+  /**
+   * UF do evento. Não é enfeite de endereço: é dela que sai o fuso em que
+   * o portão decide que dia é hoje (ver `eventos/dia-do-evento.ts` na API).
+   */
+  estado: string | null;
+  imagemUrl: string | null;
+  competicao: { id: string; nome: string } | null;
+}
+
+export interface EventoDoPainel extends ResumoDoEvento {
+  lotes: number;
+  ingressosEmitidos: number;
+}
+
+export interface LoteDoPainel {
+  id: string;
+  especie: string;
+  nome: string;
+  descricao: string | null;
+  precoCentavos: number;
+  quantidade: number | null;
+  maxPorPedido: number;
+  dia: string | null;
+  vendasInicio: string | null;
+  vendasFim: string | null;
+  ativo: boolean;
+  ordem: number;
+  vendidos: number;
+  /** `null` quando o lote não tem limite. */
+  restantes: number | null;
+}
+
+export interface DetalheDoEvento extends ResumoDoEvento {
+  descricao: string | null;
+  lotes: LoteDoPainel[];
+  arrecadadoCentavos: number;
+}
+
+export interface IngressoDoPedido {
+  codigo: string;
+  /** O mesmo código com hífens, só para ler em voz alta. */
+  exibicao: string;
+  titular: string | null;
+  lote: string;
+  dia: string | null;
+  status: string;
+}
+
+export interface PedidoDoPainel {
+  id: string;
+  compradorNome: string;
+  compradorEmail: string;
+  totalCentavos: number;
+  taxaCentavos: number;
+  repasseCentavos: number;
+  status: string;
+  origem: string;
+  criadoEm: string;
+  observacoes: string | null;
+  ingressos: IngressoDoPedido[];
+}
+
+/**
+ * A resposta do portão. Três resultados, sempre o mesmo formato — é o que
+ * permite a tela ser um semáforo em vez de um formulário (ver
+ * `portaria.service.ts`).
+ */
+export interface LeituraDoPortao {
+  resultado: 'liberado' | 'recusado' | 'ja_utilizado';
+  motivo: string;
+  ingresso?: {
+    codigo: string;
+    titular: string | null;
+    lote: string;
+    evento: string;
+    dia: string | null;
+    comprador: string;
+  };
+  usadoEm?: string;
+  dia?: string;
+}
+
+export interface MovimentoDoPortao {
+  dia: string;
+  emitidos: number;
+  presentes: number;
+}
+
 export const api = {
   /**
    * Manual do sistema. Sem token: a ajuda precisa funcionar para quem não
@@ -896,6 +998,124 @@ export const api = {
       requisitar<{ token: string; organizacaoId: string }>('/admin/voltar', {
         metodo: 'POST',
       }),
+  },
+
+  /**
+   * Eventos e ingressos (RF035).
+   *
+   * Dois ramos porque são dois recursos de permissão na API: `evento`
+   * monta e vende, `portaria` só lê o QR e dá baixa. O mesário alcança o
+   * segundo sem alcançar o primeiro.
+   */
+  eventos: {
+    listar: () => requisitar<EventoDoPainel[]>('/painel/eventos'),
+
+    criar: (dados: {
+      nome: string;
+      competicaoId?: string | null;
+      descricao?: string | null;
+      localNome?: string | null;
+      estado?: string | null;
+      cidade?: string | null;
+      dataInicio: string;
+      dataFim?: string | null;
+      aberturaPortoes?: string | null;
+    }) =>
+      requisitar<{ id: string; slug: string; nome: string }>('/painel/eventos', {
+        metodo: 'POST',
+        corpo: dados,
+      }),
+
+    detalhe: (eventoId: string) =>
+      requisitar<DetalheDoEvento>(`/painel/eventos/${eventoId}`),
+
+    atualizar: (
+      eventoId: string,
+      dados: Partial<{
+        nome: string;
+        descricao: string | null;
+        localNome: string | null;
+        cidade: string | null;
+        estado: string | null;
+        status: string;
+      }>,
+    ) =>
+      requisitar<ResumoDoEvento>(`/painel/eventos/${eventoId}`, {
+        metodo: 'PATCH',
+        corpo: dados,
+      }),
+
+    /** Cria ou altera um lote — o `id` decide qual dos dois. */
+    salvarLote: (
+      eventoId: string,
+      lote: {
+        id?: string;
+        nome: string;
+        descricao?: string | null;
+        precoCentavos: number;
+        quantidade?: number | null;
+        maxPorPedido?: number;
+        dia?: string | null;
+        ativo?: boolean;
+        ordem?: number;
+      },
+    ) =>
+      requisitar<{ id: string }>(`/painel/eventos/${eventoId}/lotes`, {
+        metodo: 'POST',
+        corpo: lote,
+      }),
+
+    removerLote: (loteId: string) =>
+      requisitar<{ removido: boolean }>(`/painel/eventos/lotes/${loteId}`, {
+        metodo: 'DELETE',
+      }),
+
+    /**
+     * Venda de balcão e cortesia. Mandamos qual lote e quantos; o preço
+     * é lido do banco pela API — nunca enviado daqui.
+     */
+    emitir: (
+      eventoId: string,
+      pedido: {
+        compradorNome: string;
+        compradorEmail: string;
+        compradorTelefone?: string | null;
+        compradorDocumento?: string | null;
+        itens: { loteId: string; quantidade: number; titulares?: (string | null)[] }[];
+        cortesia?: boolean;
+        observacoes?: string | null;
+      },
+    ) =>
+      requisitar<{
+        pedidoId: string;
+        totalCentavos: number;
+        ingressos: { codigo: string; exibicao: string }[];
+      }>(`/painel/eventos/${eventoId}/pedidos`, { metodo: 'POST', corpo: pedido }),
+
+    pedidos: (eventoId: string) =>
+      requisitar<PedidoDoPainel[]>(`/painel/eventos/${eventoId}/pedidos`),
+
+    cancelarPedido: (pedidoId: string, motivo?: string) =>
+      requisitar<{ cancelado: boolean; ingressosCancelados: number }>(
+        `/painel/eventos/pedidos/${pedidoId}/cancelar`,
+        { metodo: 'POST', corpo: { motivo } },
+      ),
+  },
+
+  portao: {
+    conferir: (codigo: string) =>
+      requisitar<LeituraDoPortao>(
+        `/painel/portao/conferir?codigo=${encodeURIComponent(codigo)}`,
+      ),
+
+    baixa: (codigo: string) =>
+      requisitar<LeituraDoPortao>('/painel/portao/baixa', {
+        metodo: 'POST',
+        corpo: { codigo },
+      }),
+
+    movimento: (eventoId: string) =>
+      requisitar<MovimentoDoPortao>(`/painel/portao/${eventoId}/movimento`),
   },
 
   competicoes: () => requisitar<CompeticaoDoPainel[]>('/painel/competicoes'),

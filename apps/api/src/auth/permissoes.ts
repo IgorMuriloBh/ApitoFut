@@ -95,7 +95,7 @@ export const DESCRICAO_DO_PERFIL: Record<PerfilDaEquipe, string> = {
   secretaria:
     'Cadastra e edita equipes, atletas e comissão técnica. Não opera jogos nem altera a configuração da competição.',
   mesario:
-    'Opera a partida: inicia, lança os acontecimentos, corrige e encerra. Imprime súmula. Não cadastra nem configura.',
+    'Opera a partida: inicia, lança os acontecimentos, corrige e encerra. Imprime súmula e lê o QR no portão do evento. Não cadastra, não configura e não mexe em preço.',
 };
 
 export function podeEscrever(perfil: string | undefined, recurso: Recurso) {

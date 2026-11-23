@@ -106,3 +106,67 @@ export function formataData(iso: string | null): string {
   const [a, m, d] = iso.split('-');
   return `${d}/${m}/${a}`;
 }
+
+/**
+ * Status do evento (RF035). Mapa próprio, separado do `STATUS` da
+ * competição: as palavras são parecidas ("publicado" / "publicada") e os
+ * significados não são — evento tem bilheteria, competição não.
+ */
+export const STATUS_DO_EVENTO: Record<
+  string,
+  { rotulo: string; descricao: string; cor: string }
+> = {
+  rascunho: {
+    rotulo: 'Rascunho',
+    descricao: 'Invisível ao público. Dá para vender no balcão e testar o portão.',
+    cor: 'bg-slate-100 text-slate-700',
+  },
+  publicado: {
+    rotulo: 'Publicado',
+    descricao: 'A página do evento está no ar com os lotes ativos.',
+    cor: 'bg-green-100 text-green-700',
+  },
+  encerrado: {
+    rotulo: 'Encerrado',
+    descricao: 'Evento realizado. A página continua no ar; a venda, não.',
+    cor: 'bg-amber-100 text-amber-700',
+  },
+  cancelado: {
+    rotulo: 'Cancelado',
+    descricao: 'Fora do ar e fora do portão: nenhum ingresso entra.',
+    cor: 'bg-red-100 text-red-700',
+  },
+};
+
+/**
+ * Dinheiro — sempre centavos inteiros do lado de dentro.
+ *
+ * Nada aqui converte para número de ponto flutuante: `19,90` vira 1990 por
+ * contagem de dígitos, não por `parseFloat(…) * 100`, que devolve
+ * 1989.9999999999998 e arredonda o preço de um lote para baixo.
+ */
+export function moeda(centavos: number): string {
+  return (centavos / 100).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+}
+
+/** `R$ 19,90`, `19.90`, `1990` com dois decimais → 1990 centavos. */
+export function centavosDeTexto(texto: string): number | null {
+  const limpo = texto.trim().replace(/[R$\s]/gi, '');
+  if (!limpo) return null;
+  // vírgula e ponto são ambos separador decimal aqui: quem digita no
+  // teclado numérico do celular produz "19.90", quem digita no teclado
+  // brasileiro produz "19,90", e as duas coisas querem dizer o mesmo
+  const m = /^(\d+)(?:[.,](\d{1,2}))?$/.exec(limpo);
+  if (!m) return null;
+  const reais = Number(m[1]);
+  const cents = Number((m[2] ?? '0').padEnd(2, '0'));
+  return reais * 100 + cents;
+}
+
+/** O inverso, para preencher o campo de edição sem símbolo de moeda. */
+export function textoDeCentavos(centavos: number): string {
+  return (centavos / 100).toFixed(2).replace('.', ',');
+}

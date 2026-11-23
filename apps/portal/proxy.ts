@@ -71,6 +71,25 @@ async function slugDoHost(host: string): Promise<string | null> {
   }
 }
 
+/**
+ * Caminhos que NÃO pertencem a uma competição e por isso nunca recebem o
+ * prefixo do slug.
+ *
+ * Sem esta lista, num domínio próprio `/api/...` virava
+ * `/{slug}/api/...` e deixava de casar com o rewrite do next.config — o
+ * que derrubava, em silêncio, o feed ao vivo e a área da equipe. O mesmo
+ * valia para a validação da carteirinha (`/c/...`), e passaria a valer
+ * para o evento (`/e/...`) e o ingresso (`/i/...`).
+ */
+const GLOBAIS = ['/api', '/ajuda', '/c/', '/e/', '/i/'];
+
+function ehGlobal(caminho: string): boolean {
+  return GLOBAIS.some(
+    (prefixo) =>
+      caminho.startsWith(prefixo) || caminho === prefixo.replace(/\/$/, ''),
+  );
+}
+
 /** Remove porta, ponto final e `www.` — mesma normalização da API. */
 function normalizar(host: string): string {
   return host
@@ -87,6 +106,7 @@ export default async function proxy(req: NextRequest) {
   );
 
   if (!host || HOSTS_DA_PLATAFORMA.has(host)) return NextResponse.next();
+  if (ehGlobal(req.nextUrl.pathname)) return NextResponse.next();
 
   const slug = await slugDoHost(host);
   if (!slug) return NextResponse.next();

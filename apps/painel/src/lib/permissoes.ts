@@ -20,7 +20,9 @@ export type Recurso =
   | 'elenco'
   | 'tabela'
   | 'sumula'
-  | 'disciplina';
+  | 'disciplina'
+  | 'evento'
+  | 'portaria';
 
 const DONOS = ['organizador', 'superadmin'];
 
@@ -31,6 +33,10 @@ const PERMISSOES: Record<Recurso, string[]> = {
   tabela: [...DONOS, 'gestor'],
   sumula: [...DONOS, 'gestor', 'mesario'],
   disciplina: [...DONOS, 'gestor'],
+  // RF035: montar o evento e mexer em preço é um turno; ficar no portão
+  // lendo QR é outro — por isso o mesário alcança `portaria` e não `evento`
+  evento: [...DONOS, 'gestor'],
+  portaria: [...DONOS, 'gestor', 'mesario'],
 };
 
 /** Perfil da sessão atual; `undefined` quando ninguém está logado. */

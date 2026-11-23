@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { STATUS } from '../lib/dominio';
+import { STATUS, STATUS_DO_EVENTO } from '../lib/dominio';
 
 export function Cartao({
   titulo,
@@ -82,6 +82,19 @@ export function Selo({ status }: { status: string }) {
   return (
     <span
       className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${s?.cor ?? 'bg-slate-100 text-slate-700'}`}
+    >
+      {s?.rotulo ?? status}
+    </span>
+  );
+}
+
+/** Igual ao `Selo`, com o vocabulário do evento (RF035). */
+export function SeloDoEvento({ status }: { status: string }) {
+  const s = STATUS_DO_EVENTO[status];
+  return (
+    <span
+      className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${s?.cor ?? 'bg-slate-100 text-slate-700'}`}
+      title={s?.descricao}
     >
       {s?.rotulo ?? status}
     </span>

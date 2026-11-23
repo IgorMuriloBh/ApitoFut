@@ -88,9 +88,9 @@ export const TOPICOS: TopicoDoManual[] = [
     resumo: 'Responsável, gestor, secretaria, mesário e o ADM do sistema.',
     corpo: [
       'Responsável pela conta (organizador): administra as próprias competições e é o único que convida e gerencia a equipe.',
-      'Gestor: faz tudo na competição, como o responsável — categorias, equipes, tabela, jogos e configuração. Não mexe em quem entra na conta.',
+      'Gestor: faz tudo na competição, como o responsável — categorias, equipes, tabela, jogos, configuração e eventos com venda de ingresso. Não mexe em quem entra na conta.',
       'Secretaria: cadastra e edita equipes, atletas e comissão técnica. Não opera jogos nem altera a configuração da competição.',
-      'Mesário: opera a partida — inicia, lança os acontecimentos, corrige e encerra — e imprime súmula. Não cadastra nem configura.',
+      'Mesário: opera a partida — inicia, lança os acontecimentos, corrige e encerra —, imprime súmula e lê o QR no portão do evento. Não cadastra, não configura e não mexe em preço de ingresso.',
       'Ler é liberado para todos: qualquer perfil enxerga tabela, classificação e estatísticas das competições da conta. O que muda é o que cada um pode ALTERAR.',
       'Administrador do sistema (superadmin): enxerga todas as contas e todas as competições da base, libera cadastros, bloqueia e promove usuários.',
       'O administrador não tem passe-livre no banco: para abrir a competição de outro organizador ele usa "assumir", que troca o contexto dele para aquela organização — e o painel mostra uma tarja âmbar enquanto isso dura.',
@@ -568,6 +568,58 @@ export const TOPICOS: TopicoDoManual[] = [
       'dominio proprio url personalizada endereco site meu dominio white label marca',
     onde: ['painel'],
     destino: { painel: { tela: 'competicao', secao: 'visao' } },
+  },
+
+  // ── Eventos e ingressos ────────────────────────────────────────────
+  {
+    id: 'evento-ingressos',
+    titulo: 'Criar um evento e vender ingresso',
+    resumo: 'Festival, amistoso ou dia de final: ingresso com QR.',
+    corpo: [
+      'Evento é da sua conta, não de um campeonato: pode existir sozinho, e o vínculo com a competição é opcional.',
+      'Depois de criar o evento, crie os lotes. Cada lote tem preço, limite de quantidade e, se quiser, um dia específico — lote sem dia vale todos os dias do evento, com uma entrada por dia.',
+      'Sem lote ativo o evento não publica: a página pública ficaria sem nada à venda.',
+      'Enquanto não houver pagamento on-line, quem emite é você, em "Emitir ingresso (balcão)". Serve para venda recebida em dinheiro e para cortesia. Cada ingresso vira um código com QR; mande o link ao comprador.',
+      'Informe o **estado** do evento. É dele que sai o fuso em que o portão decide que dia é hoje — sem ele o sistema usa Brasília, o que erra por uma hora no Acre, Amazonas, Rondônia, Roraima e no Mato Grosso.',
+      'Cancelar um pedido invalida os ingressos dele na hora, e o portão passa a recusá-los.',
+    ],
+    palavras:
+      'evento ingresso ticket bilhete venda vender bilheteria lote preco cortesia festival entrada portaria arrecadacao',
+    onde: ['painel'],
+    destino: { painel: { tela: 'eventos' } },
+    acao: 'Ir para Eventos',
+  },
+  {
+    id: 'portao-leitura',
+    titulo: 'Ler o ingresso no portão',
+    resumo: 'Conferir o QR e dar baixa na entrada.',
+    corpo: [
+      'Na tela Portão, ligue a câmera e aponte para o QR do ingresso. A resposta é uma de três: pode entrar, não pode entrar, ou já entrou hoje.',
+      'Cada ingresso entra **uma vez por dia**. Dois portões lendo o mesmo código ao mesmo tempo não liberam entrada dupla: um grava e o outro recebe "já entrou", com a hora da primeira leitura.',
+      'A câmera exige conexão segura (https) e permissão do aparelho. Quando ela não funcionar, digite o código — ou cole o link inteiro do ingresso, que o sistema acha o código dentro dele.',
+      'Desmarque "dar baixa na leitura" para só conferir se o ingresso é válido, sem queimar a entrada.',
+      'O mesário também opera o portão. Ele não enxerga preço nem emite ingresso.',
+    ],
+    palavras:
+      'portao entrada qr code leitor camera escanear ler ingresso baixa validar catraca fila conferir ja entrou',
+    onde: ['painel'],
+    destino: { painel: { tela: 'portao' } },
+    acao: 'Ir para o Portão',
+  },
+  {
+    id: 'meu-ingresso',
+    titulo: 'Meu ingresso: como usar',
+    resumo: 'O que o comprador precisa saber.',
+    corpo: [
+      'O ingresso é a página do seu código, com o QR. Guarde o endereço nos favoritos.',
+      'Tire um print do QR. Na entrada pode não haver sinal de internet, e o print funciona igual.',
+      'Se a câmera não ler, informe o código escrito embaixo do QR.',
+      'Cada ingresso entra uma vez por dia. Num evento de vários dias, o passe entra uma vez em cada dia.',
+      'Guardar na carteira do celular (Google Wallet, Apple Wallet) ainda não está disponível.',
+    ],
+    palavras:
+      'meu ingresso comprei qr code print perdi link entrada como entrar codigo wallet carteira celular',
+    onde: ['portal'],
   },
 
   // ── Operação ───────────────────────────────────────────────────────

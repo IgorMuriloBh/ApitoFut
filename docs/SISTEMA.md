@@ -19,7 +19,8 @@ ambiente de desenvolvimento, e evita repetir tropeços conhecidos.
 
 **O que é.** Plataforma de gestão de competições de futebol para ligas,
 federações, escolas e promotoras: competições, categorias, equipes, atletas,
-tabela de jogos, súmula ao vivo, classificação e portal público white-label.
+tabela de jogos, súmula ao vivo, classificação, portal público white-label e
+eventos com venda de ingresso (QR e baixa no portão).
 
 **De onde veio.** Existe um protótipo funcional validado com o cliente em
 `prototipo/ApitoFut.html` — arquivo único, `localStorage`, sem servidor. Ele é
@@ -46,7 +47,7 @@ docker compose up -d      # PostgreSQL 18 + Adminer (migrations rodam sozinhas)
 npm run api:dev           # API      → localhost:3000
 npm run portal:dev        # portal   → localhost:3001
 npm run painel:dev        # painel   → localhost:5173
-npm test                  # 368 testes (exige o banco de pé)
+npm test                  # 572 testes (exige o banco de pé)
 ```
 
 Login de desenvolvimento: `demo@apitofut.com` / `demo`.
@@ -652,7 +653,7 @@ classificação. Decisões que valem a pena conhecer antes de mexer:
 - **Jogo que já saiu do agendado não é tocado** — trocar a equipe deixaria a
   súmula falando de quem não entrou em campo.
 
-## Eventos e ingressos (RF035) — fase 1
+## Eventos e ingressos (RF035) — fases 1 e 1b
 
 Primeiro módulo que movimenta dinheiro, e o primeiro escopo inteiramente
 fora da especificação: ela vai de RF001 a RF034 e não cita evento,
@@ -727,11 +728,56 @@ for gente contratada só para o dia, o certo é um perfil `portaria` próprio;
 não foi criado agora porque ninguém pediu, e perfil novo mexe no enum do
 banco e na tela de equipe.
 
+### As telas (fase 1b)
+
+**Painel.** `Eventos` lista e cria; `Evento` é o detalhe — lotes,
+bilheteria de balcão, pedidos e publicação; `Portao` é o leitor. São telas
+da **conta**, numa seção própria do menu global ("Eventos e ingressos"),
+não do menu da competição: um festival pode existir sem campeonato nenhum,
+e o vínculo com a competição é opcional. Os itens aparecem por perfil — o
+mesário vê `Portão` e não vê `Eventos`.
+
+**O portão é um semáforo.** Quem o usa está em pé, com fila atrás e o
+celular numa mão: faixa verde, vermelha ou âmbar ocupando a tela, frase
+pronta para ler em voz alta, detalhes embaixo. Decisões que vieram de usar
+a tela, não de projetá-la:
+
+- o resultado **rola para a tela sozinho** quando chega. O campo de
+  digitação fica no fim do cartão do leitor: no celular, quem digitou o
+  código tinha acabado de rolar para baixo e não via a resposta — digitava,
+  e nada parecia acontecer. Achado olhando a tela, não lendo o código;
+- a **digitação manual fica sempre visível**, e aceita o link inteiro
+  colado. Não é plano B escondido: câmera exige https, permissão e lente
+  limpa, e qualquer um dos três falha em campo;
+- o mesmo código é **ignorado por 15 s** depois de decidido. São oito
+  quadros por segundo: segurar o celular sobre o ingresso daria "liberado"
+  e, logo depois, "já entrou" — e o operador leria o segundo;
+- há modo **só conferir**, que responde sem queimar a entrada. A tela
+  avisa, em negrito, que não deu baixa.
+
+**O leitor** (`painel/src/lib/leitor-qr.ts`) usa `BarcodeDetector` quando o
+navegador tem — no Android é o decodificador do sistema, melhor com código
+torto e pouca luz — e `jsQR` quando não. O Safari do iPhone não tem o
+nativo, e iPhone no portão não é hipótese remota no Brasil. O `jsQR` entra
+por `import()` dinâmico: são ~45 kB que o painel inteiro baixaria por causa
+de uma tela (vira chunk à parte, confirmado no build).
+
+**Portal.** `/e/{slug}` é a página do evento, indexável — é o que se quer
+achar no Google. `/i/{codigo}` é o ingresso, `noindex`, com o QR grande e o
+código escrito embaixo. A página do evento **não tem botão "Comprar"**: a
+compra on-line depende do gateway, e a página diz isso em vez de oferecer
+um botão que abriria tela inexistente.
+
+O `proxy.ts` ganhou uma lista de caminhos globais (`/api`, `/ajuda`, `/c`,
+`/e`, `/i`) que não recebem o prefixo do slug num domínio próprio. Sem ela,
+`/api/...` virava `/{slug}/api/...` e deixava de casar com o rewrite do
+`next.config` — defeito que já valia para o feed ao vivo, a área da equipe
+e a carteirinha, e que as rotas novas herdariam.
+
 ### O que falta (fases seguintes)
 
 | fase | o que entra | depende de |
 |---|---|---|
-| **1b** | telas: Eventos e lotes no painel, **leitor de QR do portão**, página pública do evento e do ingresso. Manual e roteiro entram aqui — hoje não há tela, e tópico apontando para tela inexistente quebra `manual.spec.ts` | nada |
 | 2 | checkout Asaas (Pix/boleto), webhook idempotente com verificação de assinatura, modelo de taxa, repasse | chave sandbox do Asaas |
 | 3 | Google Wallet (JWT RS256, sem dependência nova) e PDF do ingresso | conta Google Cloud |
 | 4 | Apple Wallet (`.pkpass`, assinado com `openssl smime` — já está na imagem), Stripe, venda de inscrição, ficha de consumo | certificado Apple Pass Type ID (Apple Developer Program, US$ 99/ano) |
@@ -968,6 +1014,11 @@ no servidor — que é a razão de o portal ser Next. `generateMetadata` por pá
 **A aba bloqueada aparece com cadeado**, não some: o visitante vê que existe mais
 conteúdo a caminho. Link direto para aba travada cai na Tabela, nunca em branco.
 
+Fora de `/{slug}` há quatro rotas que **não** são da competição: `/ajuda`,
+`/c/{comp}/{atleta}` (carteirinha), `/e/{slug}` (evento) e `/i/{codigo}`
+(ingresso). O `proxy.ts` as deixa passar sem prefixo de slug — ver *As telas*
+em Eventos e ingressos.
+
 O detalhe do jogo continua em `/{slug}/{categoriaId}/{jogoId}`.
 
 **A categoria fica entre o cabeçalho e as abas**, numa faixa própria com o rótulo
@@ -1043,7 +1094,10 @@ voltar. Sem a tarja, o ADM editaria a competição alheia achando que é a dele.
 
 **Duas navegações laterais**, como o protótipo. A **global** (`NAV_GLOBAL`, linha
 786) tem as telas da conta — meus campeonatos, base de atletas, ranking da
-plataforma — mais a seção do ADM para quem é `superadmin`. A **da competição**
+plataforma —, a seção *Eventos e ingressos* (RF035) e a do ADM para quem é
+`superadmin`. A seção de eventos é à parte por ser o único lugar do painel que
+mexe com dinheiro, e seus itens aparecem por perfil: o mesário vê **Portão** e
+não vê **Eventos**. A **da competição**
 (`NAV_COMP`, linha 797) tem as seções *Competição* / *Operação* / *Estrutura*.
 A global some quando uma competição está aberta: duas laterais competiriam
 entre si, e voltar é um clique em "Meus campeonatos". Era uma fila de abas no topo;
@@ -1067,7 +1121,7 @@ se a tela e o servidor divergirem por um segundo, vale o servidor.
 
 ## 7. Testes
 
-368 testes em 30 arquivos, ~17s, **sem nenhuma dependência de teste**. Runner
+572 testes em 39 arquivos, ~40s, **sem nenhuma dependência de teste**. Runner
 nativo do Node 24 e `fetch` global.
 
 ```bash
@@ -1177,11 +1231,22 @@ em `npm run api:dev` — a mensagem não diz nada sobre versão de Node.
 argumento reformata o arquivo inteiro para aspas duplas, que destoa do resto. Se
 precisar formatar: `npx prettier --single-quote`.
 
-**Os três serviços rodam juntos** e o painel pega outra porta se a 5173 estiver
-ocupada — o log diz qual. Ao reiniciar, mate as portas antes:
+**As portas padrão podem ser de outro projeto.** Nesta máquina a 3000 é de
+outro sistema do usuário e a 5173 também costuma estar ocupada — o Vite avisa no
+log e sobe na 5174, mas a API morre com `EADDRINUSE` e o painel/portal continuam
+apontando para a 3000, que responde outra coisa. **Não mate a porta**: suba em
+outra e diga isso a quem a consome. `API_URL` é a mesma variável nos três.
 
 ```bash
-for p in 3000 3001 5173; do kill $(lsof -ti:$p) 2>/dev/null; done
+PORT=3010 npm run api:dev
+API_URL=http://localhost:3010 npm run portal:dev
+API_URL=http://localhost:3010 npm run painel:dev
+```
+
+Matar as portas só vale quando você tem certeza de que são deste projeto:
+
+```bash
+for p in 3010 3001 5173; do kill $(lsof -ti:$p) 2>/dev/null; done
 ```
 
 **Verificar tela por DOM é mais barato e mais preciso que screenshot.** Para
