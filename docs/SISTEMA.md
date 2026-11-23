@@ -334,6 +334,18 @@ isso o `categoriaId` seria porta lateral para ler dados de outra organização.
 | `POST` | `/painel/categorias/:id/classificados` | Grupos → primeira fase eliminatória; 409 com jogo de grupo em aberto |
 | `PATCH` | `/painel/jogos/:id/programacao` | Data, hora e campo |
 | `PATCH` | `/painel/jogos/:id/confronto` | Equipes do mata-mata à mão; só fase `mata` e jogo agendado |
+| `GET` `POST` | `/painel/eventos` | Eventos da conta (RF035) |
+| `GET` `PATCH` | `/painel/eventos/:id` | Detalhe com lotes e vendas; publicar exige lote ativo |
+| `POST` | `/painel/eventos/:id/lotes` | Cria ou altera lote (o `id` no corpo decide) |
+| `DELETE` | `/painel/eventos/lotes/:id` | Só lote sem ingresso emitido |
+| `GET` `POST` | `/painel/eventos/:id/pedidos` | Venda de balcão e cortesia; preço vem do banco |
+| `POST` | `/painel/eventos/pedidos/:id/cancelar` | Cancela; os ingressos caem por gatilho |
+| `GET` | `/painel/portao/conferir?codigo=` | Confere sem queimar |
+| `POST` | `/painel/portao/baixa` | **Queima o ingresso do dia** |
+| `GET` | `/painel/portao/:eventoId/movimento` | Emitidos × presentes hoje |
+| `GET` | `/eventos/:slug` | Página pública do evento (sem login) |
+| `GET` | `/ingressos/:codigo` | Ingresso de quem tem o link; sem dado pessoal |
+| `GET` | `/ingressos/:codigo/qr.svg` | O QR, apontando para a página do ingresso |
 | `POST` | `/painel/jogos/:id/{iniciar,periodo,encerrar,reabrir}` | Controle da partida |
 | `GET` | `/painel/jogos/:id/lances` | Cronologia para a timeline do operador |
 | `POST` `PATCH` `DELETE` | `/painel/jogos/:id/lances[/:lanceId]` | Súmula |
@@ -639,6 +651,93 @@ classificação. Decisões que valem a pena conhecer antes de mexer:
   intermediário que viola o check ao reexecutar sobre chaveamento já preenchido.
 - **Jogo que já saiu do agendado não é tocado** — trocar a equipe deixaria a
   súmula falando de quem não entrou em campo.
+
+## Eventos e ingressos (RF035) — fase 1
+
+Primeiro módulo que movimenta dinheiro, e o primeiro escopo inteiramente
+fora da especificação: ela vai de RF001 a RF034 e não cita evento,
+ingresso nem pagamento. Numeração seguinte livre: **RF035**.
+
+### O núcleo é genérico de propósito
+
+O cliente pediu três coisas — ingresso, venda de inscrição de atleta/equipe
+e ficha de consumo. **São a mesma coisa**: algo vendido, que vira um código
+no celular de alguém, queimado num ponto de atendimento. Ingresso queima no
+portão, ficha na barraca, inscrição virando vínculo na categoria.
+
+Por isso `lotes.especie` já existe com três valores (`ingresso`,
+`inscricao`, `ficha`) e só um em uso. Construir três sistemas separados
+custaria três vezes e espalharia a mesma correção por três lugares.
+
+### Decisões do cliente que o modelo carrega
+
+| decisão | consequência no código |
+|---|---|
+| **Plataforma recebe e repassa** | `pedidos.taxa_centavos` é a parte da plataforma; `repasse_centavos` é coluna **GERADA** (`total - taxa`), para não haver duas verdades sobre quanto o organizador tem a receber |
+| **Asaas primeiro, Stripe depois** | a camada de pagamento ainda não existe — fase 2. O modelo já tem `origem` (`balcao`/`online`) e `status` do pedido para recebê-la |
+| **Google Wallet + PDF primeiro** | fase 3. O QR já aponta para a página do ingresso no portal, que é o que o passe de wallet referencia |
+
+### O que o banco garante e o código não conseguiria
+
+1. **Entrada única por dia** — `uq_checkin_do_dia`. Duas filas lendo o mesmo
+   QR simultaneamente: uma grava, a outra bate na unicidade. Entre uma
+   conferência na aplicação e o INSERT cabe a outra leitura, então a trava
+   tem de ser o índice.
+2. **Não vender além do lote** — `fn_valida_estoque_do_lote` com
+   `SELECT ... FOR UPDATE` na linha do lote antes de contar. **Provado com
+   duas sessões concorrentes** no último ingresso de um lote de 1: uma
+   levou, a outra foi recusada, e sobrou exatamente 1 ingresso.
+3. **Pedido cancelado cancela os ingressos** — `trg_cancela_ingressos`.
+4. **Ingresso é do evento do seu pedido** — `fn_valida_lote_do_pedido`; o
+   RLS não barra dois eventos da mesma organização.
+5. **Evento vendido não é apagado** — `AF032`.
+
+### Privacidade: por que há uma fresta
+
+`pedidos` e `ingressos` **não têm ramo público** no RLS — guardam nome,
+e-mail e documento do comprador. A página do ingresso é aberta a quem tem o
+link (é assim que funciona ingresso: não se pede login no portão), então ela
+lê por `fn_ingresso_publico`, SECURITY DEFINER que devolve só o necessário
+para entrar e **nunca** e-mail, documento ou valor pago. Há teste e2e que
+falha se qualquer um dos três aparecer na resposta.
+
+### O fuso não é detalhe
+
+`eventos/dia-do-evento.ts` existe porque o servidor roda em UTC. Às 21h em
+Belo Horizonte já é o dia seguinte em UTC, e o portão passaria a recusar
+ingresso válido no meio do evento — em Rio Branco o erro começa às 19h. A
+data da baixa sai do fuso do evento (mapa UF → fuso, quatro fusos no
+Brasil), no servidor. Aceitar a data mandada pelo aparelho seria pior:
+relógio errado, ou mexido, reabriria ingresso queimado ontem.
+
+### Taxa zero no balcão
+
+A plataforma recebe e repassa, mas isso é da venda **online**. No balcão o
+organizador recebeu em dinheiro e a plataforma não intermediou nada —
+cobrar taxa ali seria cobrar por serviço não prestado. `taxa_centavos` fica
+em 0, e o modelo de taxa nasce junto com o gateway em vez de ser chutado
+agora.
+
+### Permissões: dois recursos, não um
+
+`evento` (montar, mexer em preço) e `portaria` (ler QR, dar baixa) são
+separados porque são turnos diferentes. `portaria` inclui o `mesario` — é o
+perfil operacional que já existe e o plantão é o mesmo. Quando a portaria
+for gente contratada só para o dia, o certo é um perfil `portaria` próprio;
+não foi criado agora porque ninguém pediu, e perfil novo mexe no enum do
+banco e na tela de equipe.
+
+### O que falta (fases seguintes)
+
+| fase | o que entra | depende de |
+|---|---|---|
+| **1b** | telas: Eventos e lotes no painel, **leitor de QR do portão**, página pública do evento e do ingresso. Manual e roteiro entram aqui — hoje não há tela, e tópico apontando para tela inexistente quebra `manual.spec.ts` | nada |
+| 2 | checkout Asaas (Pix/boleto), webhook idempotente com verificação de assinatura, modelo de taxa, repasse | chave sandbox do Asaas |
+| 3 | Google Wallet (JWT RS256, sem dependência nova) e PDF do ingresso | conta Google Cloud |
+| 4 | Apple Wallet (`.pkpass`, assinado com `openssl smime` — já está na imagem), Stripe, venda de inscrição, ficha de consumo | certificado Apple Pass Type ID (Apple Developer Program, US$ 99/ano) |
+
+Também fora: emissão fiscal e chargeback. Não são decisão de código — mas
+com a plataforma como lojista, a responsabilidade é dela.
 
 ### Quando o automático não alcança (`PATCH /painel/jogos/:id/confronto`)
 
@@ -1013,6 +1112,8 @@ outro — falhava de verdade, com corrida real.
 | `cronologia.e2e.spec.ts` | Timeline e correção de lance |
 | `mata-mata.e2e.spec.ts` | Avanço do vencedor, correção de resultado |
 | `classificados.e2e.spec.ts` | Grupos → mata-mata: vaga, empate, reexecução |
+| `eventos.e2e.spec.ts` | Evento, venda, portão e privacidade do ingresso (RF035) |
+| `eventos/codigo.spec.ts` | Código do ingresso e o dia no fuso do evento |
 | `painel/arte.spec.ts` | Desenho da arte: quebra de nome, placar, nada externo |
 | `arte.e2e.spec.ts` | Arte pelas rotas reais, com dados do banco |
 | `suspensoes.e2e.spec.ts` | Acúmulo, vermelho, cumprimento, bloqueio, cartão lançado pela API, punição retroativa |

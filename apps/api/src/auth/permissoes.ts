@@ -38,6 +38,10 @@ export const RECURSOS = [
   'disciplina',
   /** convidar e gerenciar os usuários da conta */
   'equipe',
+  /** criar evento, lotes, emitir e cancelar pedido (RF035) */
+  'evento',
+  /** ler o QR no portão e dar baixa no ingresso do dia (RF035) */
+  'portaria',
 ] as const;
 
 export type Recurso = (typeof RECURSOS)[number];
@@ -59,6 +63,18 @@ export const PERMISSOES: Record<Recurso, readonly string[]> = {
   // o banco reconfere em fn_exige_dono_da_conta; aqui é só para a resposta
   // sair 403 com mensagem em vez de estourar o erro do Postgres
   equipe: [...TODOS_OS_DONOS],
+
+  // Vender e conferir são turnos diferentes: quem monta o evento e mexe
+  // em preço não é quem fica no portão com o celular na mão. Por isso são
+  // dois recursos, e `portaria` inclui o mesário — é o perfil operacional
+  // que já existe, e o plantão é o mesmo.
+  //
+  // Quando a portaria for gente contratada só para o dia, o certo é um
+  // perfil `portaria` próprio, que entra pela equipe da conta sem enxergar
+  // súmula. Não foi criado agora porque ninguém pediu — e perfil novo mexe
+  // no enum do banco e na tela de equipe.
+  evento: [...TODOS_OS_DONOS, 'gestor'],
+  portaria: [...TODOS_OS_DONOS, 'gestor', 'mesario'],
 };
 
 /** Perfis que o dono pode distribuir. Nem `organizador`, nem `superadmin`. */

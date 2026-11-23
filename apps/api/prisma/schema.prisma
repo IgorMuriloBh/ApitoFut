@@ -85,6 +85,7 @@ model campos {
   observacoes   String?
   campo_fotos   campo_fotos[]
   competicoes   competicoes   @relation(fields: [competicao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  eventos       eventos[]
   jogos         jogos[]
 
   @@index([competicao_id], map: "idx_campos_competicao")
@@ -252,6 +253,7 @@ model competicoes {
   categorias            categorias[]
   usuarios              usuarios?         @relation(fields: [criado_por], references: [id], onUpdate: NoAction)
   organizacoes          organizacoes      @relation(fields: [organizacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  eventos               eventos[]
   patrocinadores        patrocinadores[]
   times                 times[]
 
@@ -411,6 +413,7 @@ model organizacoes {
   atualizado_em DateTime      @default(now()) @db.Timestamptz(6)
   excluida_em   DateTime?     @db.Timestamptz(6)
   competicoes   competicoes[]
+  eventos       eventos[]
   usuarios      usuarios[]
 }
 
@@ -478,27 +481,30 @@ model times {
 }
 
 model usuarios {
-  id                                              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizacao_id                                  String?          @db.Uuid
+  id                                              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacao_id                                  String?             @db.Uuid
   nome                                            String
-  email                                           String           @unique @db.Citext
+  email                                           String              @unique @db.Citext
   senha_hash                                      String
-  perfil                                          perfil_usuario   @default(organizador)
-  situacao                                        situacao_usuario @default(pendente)
-  ultimo_acesso                                   DateTime?        @db.Timestamptz(6)
-  liberado_por                                    String?          @db.Uuid
-  liberado_em                                     DateTime?        @db.Timestamptz(6)
-  criado_em                                       DateTime         @default(now()) @db.Timestamptz(6)
-  atualizado_em                                   DateTime         @default(now()) @db.Timestamptz(6)
-  senha_provisoria                                Boolean          @default(false)
-  convidado_por                                   String?          @db.Uuid
+  perfil                                          perfil_usuario      @default(organizador)
+  situacao                                        situacao_usuario    @default(pendente)
+  ultimo_acesso                                   DateTime?           @db.Timestamptz(6)
+  liberado_por                                    String?             @db.Uuid
+  liberado_em                                     DateTime?           @db.Timestamptz(6)
+  criado_em                                       DateTime            @default(now()) @db.Timestamptz(6)
+  atualizado_em                                   DateTime            @default(now()) @db.Timestamptz(6)
+  senha_provisoria                                Boolean             @default(false)
+  convidado_por                                   String?             @db.Uuid
   competicoes                                     competicoes[]
+  eventos                                         eventos[]
+  ingresso_checkins                               ingresso_checkins[]
   jogo_eventos                                    jogo_eventos[]
-  usuarios_usuarios_convidado_porTousuarios       usuarios?        @relation("usuarios_convidado_porTousuarios", fields: [convidado_por], references: [id], onUpdate: NoAction)
-  other_usuarios_usuarios_convidado_porTousuarios usuarios[]       @relation("usuarios_convidado_porTousuarios")
-  usuarios                                        usuarios?        @relation("usuariosTousuarios", fields: [liberado_por], references: [id], onUpdate: NoAction)
-  other_usuarios                                  usuarios[]       @relation("usuariosTousuarios")
-  organizacoes                                    organizacoes?    @relation(fields: [organizacao_id], references: [id], onUpdate: NoAction)
+  pedidos                                         pedidos[]
+  usuarios_usuarios_convidado_porTousuarios       usuarios?           @relation("usuarios_convidado_porTousuarios", fields: [convidado_por], references: [id], onUpdate: NoAction)
+  other_usuarios_usuarios_convidado_porTousuarios usuarios[]          @relation("usuarios_convidado_porTousuarios")
+  usuarios                                        usuarios?           @relation("usuariosTousuarios", fields: [liberado_por], references: [id], onUpdate: NoAction)
+  other_usuarios                                  usuarios[]          @relation("usuariosTousuarios")
+  organizacoes                                    organizacoes?       @relation(fields: [organizacao_id], references: [id], onUpdate: NoAction)
 
   @@index([organizacao_id], map: "idx_usuarios_organizacao")
   @@index([situacao], map: "idx_usuarios_situacao", where: raw("(situacao = 'pendente'::situacao_usuario)"))
@@ -541,6 +547,126 @@ model migracoes {
   aplicada_em DateTime @default(now()) @db.Timestamptz(6)
 
   @@map("_migracoes")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model eventos {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacao_id   String        @db.Uuid
+  competicao_id    String?       @db.Uuid
+  criado_por       String?       @db.Uuid
+  nome             String
+  slug             String
+  descricao        String?
+  campo_id         String?       @db.Uuid
+  local_nome       String?
+  estado           String?       @db.Char(2)
+  cidade           String?
+  data_inicio      DateTime      @db.Date
+  data_fim         DateTime      @db.Date
+  abertura_portoes DateTime?     @db.Time(6)
+  imagem_url       String?
+  status           status_evento @default(rascunho)
+  publicado_em     DateTime?     @db.Timestamptz(6)
+  excluido_em      DateTime?     @db.Timestamptz(6)
+  criado_em        DateTime      @default(now()) @db.Timestamptz(6)
+  atualizado_em    DateTime      @default(now()) @db.Timestamptz(6)
+  campos           campos?       @relation(fields: [campo_id], references: [id], onUpdate: NoAction)
+  competicoes      competicoes?  @relation(fields: [competicao_id], references: [id], onUpdate: NoAction)
+  usuarios         usuarios?     @relation(fields: [criado_por], references: [id], onUpdate: NoAction)
+  organizacoes     organizacoes  @relation(fields: [organizacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lotes            lotes[]
+  pedidos          pedidos[]
+
+  @@index([organizacao_id], map: "idx_eventos_org", where: raw("(excluido_em IS NULL)"))
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ingresso_checkins {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ingresso_id    String    @db.Uuid
+  dia            DateTime  @db.Date
+  registrado_por String?   @db.Uuid
+  registrado_em  DateTime  @default(now()) @db.Timestamptz(6)
+  ingressos      ingressos @relation(fields: [ingresso_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usuarios       usuarios? @relation(fields: [registrado_por], references: [id], onUpdate: NoAction)
+
+  @@unique([ingresso_id, dia], map: "uq_checkin_do_dia")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ingressos {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pedido_id         String              @db.Uuid
+  lote_id           String              @db.Uuid
+  codigo            String              @unique(map: "uq_ingresso_codigo")
+  titular_nome      String?
+  status            status_ingresso     @default(valido)
+  cancelado_em      DateTime?           @db.Timestamptz(6)
+  criado_em         DateTime            @default(now()) @db.Timestamptz(6)
+  ingresso_checkins ingresso_checkins[]
+  lotes             lotes               @relation(fields: [lote_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pedidos           pedidos             @relation(fields: [pedido_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([lote_id], map: "idx_ingressos_lote")
+  @@index([pedido_id], map: "idx_ingressos_pedido")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model lotes {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  evento_id      String          @db.Uuid
+  especie        especie_de_lote @default(ingresso)
+  nome           String
+  descricao      String?
+  preco_centavos Int
+  quantidade     Int?
+  max_por_pedido Int             @default(10)
+  dia            DateTime?       @db.Date
+  vendas_inicio  DateTime?       @db.Timestamptz(6)
+  vendas_fim     DateTime?       @db.Timestamptz(6)
+  ordem          Int             @default(0)
+  ativo          Boolean         @default(true)
+  criado_em      DateTime        @default(now()) @db.Timestamptz(6)
+  atualizado_em  DateTime        @default(now()) @db.Timestamptz(6)
+  ingressos      ingressos[]
+  eventos        eventos         @relation(fields: [evento_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([evento_id, ordem], map: "idx_lotes_evento")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model pedidos {
+  id                  String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  evento_id           String        @db.Uuid
+  comprador_nome      String
+  comprador_email     String        @db.Citext
+  comprador_telefone  String?
+  comprador_documento String?
+  total_centavos      Int
+  taxa_centavos       Int           @default(0)
+  repasse_centavos    Int?          @default(dbgenerated("(total_centavos - taxa_centavos)"))
+  status              status_pedido @default(aguardando)
+  origem              String        @default("balcao")
+  registrado_por      String?       @db.Uuid
+  pago_em             DateTime?     @db.Timestamptz(6)
+  cancelado_em        DateTime?     @db.Timestamptz(6)
+  observacoes         String?
+  criado_em           DateTime      @default(now()) @db.Timestamptz(6)
+  atualizado_em       DateTime      @default(now()) @db.Timestamptz(6)
+  ingressos           ingressos[]
+  eventos             eventos       @relation(fields: [evento_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usuarios            usuarios?     @relation(fields: [registrado_por], references: [id], onUpdate: NoAction)
+
+  @@index([comprador_email], map: "idx_pedidos_email")
+  @@index([evento_id, criado_em(sort: Desc)], map: "idx_pedidos_evento")
 }
 
 enum campo_atleta {
@@ -681,4 +807,29 @@ enum tipo_evento {
 enum tipo_fase {
   grupos
   mata
+}
+
+enum especie_de_lote {
+  ingresso
+  inscricao
+  ficha
+}
+
+enum status_evento {
+  rascunho
+  publicado
+  encerrado
+  cancelado
+}
+
+enum status_ingresso {
+  valido
+  cancelado
+}
+
+enum status_pedido {
+  aguardando
+  pago
+  cancelado
+  estornado
 }

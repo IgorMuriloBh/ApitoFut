@@ -59,6 +59,7 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
 - `db/20-suspensao-no-proprio-jogo.sql` — a suspensão só vale a partir do jogo seguinte
 - `db/21-perfis-equipe.sql` — perfis `gestor`, `secretaria` e `mesario` no enum
 - `db/22-equipe-da-organizacao.sql` — o dono convida a própria equipe (RF031)
+- `db/23-eventos-ingressos.sql` — eventos, venda de ingresso e baixa no portão (RF035)
 
 ## Banco de dados
 
@@ -89,7 +90,7 @@ perfis de trabalho:
 | `superadmin` | ADM do sistema: enxerga todos os usuários e todas as competições |
 | `gestor` | equiparado ao dono **dentro da competição**; não mexe em quem entra na conta |
 | `secretaria` | equipes, atletas e comissão técnica; não opera jogo nem configura |
-| `mesario` | opera a partida e imprime súmula; não cadastra nem configura |
+| `mesario` | opera a partida, imprime súmula **e lê o QR no portão**; não cadastra nem configura |
 
 **Leitura é livre dentro da organização; escrita é por recurso.** A matriz vive em
 `apps/api/src/auth/permissoes.ts` e é aplicada pelo `PermissaoGuard`, pendurado no
@@ -278,6 +279,42 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
 - **Rotas administrativas são exclusivas do superadmin** — 403 no `SuperadminGuard`
   e reconferência no banco; idem competição de outro dono
 
+### Eventos e ingressos (RF035, migration 23)
+
+Primeiro módulo que movimenta dinheiro. As regras abaixo são do banco, não
+do código — é o único lugar que resiste a duas requisições simultâneas:
+
+- **Um ingresso entra uma vez por dia** — `uq_checkin_do_dia`. Dois portões
+  lendo o mesmo QR no mesmo instante é o normal numa entrada com duas
+  filas: um grava, o outro bate na unicidade e a API responde "já
+  utilizado" com a hora da primeira leitura. Conferir antes de gravar não
+  bastaria — entre a conferência e o INSERT cabe a outra leitura
+- **Não se vende além do lote** — `fn_valida_estoque_do_lote` trava a linha
+  do lote com `FOR UPDATE` antes de contar. Sem isso duas transações leem
+  "9 de 10" ao mesmo tempo e as duas gravam
+- **O preço sai do banco, nunca do corpo da requisição.** O cliente diz
+  qual lote e quantos; quanto custa é lido do lote
+- **Pedido cancelado cancela os ingressos** — `trg_cancela_ingressos`. No
+  código seriam duas escritas que podem divergir, e um ingresso de pedido
+  cancelado continuaria abrindo o portão
+- **O ingresso é do evento do seu pedido** — `fn_valida_lote_do_pedido`. O
+  RLS não barra: os dois eventos podem ser da mesma organização
+- **Evento com ingresso emitido não é apagado** (`AF032`); use
+  `excluido_em`, como organização e competição
+- **`pedidos` e `ingressos` não têm ramo público no RLS.** Guardam nome,
+  e-mail e documento de quem comprou. Quem tem o código lê por
+  `fn_ingresso_publico`, que **nunca devolve e-mail, documento nem valor
+  pago** — a página do ingresso é aberta a quem tem o link
+- **O dia da baixa é decidido no servidor, no fuso do evento**
+  (`eventos/dia-do-evento.ts`). O servidor roda em UTC: às 21h em Belo
+  Horizonte já é o dia seguinte em UTC, e o portão passaria a recusar
+  ingresso válido no meio do evento. Aceitar a data do aparelho seria
+  pior — relógio mexido reabriria ingresso queimado ontem
+- **Na venda de balcão a taxa é zero.** A plataforma recebe e repassa
+  (decisão do cliente), mas isso vale para a venda online, que passa por
+  gateway. No balcão o organizador recebeu em dinheiro e a plataforma não
+  intermediou nada. O modelo de taxa nasce com o gateway, não antes
+
 ## Visibilidade do portal público
 
 O `status` da competição governa o que aparece:
@@ -381,6 +418,10 @@ apps/api/          NestJS — a única app existente hoje
   src/painel/csv.ts              exportações; BOM e `;` por causa do Excel pt-BR
   src/painel/arte.ts             artes de divulgação (RF033); puro, devolve SVG
                                  — quem rasteriza para PNG é o painel
+  src/eventos/       eventos e ingressos (RF035): venda, QR e portão
+    codigo.ts        o código do ingresso; alfabeto sem caractere ambíguo
+    dia-do-evento.ts que dia é hoje NO FUSO DO EVENTO — o servidor é UTC
+    portaria.service.ts  a leitura do portão; responde sempre o mesmo formato
 apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/lib/api.ts     cliente autenticado; token em sessionStorage
   src/lib/dominio.ts vocabulário do protótipo (STATUS, CORES, FASES…)

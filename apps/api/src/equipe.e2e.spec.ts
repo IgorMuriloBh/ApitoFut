@@ -337,7 +337,8 @@ describe('gestão pelo dono', () => {
       ['gestor', 'secretaria', 'mesario'],
     );
     const mesario = r.corpo.perfis.find((p: any) => p.chave === 'mesario');
-    assert.deepEqual(mesario.podeEscrever, ['sumula']);
+    // 'portaria' entrou com os eventos (RF035) — ver permissoes.ts
+    assert.deepEqual(mesario.podeEscrever, ['sumula', 'portaria']);
   });
 });
 

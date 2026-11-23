@@ -58,6 +58,18 @@ export function traduzirErroDoBanco(erro: unknown): never {
       throw new BadRequestException(mensagem('Operação não permitida.'));
     case 'AF023':
       throw new NotFoundException(mensagem('Usuário não encontrado nesta conta.'));
+
+    // migration 23 — eventos e ingressos
+    case 'AF030':
+      // lote esgotado: duas vendas simultâneas no último ingresso. É
+      // conflito, não pedido malformado — quem tentou não errou nada
+      throw new ConflictException(mensagem('Lote esgotado.'));
+    case 'AF031':
+      throw new BadRequestException(mensagem('O lote é de outro evento.'));
+    case 'AF032':
+      throw new ConflictException(
+        mensagem('O evento tem ingressos emitidos e não pode ser apagado.'),
+      );
     default:
       throw erro;
   }

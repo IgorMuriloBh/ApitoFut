@@ -29,16 +29,19 @@ describe('matriz de permissões', () => {
     }
   });
 
-  test('mesário só opera a partida', () => {
-    assert.deepEqual(recursosDoPerfil('mesario'), ['sumula']);
+  test('mesário opera a partida e o portão, nada além', () => {
+    // `portaria` entrou com os eventos (RF035): quem fica no portão lendo
+    // QR é o mesmo plantão operacional. Continua sem alcançar preço,
+    // cadastro ou configuração — é o que o teste seguinte fixa
+    assert.deepEqual(recursosDoPerfil('mesario'), ['sumula', 'portaria']);
   });
 
   test('secretaria só mexe em elenco', () => {
     assert.deepEqual(recursosDoPerfil('secretaria'), ['elenco']);
   });
 
-  test('mesário não apaga competição nem gera tabela', () => {
-    for (const r of ['competicao', 'estrutura', 'tabela', 'elenco', 'disciplina'] as const) {
+  test('mesário não apaga competição, não gera tabela e não mexe em preço', () => {
+    for (const r of ['competicao', 'estrutura', 'tabela', 'elenco', 'disciplina', 'evento'] as const) {
       assert.equal(podeEscrever('mesario', r), false, r);
     }
   });
