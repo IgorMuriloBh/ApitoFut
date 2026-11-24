@@ -636,7 +636,7 @@ export const TOPICOS: TopicoDoManual[] = [
       'No cartão, você é levado à página segura do meio de pagamento. Os dados do cartão não passam pela página do evento.',
       'O seu ingresso fica reservado por 30 minutos. Se o pagamento não cair nesse prazo, ele volta para a venda — e você pode comprar de novo, se ainda houver.',
       'Em evento de entrada franca não há pagamento: o ingresso sai assim que você confirma. O CPF continua sendo pedido, porque a organização registra quem entra.',
-      'Deu tudo certo? Guarde o link do ingresso e tire um print do QR: na entrada pode não haver sinal de internet.',
+      'Assim que o pagamento é confirmado, os QR aparecem na própria tela — um por ingresso, porque cada pessoa entra com o seu. Tire print: na entrada pode não haver sinal de internet.',
     ],
     palavras:
       'comprar ingresso pix cartao pagar pagamento online reserva expirou nao caiu comprei e nao recebi quanto tempo taxa de servico',

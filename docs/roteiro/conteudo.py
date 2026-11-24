@@ -541,7 +541,8 @@ ETAPAS = [
              "banco e pague.",
              "Aparece a contagem regressiva da reserva (30 minutos). Depois "
              "de pagar, <b>não recarregue</b>: a página vira sozinha para "
-             "“Pagamento confirmado” e mostra o link do ingresso."),
+             "“Pagamento confirmado” e mostra <b>o QR de cada ingresso ali "
+             "mesmo</b> — um por pessoa, sem precisar clicar em nada."),
             ("Abra o ingresso e leia o QR dele no <b>Portão</b>.",
              "Entrada liberada, igual ao ingresso de balcão. Para o portão "
              "não existe diferença entre o que foi vendido na internet e o "

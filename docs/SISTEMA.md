@@ -917,6 +917,14 @@ enquanto o pedido aguarda, e para de perguntar assim que ele se resolve.
 Pedir "atualize a página" é empurrar para o usuário um trabalho que o
 sistema sabe fazer.
 
+**Confirmado o pagamento, os QR aparecem na própria página** — um por
+ingresso, não atrás de um link. A primeira versão terminava numa lista de
+códigos clicáveis, e quem comprou de verdade não percebeu que precisava
+clicar: código parece texto, não botão. O QR é o motivo da página
+existir, e esconder o motivo atrás de mais um clique é pedir para a
+pessoa adivinhar. Com vários ingressos a página fica longa, e tudo bem —
+são pessoas diferentes entrando, cada uma com o seu.
+
 **Painel.** O cartão "Taxa da venda on-line" tem os três modelos (decisão
 do organizador) e, para o `superadmin`, o ajuste de percentual e valor
 fixo deste evento. O rodapé diz de onde veio a taxa em vigor — padrão da

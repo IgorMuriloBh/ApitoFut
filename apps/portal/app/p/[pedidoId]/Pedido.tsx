@@ -107,28 +107,75 @@ export function Pedido({ pedidoId }: { pedidoId: string }) {
 
   return (
     <>
+      {/*
+        O QR aparece AQUI, inteiro, e não atrás de um link.
+
+        Antes esta tela terminava numa lista de códigos clicáveis, e
+        quem comprou de verdade não percebeu que precisava clicar: o
+        código parece texto, não botão. O QR é o motivo desta página
+        existir — esconder o motivo atrás de mais um clique é pedir para
+        a pessoa adivinhar.
+
+        Com vários ingressos a página fica longa, e tudo bem: são
+        pessoas diferentes entrando, cada uma com o seu.
+      */}
       {pago && (
-        <div
-          className="cartao"
-          style={{ borderWidth: 2, borderColor: '#16A34A', background: '#F0FDF4' }}
-        >
-          <h2 style={{ margin: 0, color: '#166534' }}>✓ Pagamento confirmado</h2>
-          <p style={{ fontSize: 14, margin: '6px 0 0' }}>
-            {dados.ingressos.length === 1
-              ? 'Seu ingresso está pronto.'
-              : `Seus ${dados.ingressos.length} ingressos estão prontos.`}{' '}
-            Guarde os links abaixo — cada um tem o QR da entrada.
-          </p>
-          <ul style={{ margin: '12px 0 0', paddingLeft: 18, lineHeight: 2 }}>
-            {dados.ingressos.map((i) => (
-              <li key={i.codigo}>
+        <>
+          <div
+            className="cartao"
+            style={{ borderWidth: 2, borderColor: '#16A34A', background: '#F0FDF4' }}
+          >
+            <h2 style={{ margin: 0, color: '#166534' }}>✓ Pagamento confirmado</h2>
+            <p style={{ fontSize: 14, margin: '6px 0 0' }}>
+              {dados.ingressos.length === 1
+                ? 'Seu ingresso está abaixo. Tire um print do QR: na entrada pode não haver sinal de internet.'
+                : `Seus ${dados.ingressos.length} ingressos estão abaixo — cada pessoa entra com o seu. Mande o link de cada um, ou tire print dos QR.`}
+            </p>
+          </div>
+
+          {dados.ingressos.map((i, posicao) => (
+            <div key={i.codigo} className="cartao" style={{ textAlign: 'center' }}>
+              {dados.ingressos.length > 1 && (
+                <p
+                  style={{
+                    margin: '0 0 6px',
+                    fontSize: 13,
+                    color: 'var(--tinta2)',
+                    fontWeight: 600,
+                  }}
+                >
+                  Ingresso {posicao + 1} de {dados.ingressos.length}
+                </p>
+              )}
+              <img
+                src={`/api/ingressos/${i.codigo}/qr.svg`}
+                alt={`QR do ingresso ${i.exibicao}`}
+                width={240}
+                height={240}
+                style={{ maxWidth: '100%', height: 'auto', borderRadius: 12 }}
+              />
+              <p
+                style={{
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  fontSize: 22,
+                  fontWeight: 700,
+                  letterSpacing: 2,
+                  margin: '8px 0 0',
+                }}
+              >
+                {i.exibicao}
+              </p>
+              <p style={{ margin: '4px 0 0', color: 'var(--tinta2)', fontSize: 13 }}>
+                Se a câmera não ler, informe este código na entrada.
+              </p>
+              <p style={{ margin: '10px 0 0', fontSize: 14 }}>
                 <Link href={`/i/${i.codigo}`} style={{ color: 'var(--cor)', fontWeight: 600 }}>
-                  {i.exibicao}
+                  Abrir a página deste ingresso →
                 </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+              </p>
+            </div>
+          ))}
+        </>
       )}
 
       {morto && (
