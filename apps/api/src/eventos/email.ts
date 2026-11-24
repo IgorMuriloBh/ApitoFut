@@ -45,6 +45,13 @@ export interface EmailDeIngressos {
   evento: string;
   local: string | null;
   quando: string;
+  /**
+   * O que o comprador pagou. Zero é entrada franca — e a diferença
+   * importa: anunciar "pagamento confirmado" para quem ganhou o
+   * ingresso deixa a pessoa em dúvida se foi cobrada. Apareceu no
+   * primeiro e-mail que chegou de verdade.
+   */
+  totalCentavos: number;
   ingressos: IngressoDoEmail[];
 }
 
@@ -54,6 +61,7 @@ const PORTAL = (process.env.PORTAL_URL ?? 'http://localhost:3001').replace(/\/$/
 interface LinhaDoPedido {
   comprador_nome: string;
   comprador_email: string;
+  total_centavos: number;
   evento_nome: string;
   local_nome: string | null;
   data_inicio: Date;
@@ -105,6 +113,7 @@ export class EmailService {
         nome: p.comprador_nome,
         evento: p.evento_nome,
         local: p.local_nome,
+        totalCentavos: p.total_centavos,
         quando:
           inicio === fim
             ? formatarDia(inicio)
@@ -218,7 +227,7 @@ export class EmailService {
         }</p>
       </td></tr>
       <tr><td style="padding:20px 22px 4px">
-        <p style="margin:0;font-size:15px">Olá, ${escapar(primeiroNome(d.nome))}! Seu pagamento foi confirmado.</p>
+        <p style="margin:0;font-size:15px">Olá, ${escapar(primeiroNome(d.nome))}! ${confirmacao(d)}</p>
         <p style="margin:8px 0 0;font-size:14px;color:#475569">
           ${
             d.ingressos.length > 1
@@ -250,7 +259,7 @@ export class EmailService {
     return [
       `${d.evento} — ${d.quando}${d.local ? ` · ${d.local}` : ''}`,
       '',
-      `Olá, ${primeiroNome(d.nome)}! Seu pagamento foi confirmado.`,
+      `Olá, ${primeiroNome(d.nome)}! ${confirmacao(d)}`,
       '',
       d.ingressos.length > 1
         ? 'Seus ingressos (cada pessoa entra com o seu):'
@@ -263,6 +272,25 @@ export class EmailService {
       'ApitoFut',
     ].join('\n');
   }
+}
+
+/**
+ * A frase de abertura.
+ *
+ * Entrada franca não fala em pagamento — nem para dizer que foi
+ * confirmado. Quem comprou vê o valor, que serve de comprovante.
+ */
+export function confirmacao(d: EmailDeIngressos): string {
+  if (d.totalCentavos <= 0) {
+    return d.ingressos.length > 1
+      ? 'Seus ingressos de entrada gratuita estão confirmados.'
+      : 'Seu ingresso de entrada gratuita está confirmado.';
+  }
+  const valor = (d.totalCentavos / 100).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+  return `Seu pagamento de ${valor} foi confirmado.`;
 }
 
 /** O e-mail é HTML: nome com `<` quebraria a estrutura da mensagem. */

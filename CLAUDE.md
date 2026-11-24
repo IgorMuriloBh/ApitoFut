@@ -66,6 +66,7 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
   cobranças e pagamento fora de hora
 - `db/26-ingresso-gratuito.sql` — entrada franca não passa por gateway
 - `db/27-pedido-para-email.sql` — a fresta que o envio de e-mail lê
+- `db/28-email-sabe-o-valor.sql` — entrada franca não anuncia "pagamento confirmado"
 
 ## Banco de dados
 
@@ -383,6 +384,11 @@ do código — é o único lugar que resiste a duas requisições simultâneas:
   renderiza SVG — o Gmail remove, o Outlook ignora, e o comprador
   receberia um retângulo vazio no lugar do que importa. Leva o código
   escrito e um botão para a página do ingresso
+- **Entrada franca não fala em pagamento no e-mail.** O primeiro e-mail
+  real anunciou "Seu pagamento foi confirmado" para uma cortesia — e
+  dúvida sobre cobrança é a pior que existe. A frase sai do total do
+  pedido (migration 28); compra paga mostra o valor, que serve de
+  comprovante
 - **Falha de e-mail não derruba venda.** O envio sai solto, depois de o
   ingresso existir, e o webhook não espera o provedor responder: o Asaas
   segura a fila da conta inteira enquanto não recebe 200

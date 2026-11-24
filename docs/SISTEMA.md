@@ -1004,6 +1004,14 @@ o QR, funciona em qualquer celular, e continua certa se o ingresso for
 cancelado depois do envio. O e-mail leva o **código escrito, grande** —
 que já abre o portão sozinho — e o botão para a página.
 
+**A frase de abertura sai do valor do pedido** (migration 28), e isso
+veio do primeiro e-mail que chegou de verdade: um ingresso de entrada
+franca foi anunciado como *"Seu pagamento foi confirmado"*. Quem ganha
+uma cortesia e lê isso fica em dúvida se foi cobrado — e dúvida sobre
+cobrança é a pior de todas. Hoje: compra paga mostra o valor, que serve
+de comprovante; entrada franca não menciona pagamento nem para dizer que
+foi confirmado.
+
 O envio acontece nos três pontos em que um ingresso passa a valer:
 webhook do gateway, checkout gratuito e venda de balcão. **Sempre
 solto**: o Asaas espera o 200 para considerar o aviso entregue e segura
