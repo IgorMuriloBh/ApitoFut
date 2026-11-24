@@ -866,6 +866,20 @@ export interface TaxaDoEvento {
   padraoFixaCentavos: number;
 }
 
+/** Uma linha do relatório da base de clientes (RF035). */
+export interface ClienteDoEvento {
+  eventoId: string;
+  evento: string;
+  nome: string;
+  email: string;
+  telefone: string | null;
+  documento: string | null;
+  pedidos: number;
+  ingressos: number;
+  totalCentavos: number;
+  ultimaCompra: string;
+}
+
 export interface DetalheDoEvento extends ResumoDoEvento {
   descricao: string | null;
   taxa: TaxaDoEvento;
@@ -1123,6 +1137,17 @@ export const api = {
 
     pedidos: (eventoId: string) =>
       requisitar<PedidoDoPainel[]>(`/painel/eventos/${eventoId}/pedidos`),
+
+    /** A base de clientes; sem `eventoId`, de todos os eventos da conta. */
+    clientes: (eventoId?: string) =>
+      requisitar<ClienteDoEvento[]>(
+        `/painel/eventos/clientes${eventoId ? `?eventoId=${eventoId}` : ''}`,
+      ),
+
+    clientesCsv: (eventoId?: string) =>
+      baixarArquivo(
+        `/painel/eventos/clientes.csv${eventoId ? `?eventoId=${eventoId}` : ''}`,
+      ),
 
     cancelarPedido: (pedidoId: string, motivo?: string) =>
       requisitar<{ cancelado: boolean; ingressosCancelados: number }>(

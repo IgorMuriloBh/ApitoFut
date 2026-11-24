@@ -550,6 +550,17 @@ ETAPAS = [
             ("No painel, veja o pedido na lista.",
              "Mostra o total, a taxa e o <b>repasse</b> — quanto é seu. "
              "Pedido de balcão não tem taxa; o da internet tem."),
+            ("Confira a caixa de entrada do e-mail que você usou na compra.",
+             "Chega uma mensagem com o código de cada ingresso e um botão "
+             "para abrir o QR. O QR não vem dentro do e-mail de propósito: "
+             "programa de e-mail não exibe esse tipo de imagem de forma "
+             "confiável, e o comprador receberia um quadrado vazio."),
+            ("No menu, abra <b>Clientes</b> e filtre pelo seu evento.",
+             "Aparece quem comprou, com e-mail, telefone, quantos ingressos "
+             "levou e quanto pagou. Quem começou a compra e não pagou "
+             "<b>não</b> aparece — não levou ingresso nenhum."),
+            ("Clique em <b>Exportar CSV</b> e abra no Excel.",
+             "Abre com acento certo e uma coluna por campo."),
             ("Entre com um usuário <b>mesário</b> (etapa 1 da sua equipe) e "
              "olhe o menu.",
              "Ele vê <b>Portão</b> e não vê <b>Eventos</b>: opera a entrada sem "

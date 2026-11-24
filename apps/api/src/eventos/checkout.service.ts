@@ -9,6 +9,7 @@ import { traduzirErroDoBanco } from '../erros-do-banco';
 import { AsaasService, MINIMO_COBRANCA_CENTAVOS } from './asaas';
 import { formatar, gerarCodigo } from './codigo';
 import { documentoValido, normalizarDocumento } from './documento';
+import { EmailService } from './email';
 
 /**
  * A compra pela internet (RF035, fase 2).
@@ -98,6 +99,7 @@ export class CheckoutService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly asaas: AsaasService,
+    private readonly email: EmailService,
   ) {}
 
   /** Há venda on-line configurada? O portal pergunta antes de oferecer. */
@@ -178,6 +180,12 @@ export class CheckoutService {
     if (gratuito) {
       await this.prisma
         .$executeRaw`SELECT fn_confirma_pedido_gratuito(${pedido.pedido_id}::uuid)`;
+
+      // o ingresso já está na tela de quem pediu; o e-mail é a cópia
+      // que ele guarda, e não pode segurar a resposta
+      void this.email
+        .enviarIngressosDoPedido(pedido.pedido_id)
+        .catch(() => undefined);
 
       return {
         pedidoId: pedido.pedido_id,

@@ -993,6 +993,48 @@ Efeito colateral bom: a entrada franca é o **único caminho feliz do
 checkout que a suíte percorre inteiro**, porque não precisa de gateway
 nenhum. Se um dia ele passar a chamar o Asaas, o teste quebra com 503.
 
+### E-mail do ingresso e base de clientes (migration 27)
+
+**O e-mail não leva o QR dentro**, e isso não é economia: cliente de
+e-mail **não renderiza SVG** — o Gmail remove, o Outlook ignora. O
+comprador receberia um retângulo vazio no lugar da única coisa que
+importa. Gerar PNG exigiria rasterizador no servidor, peso e dependência
+para resolver o que um link resolve melhor: a página do ingresso já tem
+o QR, funciona em qualquer celular, e continua certa se o ingresso for
+cancelado depois do envio. O e-mail leva o **código escrito, grande** —
+que já abre o portão sozinho — e o botão para a página.
+
+O envio acontece nos três pontos em que um ingresso passa a valer:
+webhook do gateway, checkout gratuito e venda de balcão. **Sempre
+solto**: o Asaas espera o 200 para considerar o aviso entregue e segura
+a fila da conta inteira enquanto não recebe, então pendurar o pagamento
+de todo mundo na latência de um servidor de e-mail seria trocar um
+problema pequeno por um grande. Falha vira log; o ingresso já está na
+tela e no link.
+
+Os dois primeiros pontos chegam **sem sessão**, e `pedidos` não tem ramo
+público no RLS. Daí `fn_pedido_para_email`, que é o oposto de
+`fn_ingresso_publico`: aquela esconde o e-mail porque serve uma página
+aberta; esta devolve o e-mail porque serve o servidor que vai escrever
+para ele. Por isso não está em nenhuma rota.
+
+**Não existe tabela `clientes`.** Quem compra já é gravado no pedido —
+nome, e-mail, telefone e documento — e é de lá que saem o ingresso e o
+aviso. Criar uma segunda cópia daria duas verdades sobre quem é o
+cliente, e no dia em que divergissem nenhuma seria confiável. O
+relatório é uma consulta, agrupada por **(evento, e-mail)**, somando os
+pedidos da mesma pessoa naquele evento.
+
+Duas decisões de recorte que o teste fixa:
+
+- **só pedido pago.** Carrinho abandonado e reserva vencida ficam no
+  banco e não entram: quem desistiu no meio não comprou, e contá-lo
+  estragaria o número de ingressos, que é a pergunta do relatório;
+- **a contagem de ingressos vem de subconsulta, não de JOIN.** Com JOIN,
+  cada ingresso multiplicaria a linha do pedido e o faturamento sairia
+  inflado na proporção do número de ingressos — erro plausível, que é o
+  pior tipo.
+
 ### O que falta (fases seguintes)
 
 | fase | o que entra | depende de |

@@ -16,6 +16,7 @@ import { timingSafeEqual } from 'node:crypto';
 import QRCode from 'qrcode-svg';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckoutService, type Compra } from './checkout.service';
+import { EmailService } from './email';
 
 /**
  * A compra pela internet e o retorno do gateway (RF035, fase 2).
@@ -114,7 +115,10 @@ export class WebhookController {
   private readonly log = new Logger('Webhook');
   private readonly segredo = process.env.ASAAS_WEBHOOK_TOKEN ?? '';
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly email: EmailService,
+  ) {}
 
   /**
    * O retorno do Asaas.
@@ -174,6 +178,22 @@ export class WebhookController {
     // o que o banco DE FATO fez, não o que o aviso pedia. Um pagamento
     // que chega depois da expiração vira aviso de estorno, e registrar
     // "pago" aqui enganaria quem fosse investigar
+    /*
+     * O e-mail sai sem segurar a resposta.
+     *
+     * O Asaas espera o 200 para considerar o aviso entregue, e segura a
+     * fila da conta inteira enquanto não recebe. Esperar o provedor de
+     * e-mail responder antes de confirmar ao gateway seria pendurar o
+     * pagamento de todo mundo na latência de um servidor de e-mail.
+     * `enviarIngressosDoPedido` nunca lança; o `catch` é cinto de
+     * segurança para promessa solta.
+     */
+    if (linha.resultado === 'pago') {
+      void this.email
+        .enviarIngressosDoPedido(linha.pedido_id)
+        .catch(() => undefined);
+    }
+
     if (linha.resultado === 'pago_apos_expirar') {
       this.log.warn(
         `pagamento recebido após a expiração — pedido ${linha.pedido_id} precisa de estorno`,

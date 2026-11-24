@@ -449,3 +449,79 @@ describe('o mínimo de cobrança e a entrada franca', () => {
     );
   });
 });
+
+/**
+ * A base de clientes (RF035).
+ *
+ * Não há cadastro de cliente no sistema: a lista é uma consulta sobre os
+ * pedidos. O que estes testes fixam é o recorte — quem conta, quem não
+ * conta, e como a mesma pessoa é somada.
+ */
+describe('a base de clientes', () => {
+  test('lista quem comprou, somando os pedidos da mesma pessoa', async () => {
+    const r = await api('/painel/eventos/clientes');
+    assert.equal(r.code, 200, JSON.stringify(r.corpo));
+
+    const balcao = r.corpo.find((c: any) => c.email === 'balcao@example.com');
+    assert.ok(balcao, 'o comprador de balcão deveria estar na base');
+    assert.equal(balcao.nome, 'Comprador Balcão');
+    assert.ok(balcao.ingressos >= 1);
+
+    // a entrada franca também é cliente: levou ingresso, está na base
+    const convidado = r.corpo.find((c: any) => c.email === 'convidado@example.com');
+    assert.ok(convidado, 'quem pegou ingresso gratuito também é cliente');
+    assert.equal(convidado.ingressos, 2, 'os dois ingressos do mesmo pedido');
+    assert.equal(convidado.totalCentavos, 0);
+  });
+
+  test('quem não pagou não entra na base', async () => {
+    // a reserva que ficou aguardando (o teste do gateway indisponível)
+    // tem comprador, mas não comprou nada
+    const r = await api('/painel/eventos/clientes');
+    const emails = r.corpo.map((c: any) => c.email);
+    assert.ok(
+      !emails.includes('sem@example.com'),
+      'carrinho abandonado não é cliente',
+    );
+  });
+
+  test('o filtro por evento recorta a base', async () => {
+    const doEvento = await api('/painel/eventos/clientes?eventoId=' + eventoId);
+    assert.equal(doEvento.code, 200);
+    for (const c of doEvento.corpo) {
+      assert.equal(c.eventoId, eventoId);
+    }
+
+    const outro = await api(
+      '/painel/eventos/clientes?eventoId=00000000-0000-0000-0000-000000000000',
+    );
+    assert.deepEqual(outro.corpo, [], 'evento sem cliente devolve lista vazia');
+  });
+
+  test('o total do cliente não é multiplicado pelo número de ingressos', async () => {
+    // com JOIN em vez de subconsulta, um pedido de 2 ingressos contaria
+    // o valor duas vezes — e o relatório de faturamento sairia inflado
+    // de um jeito plausível, que é o pior tipo de erro
+    const r = await api('/painel/eventos/clientes');
+    const convidado = r.corpo.find((c: any) => c.email === 'convidado@example.com');
+    assert.equal(convidado.pedidos, 1);
+    assert.equal(convidado.ingressos, 2);
+    assert.equal(convidado.totalCentavos, 0);
+  });
+
+  test('o CSV sai pronto para o Excel em português', async () => {
+    const r = await fetch(base + '/painel/eventos/clientes.csv', {
+      headers: { Authorization: 'Bearer ' + token },
+    });
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get('content-disposition') ?? '', /clientes\.csv/);
+
+    // BOM lido dos bytes: `text()` o remove por especificação do Fetch
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    assert.deepEqual([...bytes.slice(0, 3)], [0xef, 0xbb, 0xbf], 'sem BOM UTF-8');
+
+    const texto = new TextDecoder().decode(bytes);
+    assert.match(texto.split('\r\n')[0], /Evento;Nome;E-mail;Telefone/);
+    assert.ok(texto.includes('balcao@example.com'));
+  });
+});

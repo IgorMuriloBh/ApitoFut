@@ -90,6 +90,23 @@ ASAAS_API_KEY       = <chave de produção, começa com $aact_prod_>
 ASAAS_WEBHOOK_TOKEN = <segredo que você define no painel do Asaas>
 ```
 
+**E-mail do ingresso (RF035), opcional:**
+
+```
+MAILERSEND_API_KEY   = <token do provedor>
+EMAIL_REMETENTE      = ingressos@<dominio-verificado>
+EMAIL_REMETENTE_NOME = ApitoFut
+```
+
+Sem elas o envio não acontece e nada quebra — o ingresso continua
+chegando pela tela e pelo link. Duas coisas a saber:
+
+- **conta em período de avaliação costuma só enviar para o endereço do
+  dono**. É o suficiente para testar, e não para vender: o comprador não
+  receberia nada. Peça a liberação de envio antes de anunciar o evento;
+- o token do provedor **expira**. Quando o ingresso parar de chegar sem
+  explicação, é o primeiro lugar a olhar.
+
 Sem as três, a venda pela internet não é oferecida — o portal não mostra o
 botão de comprar e a API responde "indisponível". **A venda de balcão e o
 portão continuam funcionando**, que é o caminho que não depende de gateway.

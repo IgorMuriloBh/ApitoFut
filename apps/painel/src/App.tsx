@@ -18,6 +18,7 @@ import { Ajuda, type DestinoDaAjuda } from './telas/Ajuda';
 import { Equipe } from './telas/Equipe';
 import { Eventos } from './telas/Eventos';
 import { Portao } from './telas/Portao';
+import { Clientes } from './telas/Clientes';
 import { podeEscrever } from './lib/permissoes';
 import { TrocarSenha } from './telas/TrocarSenha';
 
@@ -31,6 +32,7 @@ type Tela =
   | { nome: 'equipe' }
   | { nome: 'eventos' }
   | { nome: 'portao' }
+  | { nome: 'clientes' }
   | { nome: 'admin'; aba: AbaDoAdm };
 
 /**
@@ -72,7 +74,10 @@ function navGlobal(ehDono: boolean): SecaoDoMenu[] {
             titulo: 'Eventos e ingressos',
             itens: [
               ...(podeEscrever('evento')
-                ? [{ chave: 'eventos', icone: '🎟', rotulo: 'Eventos' }]
+                ? [
+                    { chave: 'eventos', icone: '🎟', rotulo: 'Eventos' },
+                    { chave: 'clientes', icone: '👥', rotulo: 'Clientes' },
+                  ]
                 : []),
               ...(podeEscrever('portaria')
                 ? [{ chave: 'portao', icone: '🚪', rotulo: 'Portão' }]
@@ -271,7 +276,8 @@ export function App() {
                     | 'ajuda'
                     | 'equipe'
                     | 'eventos'
-                    | 'portao',
+                    | 'portao'
+                    | 'clientes',
                 });
               }
             }}
@@ -314,6 +320,7 @@ export function App() {
                   | 'equipe'
                   | 'eventos'
                   | 'portao'
+                  | 'clientes'
                   | 'wizard',
               });
               return;
@@ -346,7 +353,8 @@ export function App() {
                   | 'ranking'
                   | 'wizard'
                   | 'eventos'
-                  | 'portao',
+                  | 'portao'
+                  | 'clientes',
               });
             }
           }}
@@ -356,6 +364,7 @@ export function App() {
       {tela.nome === 'equipe' && <Equipe />}
       {tela.nome === 'eventos' && <Eventos />}
       {tela.nome === 'portao' && <Portao />}
+      {tela.nome === 'clientes' && <Clientes />}
       {tela.nome === 'base' && <BaseDeAtletas />}
       {tela.nome === 'ranking' && <RankingGeral />}
 

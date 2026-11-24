@@ -583,6 +583,7 @@ export const TOPICOS: TopicoDoManual[] = [
       'A taxa da plataforma só existe na venda pela internet. Em "Taxa da venda on-line" você escolhe quem paga: o comprador (preço + taxa), você (recebe o preço menos a taxa), ou ninguém. No balcão nunca há taxa — a plataforma não intermediou nada.',
       'Informe o **estado** do evento. É dele que sai o fuso em que o portão decide que dia é hoje — sem ele o sistema usa Brasília, o que erra por uma hora no Acre, Amazonas, Rondônia, Roraima e no Mato Grosso.',
       'Cancelar um pedido invalida os ingressos dele na hora, e o portão passa a recusá-los. O mesmo vale para estorno: quem recebeu o dinheiro de volta não entra.',
+      'Assim que o pedido é confirmado, o comprador recebe os ingressos por e-mail. O e-mail leva o código e o link de cada ingresso; o QR fica na página, porque e-mail não exibe esse tipo de imagem de forma confiável.',
       'Na venda pela internet o ingresso fica reservado por 30 minutos enquanto o pagamento não cai. Passou disso, ele volta para a venda sozinho.',
       'Lote pago custa no mínimo R$ 5,00 — é o menor valor que o meio de pagamento aceita cobrar. Abaixo disso o sistema recusa na hora de criar o lote, para o problema não aparecer só quando alguém tentar comprar.',
       'Lote de R$ 0,00 é a exceção: entrada franca não passa por pagamento nenhum. O ingresso sai na hora, e mesmo assim os dados de quem pegou ficam registrados.',
@@ -641,6 +642,24 @@ export const TOPICOS: TopicoDoManual[] = [
     palavras:
       'comprar ingresso pix cartao pagar pagamento online reserva expirou nao caiu comprei e nao recebi quanto tempo taxa de servico',
     onde: ['portal'],
+  },
+
+  {
+    id: 'clientes-do-evento',
+    titulo: 'Base de clientes dos eventos',
+    resumo: 'Quem comprou, com contato e quantos ingressos levou.',
+    corpo: [
+      'Em Eventos e ingressos › Clientes você vê todo mundo que comprou: nome, e-mail, telefone, documento, quantos ingressos levou e quanto pagou.',
+      'Filtre por evento, procure por nome ou telefone, e exporte em CSV — o arquivo abre direto no Excel em português.',
+      'A mesma pessoa aparece em uma linha por evento, somando as compras dela ali. Em eventos diferentes, uma linha em cada.',
+      'Quem começou uma compra e não pagou **não** aparece: a reserva dele vence sozinha e ele não levou ingresso nenhum.',
+      'Não há cadastro de cliente a preencher. A base se forma sozinha a cada venda, inclusive nas de balcão e nas cortesias.',
+    ],
+    palavras:
+      'clientes base compradores relatorio exportar lista de quem comprou contato telefone email mailing publico do evento',
+    onde: ['painel'],
+    destino: { painel: { tela: 'clientes' } },
+    acao: 'Ir para Clientes',
   },
 
   // ── Operação ───────────────────────────────────────────────────────

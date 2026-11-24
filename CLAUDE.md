@@ -65,6 +65,7 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
 - `db/25-checkout-pix.sql` — página do pedido, expiração que devolve as
   cobranças e pagamento fora de hora
 - `db/26-ingresso-gratuito.sql` — entrada franca não passa por gateway
+- `db/27-pedido-para-email.sql` — a fresta que o envio de e-mail lê
 
 ## Banco de dados
 
@@ -378,6 +379,17 @@ do código — é o único lugar que resiste a duas requisições simultâneas:
   não do gateway: a base de quem entrou no evento é dele. A tela troca
   a justificativa, porque "exigido pelo meio de pagamento" seria mentira
   num ingresso de graça
+- **O e-mail do ingresso não leva o QR dentro.** Cliente de e-mail não
+  renderiza SVG — o Gmail remove, o Outlook ignora, e o comprador
+  receberia um retângulo vazio no lugar do que importa. Leva o código
+  escrito e um botão para a página do ingresso
+- **Falha de e-mail não derruba venda.** O envio sai solto, depois de o
+  ingresso existir, e o webhook não espera o provedor responder: o Asaas
+  segura a fila da conta inteira enquanto não recebe 200
+- **Não existe tabela de clientes.** Quem compra já é gravado no pedido;
+  uma segunda cópia das mesmas pessoas daria duas verdades sobre quem é
+  o cliente. O relatório é consulta, e conta só pedido **pago** — quem
+  abandonou o carrinho não comprou
 - **Na venda de balcão a taxa é zero.** A plataforma recebe e repassa
   (decisão do cliente), mas isso vale para a venda online, que passa por
   gateway. No balcão o organizador recebeu em dinheiro e a plataforma não
@@ -515,6 +527,10 @@ apps/api/          NestJS — a única app existente hoje
     asaas.ts         cliente do gateway. CARTÃO NUNCA PASSA POR AQUI:
                      quem paga no cartão vai à página do próprio Asaas
     checkout.ts(.service/.controller)  compra on-line e webhook
+    email.ts         envio do ingresso; NÃO leva o QR dentro (e-mail não
+                     renderiza SVG) — leva o código e o link
+    clientes.service.ts  a base de clientes; CONSULTA sobre pedidos,
+                     não uma tabela nova
     dia-do-evento.ts que dia é hoje NO FUSO DO EVENTO — o servidor é UTC
     portaria.service.ts  a leitura do portão; responde sempre o mesmo formato
 apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador

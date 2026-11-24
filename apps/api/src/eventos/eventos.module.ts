@@ -3,6 +3,8 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { EventosController, PortaoController } from './eventos.controller';
 import { EventosPublicoController } from './eventos-publico.controller';
 import { EventosService } from './eventos.service';
+import { ClientesService } from './clientes.service';
+import { EmailService } from './email';
 import { AsaasService } from './asaas';
 import { CheckoutService } from './checkout.service';
 import { CheckoutController, WebhookController } from './checkout.controller';
@@ -18,6 +20,13 @@ import { PortariaService } from './portaria.service';
     CheckoutController,
     WebhookController,
   ],
-  providers: [EventosService, PortariaService, AsaasService, CheckoutService],
+  providers: [
+    EventosService,
+    PortariaService,
+    AsaasService,
+    CheckoutService,
+    ClientesService,
+    EmailService,
+  ],
 })
 export class EventosModule {}

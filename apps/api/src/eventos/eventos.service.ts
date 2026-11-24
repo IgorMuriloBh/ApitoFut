@@ -10,6 +10,7 @@ import { urlPublica } from '../arquivos/armazenamento';
 import { traduzirErroDoBanco } from '../erros-do-banco';
 import { formatar, gerarCodigo } from './codigo';
 import { MINIMO_COBRANCA_CENTAVOS } from './asaas';
+import { EmailService } from './email';
 
 /**
  * Eventos e ingressos (RF035) — o lado do organizador.
@@ -56,7 +57,10 @@ export interface PedidoDeBalcao {
 
 @Injectable()
 export class EventosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly email: EmailService,
+  ) {}
 
   // ------------------------------------------------------------ evento
 
@@ -473,6 +477,11 @@ export class EventosService {
           await this.emitirUm(tx, criado.id, ingresso.loteId, ingresso.titular),
         );
       }
+
+      // venda de balcão também manda o e-mail: o comprador saiu do
+      // guichê com um papel na mão, e o link é o que ele vai achar
+      // depois. Solto de propósito — a emissão não espera o provedor
+      void this.email.enviarIngressosDoPedido(criado.id).catch(() => undefined);
 
       return {
         pedidoId: criado.id,

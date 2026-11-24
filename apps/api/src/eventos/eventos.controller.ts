@@ -9,10 +9,14 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard, RequestAutenticado } from '../auth/auth.guard';
 import { Exige, PermissaoGuard } from '../auth/permissao.guard';
+import type { Response } from 'express';
+import { cabecalhoDeDownload } from '../painel/csv';
+import { ClientesService } from './clientes.service';
 import { EventosService, PedidoDeBalcao } from './eventos.service';
 import { PortariaService } from './portaria.service';
 
@@ -30,11 +34,42 @@ import { PortariaService } from './portaria.service';
 @UseGuards(AuthGuard, PermissaoGuard)
 @Exige('evento')
 export class EventosController {
-  constructor(private readonly eventos: EventosService) {}
+  constructor(
+    private readonly eventos: EventosService,
+    private readonly clientes: ClientesService,
+  ) {}
 
   @Get()
   listar(@Req() req: RequestAutenticado) {
     return this.eventos.listar(req.sessao.org);
+  }
+
+  /*
+   * ATENÇÃO À ORDEM: estas duas rotas vêm ANTES de `:eventoId`. O Nest
+   * casa na ordem de declaração, e `ParseUUIDPipe` recusaria "clientes"
+   * com 400 antes de chegar aqui.
+   */
+
+  /** A base de clientes, opcionalmente de um evento só. */
+  @Get('clientes')
+  listarClientes(
+    @Req() req: RequestAutenticado,
+    @Query('eventoId') eventoId?: string,
+  ) {
+    return this.clientes.listar(req.sessao.org, eventoId || undefined);
+  }
+
+  @Get('clientes.csv')
+  async clientesCsv(
+    @Req() req: RequestAutenticado,
+    @Res() res: Response,
+    @Query('eventoId') eventoId?: string,
+  ) {
+    const { nome, conteudo } = await this.clientes.csv(
+      req.sessao.org,
+      eventoId || undefined,
+    );
+    res.set(cabecalhoDeDownload(nome)).send(conteudo);
   }
 
   @Post()
