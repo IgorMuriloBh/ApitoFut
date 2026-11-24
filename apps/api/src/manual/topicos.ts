@@ -584,6 +584,8 @@ export const TOPICOS: TopicoDoManual[] = [
       'Informe o **estado** do evento. É dele que sai o fuso em que o portão decide que dia é hoje — sem ele o sistema usa Brasília, o que erra por uma hora no Acre, Amazonas, Rondônia, Roraima e no Mato Grosso.',
       'Cancelar um pedido invalida os ingressos dele na hora, e o portão passa a recusá-los. O mesmo vale para estorno: quem recebeu o dinheiro de volta não entra.',
       'Na venda pela internet o ingresso fica reservado por 30 minutos enquanto o pagamento não cai. Passou disso, ele volta para a venda sozinho.',
+      'Lote pago custa no mínimo R$ 5,00 — é o menor valor que o meio de pagamento aceita cobrar. Abaixo disso o sistema recusa na hora de criar o lote, para o problema não aparecer só quando alguém tentar comprar.',
+      'Lote de R$ 0,00 é a exceção: entrada franca não passa por pagamento nenhum. O ingresso sai na hora, e mesmo assim os dados de quem pegou ficam registrados.',
     ],
     palavras:
       'evento ingresso ticket bilhete venda vender bilheteria lote preco cortesia festival entrada portaria arrecadacao taxa pix cartao pagamento online',
@@ -633,6 +635,7 @@ export const TOPICOS: TopicoDoManual[] = [
       'No Pix, o código aparece na hora. Pague pelo aplicativo do seu banco e **não feche a página** — ela avisa sozinha quando o pagamento cai, e aí mostra o seu ingresso.',
       'No cartão, você é levado à página segura do meio de pagamento. Os dados do cartão não passam pela página do evento.',
       'O seu ingresso fica reservado por 30 minutos. Se o pagamento não cair nesse prazo, ele volta para a venda — e você pode comprar de novo, se ainda houver.',
+      'Em evento de entrada franca não há pagamento: o ingresso sai assim que você confirma. O CPF continua sendo pedido, porque a organização registra quem entra.',
       'Deu tudo certo? Guarde o link do ingresso e tire um print do QR: na entrada pode não haver sinal de internet.',
     ],
     palavras:

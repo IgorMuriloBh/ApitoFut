@@ -27,6 +27,19 @@ import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 
 const TEMPO_LIMITE_MS = 20_000;
 
+/**
+ * Menor valor que o Asaas aceita cobrar.
+ *
+ * Não está na documentação que se lê antes de integrar: apareceu na
+ * primeira compra de verdade, em produção, como
+ * `400: O valor da cobrança (R$ 1,10) … não pode ser menor que R$ 5,00`.
+ *
+ * Mora aqui, e não em quem valida o lote, porque é uma regra DO
+ * GATEWAY: no dia em que o gateway mudar — ou for outro —, este é o
+ * único lugar a mexer.
+ */
+export const MINIMO_COBRANCA_CENTAVOS = 500;
+
 export interface ClienteDoGateway {
   nome: string;
   email: string;

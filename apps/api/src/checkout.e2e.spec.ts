@@ -353,3 +353,99 @@ describe('o webhook', () => {
     }
   });
 });
+
+/**
+ * O mínimo do gateway e a entrada gratuita (migration 26).
+ *
+ * Esta é a única parte do checkout que roda o caminho feliz INTEIRO na
+ * suíte: ingresso de graça não fala com gateway nenhum, então o pedido
+ * nasce pago e o ingresso sai, sem chave de ninguém.
+ */
+describe('o mínimo de cobrança e a entrada franca', () => {
+  let loteGratis: string;
+
+  test('lote pago abaixo do mínimo é recusado na criação', async () => {
+    // o organizador descobre ao montar o evento, não o comprador no fim
+    // do checkout com a vaga já reservada — que foi como apareceu
+    const r = await api(`/painel/eventos/${eventoId}/lotes`, 'POST', {
+      nome: 'Barato demais',
+      precoCentavos: 100,
+    });
+    assert.equal(r.code, 400, JSON.stringify(r.corpo));
+    assert.match(r.corpo.message, /pelo menos R\$ 5,00/);
+  });
+
+  test('lote exatamente no mínimo é aceito', async () => {
+    const r = await api(`/painel/eventos/${eventoId}/lotes`, 'POST', {
+      nome: 'No limite',
+      precoCentavos: 500,
+    });
+    assert.equal(r.code, 201, JSON.stringify(r.corpo));
+  });
+
+  test('lote gratuito é aceito — é a exceção da regra', async () => {
+    const r = await api(`/painel/eventos/${eventoId}/lotes`, 'POST', {
+      nome: 'Entrada franca',
+      precoCentavos: 0,
+      quantidade: 5,
+    });
+    assert.equal(r.code, 201, JSON.stringify(r.corpo));
+    loteGratis = r.corpo.id;
+  });
+
+  test('a prévia informa o mínimo para a tela não oferecer o impossível', async () => {
+    const r = await api(`/eventos/${slug}/preview`, 'POST', {
+      itens: [{ loteId: loteGratis, quantidade: 1 }],
+    }, '');
+    assert.equal(r.code, 200);
+    assert.equal(r.corpo.totalCentavos, 0);
+    assert.equal(r.corpo.minimoCentavos, 500);
+  });
+
+  test('comprar ingresso gratuito não toca no gateway e já sai pago', async () => {
+    // a suíte roda SEM chave do Asaas: se este caminho chamasse o
+    // gateway, o teste falharia com 503. É essa a prova
+    const r = await api(`/eventos/${slug}/checkout`, 'POST', {
+      itens: [{ loteId: loteGratis, quantidade: 2 }],
+      compradorNome: 'Convidado da Casa',
+      compradorEmail: 'convidado@example.com',
+      compradorDocumento: '529.982.247-25',
+      metodo: 'pix',
+    }, '');
+    assert.equal(r.code, 201, JSON.stringify(r.corpo));
+    assert.equal(r.corpo.totalCentavos, 0);
+    assert.equal(r.corpo.metodo, 'gratuito');
+    assert.equal(r.corpo.pix, null);
+    assert.equal(r.corpo.expiraEm, null, 'pedido pago não expira');
+
+    const pedido = await api(`/pedidos/${r.corpo.pedidoId}`, 'GET', undefined, '');
+    assert.equal(pedido.corpo.status, 'pago');
+    assert.equal(pedido.corpo.ingressos.length, 2, 'os dois ingressos saem na hora');
+  });
+
+  test('entrada franca TAMBÉM pede CPF', async () => {
+    // decisão do organizador, não do gateway: a base de quem entrou no
+    // evento é dele, e cortesia conta tanto quanto ingresso vendido
+    const r = await api(`/eventos/${slug}/checkout`, 'POST', {
+      itens: [{ loteId: loteGratis, quantidade: 1 }],
+      compradorNome: 'Sem Documento',
+      compradorEmail: 'sem.doc@example.com',
+      metodo: 'pix',
+    }, '');
+    assert.equal(r.code, 400, JSON.stringify(r.corpo));
+    assert.match(r.corpo.message, /CPF|CNPJ/i);
+  });
+
+  test('o banco recusa confirmar de graça um pedido que tem valor', async () => {
+    // a trava que sobrevive a um defeito futuro no checkout
+    const pago = await admin.pedidos.findFirst({
+      where: { evento_id: eventoId, total_centavos: { gt: 0 } },
+      select: { id: true },
+    });
+    assert.ok(pago);
+    await assert.rejects(
+      admin.$executeRaw`SELECT fn_confirma_pedido_gratuito(${pago.id}::uuid)`,
+      /não pode ser confirmado sem pagamento/,
+    );
+  });
+});

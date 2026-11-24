@@ -946,6 +946,45 @@ Nenhum apareceu em teste automatizado; todos apareceram olhando:
    anunciava "o tempo da reserva acabou" com o Pix recém-gerado na tela.
    Agora o instante vem do banco em milissegundos — número não tem fuso.
 
+### O mínimo do gateway e a entrada franca (migration 26)
+
+Encontrado na **primeira compra de verdade, em produção**, com um lote de
+R$ 1,00 criado justamente para testar barato:
+
+```
+POST /payments → 400: O valor da cobrança (R$ 1,10) menos o valor do
+desconto (R$ 0,00) não pode ser menor que R$ 5,00.
+```
+
+O Asaas não cobra menos de R$ 5,00. Isso não aparece na documentação que
+se lê antes de integrar — aparece quando o dinheiro é real. O sistema se
+comportou como projetado (a reserva ficou de pé e expirou sozinha, sem
+cobrança órfã no gateway), mas o comprador levou um erro de gateway na
+cara, com a vaga já reservada.
+
+Duas regras saíram daí, decididas com o cliente:
+
+- **lote pago custa R$ 5,00 ou mais**, recusado na *criação do lote*. O
+  organizador descobre ao montar o evento, que é quando dá para corrigir;
+- **lote de R$ 0,00 é a exceção e não aciona o gateway**. O pedido nasce
+  pago e o ingresso sai na hora. A trava é do banco:
+  `fn_confirma_pedido_gratuito` recusa pedido cujo total não seja zero —
+  um defeito futuro no checkout pode chamar a função com o pedido errado,
+  mas não consegue fazer o banco entregar um ingresso pago de graça.
+
+O mínimo mora em `asaas.ts` e não em quem valida o lote: é regra **do
+gateway**, e no dia em que mudar — ou for outro — há um lugar só a mexer.
+
+**O CPF continua sendo pedido na entrada franca.** Essa é decisão do
+organizador, não do meio de pagamento: a base de quem entrou no evento é
+dele, e cortesia conta tanto quanto ingresso vendido. A tela troca a
+justificativa exibida, porque "exigido pelo meio de pagamento" seria
+mentira num ingresso de graça.
+
+Efeito colateral bom: a entrada franca é o **único caminho feliz do
+checkout que a suíte percorre inteiro**, porque não precisa de gateway
+nenhum. Se um dia ele passar a chamar o Asaas, o teste quebra com 503.
+
 ### O que falta (fases seguintes)
 
 | fase | o que entra | depende de |

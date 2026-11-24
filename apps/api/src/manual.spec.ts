@@ -102,7 +102,6 @@ describe('busca — a dúvida escrita como o usuário escreve', () => {
     ['vender ingresso', 'evento-ingressos'],
     ['ler o qr na entrada', 'portao-leitura'],
     ['comprei ingresso e perdi o link', 'meu-ingresso'],
-    ['como pago com pix', 'comprar-ingresso'],
     ['quem paga a taxa do ingresso', 'evento-ingressos'],
     // conjugação: quem pergunta escreve "inscrevo", o acervo diz
     // "inscrever". Sem a raiz comum isto caía em "Carteirinha do atleta"
@@ -119,6 +118,15 @@ describe('busca — a dúvida escrita como o usuário escreve', () => {
       assert.equal(r[0].topico.id, esperado);
     });
   }
+
+  test('a mesma dúvida tem dono diferente em cada público', () => {
+    // "como pago com pix" vale para os dois lados do balcão: quem compra
+    // quer saber como pagar, quem organiza quer saber como receber. O
+    // que decide não é o texto — é quem está perguntando, e cada tela
+    // busca dentro do seu próprio público
+    assert.equal(buscar('como pago com pix', 'portal')[0].topico.id, 'comprar-ingresso');
+    assert.equal(buscar('como pago com pix', 'painel')[0].topico.id, 'evento-ingressos');
+  });
 
   test('acento e caixa não atrapalham', () => {
     const com = buscar('SUSPENSÃO');

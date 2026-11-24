@@ -476,6 +476,15 @@ ETAPAS = [
             ("Tente publicar sem criar lote.",
              "<b>Recusado</b>, com explicação: a página pública ficaria sem nada "
              "à venda."),
+            ("Tente criar um lote de <b>R$ 1,00</b>.",
+             "<b>Recusado</b>: lote pago custa no mínimo R$ 5,00, que é o "
+             "menor valor que o meio de pagamento aceita cobrar. Melhor "
+             "descobrir agora que no fim da compra de alguém."),
+            ("Crie um lote de <b>R$ 0,00</b>.",
+             "<b>Aceito.</b> Entrada franca é a exceção: não passa por "
+             "pagamento nenhum, e o ingresso sai assim que o visitante "
+             "confirma — mas o CPF continua sendo pedido, porque a base de "
+             "quem entrou é sua."),
             ("Crie um lote “Inteira” com preço e quantidade 2, e um lote "
              "“Passe dos 2 dias” sem quantidade.",
              "Os dois aparecem na lista, com preço e quanto resta."),

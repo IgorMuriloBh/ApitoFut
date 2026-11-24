@@ -242,9 +242,12 @@ describe('a venda', () => {
   test('lote inativo não vende', async () => {
     const inativo = await api(`/painel/eventos/${eventoId}/lotes`, 'POST', {
       nome: 'Encerrado',
-      precoCentavos: 100,
+      // acima do mínimo do gateway (migration 26): um lote de R$ 1,00
+      // deixou de ser criável, e o que este teste prova é outra coisa
+      precoCentavos: 1_000,
       ativo: false,
     });
+    assert.equal(inativo.code, 201, JSON.stringify(inativo.corpo));
     const r = await api(`/painel/eventos/${eventoId}/pedidos`, 'POST', {
       compradorNome: 'Z',
       compradorEmail: 'z@teste.com',

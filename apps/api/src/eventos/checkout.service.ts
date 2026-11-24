@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { traduzirErroDoBanco } from '../erros-do-banco';
-import { AsaasService } from './asaas';
+import { AsaasService, MINIMO_COBRANCA_CENTAVOS } from './asaas';
 import { formatar, gerarCodigo } from './codigo';
 import { documentoValido, normalizarDocumento } from './documento';
 
@@ -116,13 +116,19 @@ export class CheckoutService {
       compra.metodo === 'pix' || compra.metodo === 'cartao',
       'Forma de pagamento inválida.',
     );
-    // ANTES de reservar, e não depois. O gateway recusa cobrança sem
-    // documento válido — e recusaria com o ingresso já fora do estoque,
-    // preso por 30 minutos por causa de um campo. Descoberto testando
-    // contra o Asaas de verdade; ver `documento.ts`
+    /*
+     * CPF é exigido SEMPRE, inclusive na entrada gratuita.
+     *
+     * Não é o gateway que manda nisso — ele só entra quando há o que
+     * cobrar. É decisão do organizador: a base de quem entrou no evento
+     * é dele, e ingresso de cortesia conta tanto quanto o vendido.
+     *
+     * A validação continua ANTES de reservar: recusar depois deixaria a
+     * vaga presa 30 minutos por causa de um campo.
+     */
     exigir(
       documentoValido(compra.compradorDocumento),
-      'Informe um CPF ou CNPJ válido — o meio de pagamento exige.',
+      'Informe um CPF ou CNPJ válido.',
     );
 
     await this.varrerReservasVencidas();
@@ -140,7 +146,49 @@ export class CheckoutService {
     );
     exigir(quantidade > 0, 'Escolha ao menos um ingresso.');
 
+    /*
+     * O preço é consultado ANTES de reservar, e não depois.
+     *
+     * Tudo o que pode recusar a compra precisa recusar enquanto o
+     * ingresso ainda está no estoque. Reservar primeiro e descobrir
+     * depois que o valor é impossível de cobrar foi exatamente o que
+     * aconteceu na primeira compra em produção: o comprador levou um
+     * erro de gateway e a vaga ficou presa 30 minutos à toa.
+     */
+    const preco = await this.precificar(evento.id, compra.itens);
+    const gratuito = preco.totalCentavos === 0;
+
+    if (!gratuito) {
+      exigir(
+        preco.totalCentavos >= MINIMO_COBRANCA_CENTAVOS,
+        `O meio de pagamento não cobra menos de R$ ${reais(MINIMO_COBRANCA_CENTAVOS)}. Este pedido soma R$ ${reais(preco.totalCentavos)} — escolha mais ingressos ou fale com a organização.`,
+      );
+    }
+
     const pedido = await this.reservar(evento.id, compra, quantidade);
+
+    /*
+     * Entrada gratuita não passa por gateway. Cobrar zero não é uma
+     * cobrança — é um pedido de dinheiro a ninguém, que o Asaas
+     * recusaria de qualquer forma. O pedido já sai pago e o ingresso
+     * vale na hora; quem garante que isso não vira ingresso pago de
+     * graça é o banco (`fn_confirma_pedido_gratuito` recusa total
+     * diferente de zero).
+     */
+    if (gratuito) {
+      await this.prisma
+        .$executeRaw`SELECT fn_confirma_pedido_gratuito(${pedido.pedido_id}::uuid)`;
+
+      return {
+        pedidoId: pedido.pedido_id,
+        totalCentavos: 0,
+        taxaCentavos: 0,
+        expiraEm: null,
+        metodo: 'gratuito' as const,
+        linkPagamento: null,
+        pix: null,
+      };
+    }
 
     // ---- daqui para baixo, qualquer falha deixa a reserva expirar ----
     const clienteId = await this.asaas.garantirCliente({
@@ -198,32 +246,47 @@ export class CheckoutService {
     });
     if (!evento) throw new NotFoundException('Evento não encontrado.');
 
+    const preco = await this.precificar(evento.id, itens);
+
+    return {
+      ...preco,
+      // a tela só mostra a linha "taxa de serviço" quando é o comprador
+      // que a paga; nos outros modelos ela não é assunto dele
+      taxaModelo: evento.taxa_modelo,
+      // o que a tela precisa para não oferecer uma compra impossível
+      minimoCentavos: MINIMO_COBRANCA_CENTAVOS,
+    };
+  }
+
+  /**
+   * Quanto custa um carrinho. Usado pela prévia e pela compra, para as
+   * duas nunca discordarem — quem calcula, nos dois casos, é
+   * `fn_precifica_pedido`, no banco.
+   */
+  private async precificar(eventoId: string, itens: ItemDaCompra[]) {
     const lotes = await this.prisma.lotes.findMany({
       where: {
         id: { in: (itens ?? []).map((i) => i.loteId).filter(Boolean) },
-        evento_id: evento.id,
+        evento_id: eventoId,
         ativo: true,
       },
       select: { id: true, preco_centavos: true },
     });
-    const preco = new Map(lotes.map((l) => [l.id, l.preco_centavos]));
+    const porLote = new Map(lotes.map((l) => [l.id, l.preco_centavos]));
 
     const subtotal = (itens ?? []).reduce(
-      (soma, i) => soma + (preco.get(i.loteId) ?? 0) * (Number(i.quantidade) || 0),
+      (soma, i) => soma + (porLote.get(i.loteId) ?? 0) * (Number(i.quantidade) || 0),
       0,
     );
 
     const [calculo] = await this.prisma.$queryRaw<
       { total_centavos: number; taxa_centavos: number }[]
-    >`SELECT * FROM fn_precifica_pedido(${evento.id}::uuid, ${subtotal})`;
+    >`SELECT * FROM fn_precifica_pedido(${eventoId}::uuid, ${subtotal})`;
 
     return {
       subtotalCentavos: subtotal,
       taxaCentavos: calculo.taxa_centavos,
       totalCentavos: calculo.total_centavos,
-      // a tela só mostra a linha "taxa de serviço" quando é o comprador
-      // que a paga; nos outros modelos ela não é assunto dele
-      taxaModelo: evento.taxa_modelo,
     };
   }
 
@@ -336,6 +399,11 @@ export class CheckoutService {
 
 function exigir(cond: unknown, mensagem: string): asserts cond {
   if (!cond) throw new BadRequestException(mensagem);
+}
+
+/** `5,00` — só para montar mensagem; dinheiro trafega em centavos. */
+function reais(centavos: number): string {
+  return (centavos / 100).toFixed(2).replace('.', ',');
 }
 
 /** Data de hoje em São Paulo — o vencimento que o gateway recebe. */

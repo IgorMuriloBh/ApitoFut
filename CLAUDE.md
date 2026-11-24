@@ -64,6 +64,7 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
   frestas do checkout público e do webhook (RF035 fase 2)
 - `db/25-checkout-pix.sql` — página do pedido, expiração que devolve as
   cobranças e pagamento fora de hora
+- `db/26-ingresso-gratuito.sql` — entrada franca não passa por gateway
 
 ## Banco de dados
 
@@ -364,6 +365,19 @@ do código — é o único lugar que resiste a duas requisições simultâneas:
   o dinheiro entrar assim mesmo, `fn_aplica_pagamento` **não finge que
   está tudo bem**: escreve no pedido que houve pagamento após a
   expiração e que precisa de estorno
+- **Lote pago custa no mínimo R$ 5,00, ou é R$ 0,00.** O Asaas recusa
+  cobrança menor que isso — descoberto na primeira compra em produção,
+  não na documentação. A recusa acontece ao **criar o lote**: deixar
+  para o checkout faz o comprador levar um erro de gateway com a vaga
+  já reservada. O mínimo mora em `asaas.ts`, porque é regra do gateway
+- **Entrada franca não aciona o gateway.** Total zero não é cobrança;
+  o pedido nasce pago e o ingresso sai na hora. Quem garante que isso
+  não vira ingresso pago de graça é o banco:
+  `fn_confirma_pedido_gratuito` recusa total diferente de zero
+- **O CPF é pedido mesmo na entrada franca** — decisão do organizador,
+  não do gateway: a base de quem entrou no evento é dele. A tela troca
+  a justificativa, porque "exigido pelo meio de pagamento" seria mentira
+  num ingresso de graça
 - **Na venda de balcão a taxa é zero.** A plataforma recebe e repassa
   (decisão do cliente), mas isso vale para a venda online, que passa por
   gateway. No balcão o organizador recebeu em dinheiro e a plataforma não

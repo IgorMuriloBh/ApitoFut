@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { urlPublica } from '../arquivos/armazenamento';
 import { traduzirErroDoBanco } from '../erros-do-banco';
 import { formatar, gerarCodigo } from './codigo';
+import { MINIMO_COBRANCA_CENTAVOS } from './asaas';
 
 /**
  * Eventos e ingressos (RF035) — o lado do organizador.
@@ -295,6 +296,17 @@ export class EventosService {
     exigir(
       Number.isInteger(dados.precoCentavos) && dados.precoCentavos >= 0,
       'Preço deve ser um número inteiro de centavos, zero ou mais.',
+    );
+    // Ou é de graça, ou passa do mínimo do gateway. O meio-termo é um
+    // lote que o organizador consegue criar e ninguém consegue comprar:
+    // o erro só apareceria no fim do checkout, para o comprador, com a
+    // vaga já reservada. Aconteceu em produção — ver migration 26.
+    exigir(
+      dados.precoCentavos === 0 ||
+        dados.precoCentavos >= MINIMO_COBRANCA_CENTAVOS,
+      `Um lote pago precisa custar pelo menos R$ ${(MINIMO_COBRANCA_CENTAVOS / 100)
+        .toFixed(2)
+        .replace('.', ',')} — é o mínimo que o meio de pagamento aceita cobrar. Para entrada gratuita, use R$ 0,00.`,
     );
     exigir(
       dados.quantidade == null ||

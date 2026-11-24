@@ -32,6 +32,8 @@ interface Previa {
   taxaCentavos: number;
   totalCentavos: number;
   taxaModelo: string;
+  /** Menor valor que o meio de pagamento aceita cobrar. */
+  minimoCentavos: number;
 }
 
 const moeda = (c: number) =>
@@ -77,6 +79,24 @@ export function Comprar({ slug, lotes }: { slug: string; lotes: Lote[] }) {
   );
 
   const total = itens.reduce((s, i) => s + i.quantidade, 0);
+
+  /**
+   * Entrada franca: não há o que cobrar, então a forma de pagamento sai
+   * de cena. O CPF FICA: a base de quem entrou é do organizador, e
+   * ingresso de cortesia conta tanto quanto o vendido.
+   */
+  const gratuito = previa !== null && previa.totalCentavos === 0;
+
+  /**
+   * Abaixo do mínimo do gateway. Com a regra de criação de lote isto
+   * não deveria acontecer — mas lote criado antes dela continua no
+   * banco, e é melhor avisar aqui do que deixar o comprador descobrir
+   * no fim, com a vaga já reservada.
+   */
+  const abaixoDoMinimo =
+    previa !== null &&
+    previa.totalCentavos > 0 &&
+    previa.totalCentavos < previa.minimoCentavos;
 
   /** Pergunta o preço ao servidor; nada é somado nesta tela. */
   const calcular = useCallback(async () => {
@@ -255,7 +275,15 @@ export function Comprar({ slug, lotes }: { slug: string; lotes: Lote[] }) {
               autoComplete="email"
             />
           </Campo>
-          <Campo rotulo="CPF" obrigatorio dica="Exigido pelo meio de pagamento.">
+          <Campo
+            rotulo="CPF"
+            obrigatorio
+            dica={
+              gratuito
+                ? 'Usado no cadastro de quem entra no evento.'
+                : 'Exigido pelo meio de pagamento.'
+            }
+          >
             <input
               inputMode="numeric"
               value={dados.documento}
@@ -273,6 +301,7 @@ export function Comprar({ slug, lotes }: { slug: string; lotes: Lote[] }) {
             />
           </Campo>
 
+          {!gratuito && (
           <fieldset style={{ border: 0, padding: 0, margin: '0 0 14px' }}>
             <legend style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
               Como quer pagar?
@@ -294,13 +323,22 @@ export function Comprar({ slug, lotes }: { slug: string; lotes: Lote[] }) {
               <b>Cartão de crédito</b> — você é levado à página segura do Asaas
             </label>
           </fieldset>
+          )}
+
+          {abaixoDoMinimo && (
+            <p className="aviso">
+              O meio de pagamento não cobra menos de{' '}
+              {moeda(previa.minimoCentavos)}. Leve mais ingressos ou fale com a
+              organização.
+            </p>
+          )}
 
           {erro && <p className="aviso">{erro}</p>}
 
           <button
             type="button"
             onClick={comprar}
-            disabled={enviando || !preenchido || !previa}
+            disabled={enviando || !preenchido || !previa || abaixoDoMinimo}
             style={{
               width: '100%',
               padding: '14px 16px',
@@ -310,20 +348,23 @@ export function Comprar({ slug, lotes }: { slug: string; lotes: Lote[] }) {
               border: 0,
               color: '#fff',
               background: 'var(--cor)',
-              opacity: enviando || !preenchido || !previa ? 0.5 : 1,
+              opacity: enviando || !preenchido || !previa || abaixoDoMinimo ? 0.5 : 1,
               cursor: enviando || !preenchido ? 'not-allowed' : 'pointer',
             }}
           >
             {enviando
               ? 'Gerando…'
-              : previa
-                ? `Pagar ${moeda(previa.totalCentavos)}`
-                : 'Pagar'}
+              : gratuito
+                ? 'Confirmar ingresso'
+                : previa
+                  ? `Pagar ${moeda(previa.totalCentavos)}`
+                  : 'Pagar'}
           </button>
 
           <p style={{ fontSize: 12, color: 'var(--tinta2)', marginTop: 8 }}>
-            Seu ingresso fica reservado por 30 minutos enquanto o pagamento
-            não cai.
+            {gratuito
+              ? 'Entrada gratuita: o ingresso sai na hora, sem pagamento.'
+              : 'Seu ingresso fica reservado por 30 minutos enquanto o pagamento não cai.'}
           </p>
         </div>
       )}
