@@ -730,6 +730,14 @@ banco e na tela de equipe.
 
 ### As telas (fase 1b)
 
+> **Validado em produção em 24/11/2026**, com celular de verdade e não só
+> com a suíte: evento publicado, ingresso emitido no balcão, QR lido pela
+> câmera no portão (duas leituras, 10:53:11 e 10:54:43), baixa registrada,
+> e a segunda leitura do mesmo código recusada com **"já entrou hoje"** e a
+> hora da primeira. A página do portador passa a avisar sozinha que a
+> entrada já foi registrada — a discussão se resolve antes da fila.
+
+
 **Painel.** `Eventos` lista e cria; `Evento` é o detalhe — lotes,
 bilheteria de balcão, pedidos e publicação; `Portao` é o leitor. São telas
 da **conta**, numa seção própria do menu global ("Eventos e ingressos"),
