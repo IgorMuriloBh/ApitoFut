@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Comprar } from './Comprar';
 
 /**
  * Página pública do evento (RF035).
@@ -43,6 +44,19 @@ interface EventoPublico {
   imagemUrl: string | null;
   competicao: { nome: string; slug: string } | null;
   lotes: Lote[];
+}
+
+/** Há venda on-line configurada nesta instalação? */
+async function vendaOnline(): Promise<boolean> {
+  try {
+    const r = await fetch(`${API}/checkout/disponivel`, { cache: 'no-store' });
+    if (!r.ok) return false;
+    return ((await r.json()) as { disponivel: boolean }).disponivel;
+  } catch {
+    // sem gateway respondendo, a página continua: ela vale por si,
+    // e o ingresso pode estar sendo vendido no balcão
+    return false;
+  }
 }
 
 async function buscar(slug: string): Promise<EventoPublico> {
@@ -94,9 +108,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PaginaDoEvento({ params }: Props) {
   const { slug } = await params;
-  const e = await buscar(slug);
+  const [e, podeComprar] = await Promise.all([buscar(slug), vendaOnline()]);
 
   const umDia = e.dataInicio === e.dataFim;
+  const vendendo = podeComprar && e.status === 'publicado' && e.lotes.length > 0;
   const encerrado = e.status === 'encerrado';
 
   return (
@@ -159,6 +174,9 @@ export default async function PaginaDoEvento({ params }: Props) {
           </div>
         )}
 
+        {vendendo && <Comprar slug={e.slug} lotes={e.lotes} />}
+
+        {!vendendo && (
         <div className="cartao">
           <h2>Ingressos</h2>
 
@@ -208,12 +226,13 @@ export default async function PaginaDoEvento({ params }: Props) {
               isso, quem emite ingresso é o organizador. */}
           {!encerrado && e.lotes.length > 0 && (
             <p className="aviso" style={{ marginTop: 14 }}>
-              A compra pela internet ainda não está disponível neste evento.
+              A compra pela internet não está disponível neste evento.
               Procure a organização para garantir o seu ingresso — ela emite
               na hora e envia o seu código com QR.
             </p>
           )}
         </div>
+        )}
 
         <div className="cartao">
           <h2>Como funciona a entrada</h2>

@@ -2,15 +2,18 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Headers,
   HttpCode,
   Logger,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
+import QRCode from 'qrcode-svg';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckoutService, type Compra } from './checkout.service';
 
@@ -37,6 +40,16 @@ export class CheckoutController {
     return { disponivel: this.checkout.disponivel() };
   }
 
+  /** Quanto fica, antes de comprar. Sem efeito nenhum no banco. */
+  @Post('eventos/:slug/preview')
+  @HttpCode(200)
+  simular(
+    @Param('slug') slug: string,
+    @Body() corpo: { itens?: { loteId: string; quantidade: number }[] },
+  ) {
+    return this.checkout.simular(slug, corpo?.itens ?? []);
+  }
+
   @Post('eventos/:slug/checkout')
   comprar(@Param('slug') slug: string, @Body() corpo: Compra) {
     return this.checkout.comprar(slug, corpo ?? ({} as Compra));
@@ -46,6 +59,40 @@ export class CheckoutController {
   @Get('pedidos/:pedidoId')
   situacao(@Param('pedidoId', ParseUUIDPipe) pedidoId: string) {
     return this.checkout.situacao(pedidoId);
+  }
+
+  /**
+   * O QR do Pix, desenhado a partir do "copia e cola".
+   *
+   * O gateway devolve uma imagem pronta, mas ela não é guardada: o
+   * payload é a única coisa que importa, e desenhar na hora evita
+   * carregar um PNG em base64 dentro do banco. Some assim que o pedido
+   * deixa de aguardar — QR de pedido já pago convida a pagar de novo.
+   */
+  @Get('pedidos/:pedidoId/pix.svg')
+  @Header('Content-Type', 'image/svg+xml')
+  @Header('Cache-Control', 'no-store')
+  async pix(@Param('pedidoId', ParseUUIDPipe) pedidoId: string) {
+    const { pixCopiaECola } = await this.checkout.situacao(pedidoId);
+    if (!pixCopiaECola) throw new NotFoundException('Sem Pix para este pedido.');
+
+    return new QRCode({
+      content: pixCopiaECola,
+      padding: 1,
+      width: 300,
+      height: 300,
+      color: '#000000',
+      background: '#ffffff',
+      // `typeNumber: 0` = escolher o tamanho pelo conteúdo. O padrão da
+      // biblioteca é um tamanho FIXO, e o payload do Pix (bem maior que
+      // uma URL) estourava com "code length overflow" — erro 500 na cara
+      // de quem acabou de comprar
+      typeNumber: 0,
+      // `M` e não `H`: o payload já é longo, e correção alta multiplica
+      // os módulos até o QR virar uma mancha cinza na tela do celular.
+      // `M` é o que os aplicativos de banco leem sem reclamar
+      ecl: 'M',
+    }).svg();
   }
 }
 

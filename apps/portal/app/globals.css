@@ -156,7 +156,12 @@ textarea:focus {
   outline: 2px solid color-mix(in srgb, var(--cor, #16a34a) 40%, transparent);
   border-color: var(--cor, #16a34a);
 }
-input[type='checkbox'] {
+/* A regra acima dá 100% de largura a todo input. Em caixa de marcar e
+   em botão de rádio isso empurra o rótulo para a linha de baixo e deixa
+   a bolinha centralizada no vazio — foi o que aconteceu na escolha de
+   forma de pagamento, o primeiro rádio do portal. */
+input[type='checkbox'],
+input[type='radio'] {
   width: auto;
   accent-color: var(--cor, #16a34a);
 }

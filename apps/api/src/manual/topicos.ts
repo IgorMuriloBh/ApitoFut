@@ -579,12 +579,14 @@ export const TOPICOS: TopicoDoManual[] = [
       'Evento é da sua conta, não de um campeonato: pode existir sozinho, e o vínculo com a competição é opcional.',
       'Depois de criar o evento, crie os lotes. Cada lote tem preço, limite de quantidade e, se quiser, um dia específico — lote sem dia vale todos os dias do evento, com uma entrada por dia.',
       'Sem lote ativo o evento não publica: a página pública ficaria sem nada à venda.',
-      'Enquanto não houver pagamento on-line, quem emite é você, em "Emitir ingresso (balcão)". Serve para venda recebida em dinheiro e para cortesia. Cada ingresso vira um código com QR; mande o link ao comprador.',
+      'Há dois caminhos de venda. Pela internet, o comprador paga com Pix ou cartão na página do evento e recebe o ingresso sozinho. No balcão, quem emite é você, em "Emitir ingresso (balcão)": serve para dinheiro na mão e para cortesia. Cada ingresso vira um código com QR.',
+      'A taxa da plataforma só existe na venda pela internet. Em "Taxa da venda on-line" você escolhe quem paga: o comprador (preço + taxa), você (recebe o preço menos a taxa), ou ninguém. No balcão nunca há taxa — a plataforma não intermediou nada.',
       'Informe o **estado** do evento. É dele que sai o fuso em que o portão decide que dia é hoje — sem ele o sistema usa Brasília, o que erra por uma hora no Acre, Amazonas, Rondônia, Roraima e no Mato Grosso.',
-      'Cancelar um pedido invalida os ingressos dele na hora, e o portão passa a recusá-los.',
+      'Cancelar um pedido invalida os ingressos dele na hora, e o portão passa a recusá-los. O mesmo vale para estorno: quem recebeu o dinheiro de volta não entra.',
+      'Na venda pela internet o ingresso fica reservado por 30 minutos enquanto o pagamento não cai. Passou disso, ele volta para a venda sozinho.',
     ],
     palavras:
-      'evento ingresso ticket bilhete venda vender bilheteria lote preco cortesia festival entrada portaria arrecadacao',
+      'evento ingresso ticket bilhete venda vender bilheteria lote preco cortesia festival entrada portaria arrecadacao taxa pix cartao pagamento online',
     onde: ['painel'],
     destino: { painel: { tela: 'eventos' } },
     acao: 'Ir para Eventos',
@@ -619,6 +621,22 @@ export const TOPICOS: TopicoDoManual[] = [
     ],
     palavras:
       'meu ingresso comprei qr code print perdi link entrada como entrar codigo wallet carteira celular',
+    onde: ['portal'],
+  },
+
+  {
+    id: 'comprar-ingresso',
+    titulo: 'Comprar ingresso pela internet',
+    resumo: 'Pix ou cartão, direto na página do evento.',
+    corpo: [
+      'Na página do evento, escolha quantos ingressos quer e preencha seus dados. O CPF é exigido pelo meio de pagamento.',
+      'No Pix, o código aparece na hora. Pague pelo aplicativo do seu banco e **não feche a página** — ela avisa sozinha quando o pagamento cai, e aí mostra o seu ingresso.',
+      'No cartão, você é levado à página segura do meio de pagamento. Os dados do cartão não passam pela página do evento.',
+      'O seu ingresso fica reservado por 30 minutos. Se o pagamento não cair nesse prazo, ele volta para a venda — e você pode comprar de novo, se ainda houver.',
+      'Deu tudo certo? Guarde o link do ingresso e tire um print do QR: na entrada pode não haver sinal de internet.',
+    ],
+    palavras:
+      'comprar ingresso pix cartao pagar pagamento online reserva expirou nao caiu comprei e nao recebi quanto tempo taxa de servico',
     onde: ['portal'],
   },
 

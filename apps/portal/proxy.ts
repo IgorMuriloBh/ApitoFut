@@ -79,9 +79,9 @@ async function slugDoHost(host: string): Promise<string | null> {
  * `/{slug}/api/...` e deixava de casar com o rewrite do next.config — o
  * que derrubava, em silêncio, o feed ao vivo e a área da equipe. O mesmo
  * valia para a validação da carteirinha (`/c/...`), e passaria a valer
- * para o evento (`/e/...`) e o ingresso (`/i/...`).
+ * para o evento (`/e/...`), o ingresso (`/i/...`) e o pedido (`/p/...`).
  */
-const GLOBAIS = ['/api', '/ajuda', '/c/', '/e/', '/i/'];
+const GLOBAIS = ['/api', '/ajuda', '/c/', '/e/', '/i/', '/p/'];
 
 function ehGlobal(caminho: string): boolean {
   return GLOBAIS.some(

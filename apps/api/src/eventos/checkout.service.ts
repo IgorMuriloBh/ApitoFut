@@ -35,6 +35,22 @@ import { documentoValido, normalizarDocumento } from './documento';
 /** Quantas vezes tentar de novo quando o código sorteado já existe. */
 const TENTATIVAS = 5;
 
+/**
+ * Por que a expiração vem como número, e não como data.
+ *
+ * `timestamptz` devolvido por função em consulta crua chega ao
+ * JavaScript **sem o fuso**: o banco guarda 15:32-03 e o cliente monta
+ * um `Date` de 15:32Z — três horas a menos. O efeito visível era a
+ * página do comprador anunciar "o tempo da reserva acabou" no segundo
+ * seguinte à compra, com o Pix recém-gerado na tela.
+ *
+ * Pedir o instante em milissegundos desde a época tira o fuso da
+ * conversa: é um número, e número não tem ambiguidade.
+ */
+/* A conversão aparece escrita nas duas consultas, e não numa constante:
+   `$queryRaw` não interpola pedaço de SQL — o que entra por `${}` vira
+   parâmetro, não texto da consulta. */
+
 export interface ItemDaCompra {
   loteId: string;
   quantidade: number;
@@ -54,8 +70,12 @@ interface LinhaDoPedido {
   pedido_id: string;
   total_centavos: number;
   taxa_centavos: number;
-  expira_em: Date;
   codigos: string[];
+  /**
+   * Instante da expiração em milissegundos, convertido pelo banco.
+   * Ver o comentário sobre fuso acima.
+   */
+  expira_ms: number;
 }
 
 interface LinhaDaSituacao {
@@ -65,7 +85,7 @@ interface LinhaDaSituacao {
   metodo: string | null;
   pix_payload: string | null;
   link_pagamento: string | null;
-  expira_em: Date | null;
+  expira_ms: number | null;
   evento_nome: string;
   evento_slug: string;
   codigos: string[] | null;
@@ -153,7 +173,7 @@ export class CheckoutService {
       pedidoId: pedido.pedido_id,
       totalCentavos: pedido.total_centavos,
       taxaCentavos: pedido.taxa_centavos,
-      expiraEm: pedido.expira_em.toISOString(),
+      expiraEm: new Date(pedido.expira_ms).toISOString(),
       metodo: compra.metodo,
       // o cartão é pago na página do Asaas: número de cartão não passa
       // por aqui nem pela nossa página (ver `asaas.ts`)
@@ -162,10 +182,58 @@ export class CheckoutService {
     };
   }
 
+  /**
+   * Quanto vai custar, antes de comprar.
+   *
+   * A tela precisa dizer "você vai pagar R$ 110,00" enquanto a pessoa
+   * ainda escolhe a quantidade. Quem calcula é o banco, de novo: a
+   * parte FIXA da taxa é por pedido, não por ingresso, então não dá
+   * para exibir um preço por lote e somar — o número só existe depois
+   * de saber o carrinho inteiro.
+   */
+  async simular(slug: string, itens: ItemDaCompra[]) {
+    const evento = await this.prisma.eventos.findFirst({
+      where: { slug, excluido_em: null },
+      select: { id: true, taxa_modelo: true },
+    });
+    if (!evento) throw new NotFoundException('Evento não encontrado.');
+
+    const lotes = await this.prisma.lotes.findMany({
+      where: {
+        id: { in: (itens ?? []).map((i) => i.loteId).filter(Boolean) },
+        evento_id: evento.id,
+        ativo: true,
+      },
+      select: { id: true, preco_centavos: true },
+    });
+    const preco = new Map(lotes.map((l) => [l.id, l.preco_centavos]));
+
+    const subtotal = (itens ?? []).reduce(
+      (soma, i) => soma + (preco.get(i.loteId) ?? 0) * (Number(i.quantidade) || 0),
+      0,
+    );
+
+    const [calculo] = await this.prisma.$queryRaw<
+      { total_centavos: number; taxa_centavos: number }[]
+    >`SELECT * FROM fn_precifica_pedido(${evento.id}::uuid, ${subtotal})`;
+
+    return {
+      subtotalCentavos: subtotal,
+      taxaCentavos: calculo.taxa_centavos,
+      totalCentavos: calculo.total_centavos,
+      // a tela só mostra a linha "taxa de serviço" quando é o comprador
+      // que a paga; nos outros modelos ela não é assunto dele
+      taxaModelo: evento.taxa_modelo,
+    };
+  }
+
   /** A página de acompanhamento de quem comprou. */
   async situacao(pedidoId: string) {
     const [linha] = await this.prisma.$queryRaw<LinhaDaSituacao[]>`
-      SELECT * FROM fn_situacao_do_pedido(${pedidoId}::uuid)`;
+      SELECT status, total_centavos, taxa_centavos, metodo, pix_payload,
+             link_pagamento, evento_nome, evento_slug, codigos,
+             (extract(epoch from expira_em) * 1000)::float8 AS expira_ms
+        FROM fn_situacao_do_pedido(${pedidoId}::uuid)`;
     if (!linha) throw new NotFoundException('Pedido não encontrado.');
 
     return {
@@ -175,7 +243,7 @@ export class CheckoutService {
       metodo: linha.metodo,
       linkPagamento: linha.link_pagamento,
       pixCopiaECola: linha.pix_payload,
-      expiraEm: linha.expira_em?.toISOString() ?? null,
+      expiraEm: linha.expira_ms ? new Date(linha.expira_ms).toISOString() : null,
       evento: { nome: linha.evento_nome, slug: linha.evento_slug },
       // só depois de pago: antes disso o ingresso existe como reserva,
       // mas não é de ninguém até o dinheiro entrar
@@ -208,7 +276,9 @@ export class CheckoutService {
       const codigos = Array.from({ length: quantidade }, () => gerarCodigo());
       try {
         const [linha] = await this.prisma.$queryRaw<LinhaDoPedido[]>`
-          SELECT * FROM fn_criar_pedido_online(
+          SELECT pedido_id, total_centavos, taxa_centavos, codigos,
+                 (extract(epoch from expira_em) * 1000)::float8 AS expira_ms
+            FROM fn_criar_pedido_online(
             ${eventoId}::uuid,
             ${JSON.stringify(itens)}::jsonb,
             ${codigos}::text[],

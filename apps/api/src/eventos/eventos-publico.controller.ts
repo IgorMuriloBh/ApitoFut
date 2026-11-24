@@ -80,6 +80,10 @@ export class EventosPublicoController {
       cidade: evento.cidade,
       estado: evento.estado,
       imagemUrl: urlPublica(evento.imagem_url),
+      // a tela do comprador precisa saber se há linha de taxa a exibir;
+      // o percentual em si não sai daqui — é contrato comercial entre a
+      // plataforma e o organizador, não assunto de quem compra
+      taxaModelo: evento.taxa_modelo,
       competicao: evento.competicoes
         ? { nome: evento.competicoes.nome, slug: evento.competicoes.slug }
         : null,
@@ -154,6 +158,11 @@ export class EventosPublicoController {
       height: 320,
       color: '#000000',
       background: '#ffffff',
+      // escolher o tamanho pelo conteúdo. Com o padrão fixo da
+      // biblioteca, um `PORTAL_URL` longo faria o QR do INGRESSO
+      // estourar — e um ingresso sem QR na porta do evento é o pior
+      // momento possível para descobrir isso
+      typeNumber: 0,
       // correção alta: este QR é lido de uma tela com brilho baixo, de
       // longe, por uma câmera que pode estar suja
       ecl: 'H',

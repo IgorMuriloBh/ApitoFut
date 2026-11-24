@@ -462,9 +462,10 @@ ETAPAS = [
     },
     {
         "n": 16,
-        "titulo": "Evento com venda de ingresso",
-        "objetivo": "Emitir ingresso com QR e queimá-lo no portão — inclusive "
-                    "provando que o mesmo ingresso não entra duas vezes no mesmo dia.",
+        "titulo": "Evento, venda de ingresso e pagamento",
+        "objetivo": "Vender ingresso pelos dois caminhos (balcão e internet), "
+                    "receber por Pix e queimar o QR no portão — provando que o "
+                    "mesmo ingresso não entra duas vezes no mesmo dia.",
         "passos": [
             ("No menu da conta, abra <b>Eventos</b> e clique em “Novo evento”. "
              "Crie um evento de <b>dois dias</b>, começando hoje. Preencha o "
@@ -512,6 +513,33 @@ ETAPAS = [
             ("Volte ao evento, cancele o pedido daquele comprador e leia o QR "
              "do outro ingresso dele.",
              "<b>Recusado</b>: cancelar o pedido invalida os ingressos na hora."),
+            ("Em <b>Taxa da venda on-line</b>, escolha quem paga a taxa.",
+             "Três opções, com a frase do que cada uma faz. A taxa em vigor "
+             "aparece embaixo — 10% é o padrão da plataforma. Se você é ADM "
+             "do sistema, há um bloco a mais para ajustar o percentual só "
+             "deste evento."),
+            ("Abra a página pública do evento e compre <b>2 ingressos</b> "
+             "com Pix, usando um CPF de verdade (o seu).",
+             "O total soma a taxa à vista: “2 ingressos R$ X · Taxa de "
+             "serviço R$ Y · <b>Total</b>”. Quem calcula é o servidor, não a "
+             "tela."),
+            ("Tente comprar sem informar o CPF.",
+             "<b>Recusado</b> antes de qualquer coisa acontecer, e sem "
+             "prender ingresso: o meio de pagamento exige documento, e "
+             "descobrir isso no meio do caminho tiraria o ingresso do "
+             "estoque à toa."),
+            ("Na tela do pedido, leia o QR do Pix com o aplicativo do seu "
+             "banco e pague.",
+             "Aparece a contagem regressiva da reserva (30 minutos). Depois "
+             "de pagar, <b>não recarregue</b>: a página vira sozinha para "
+             "“Pagamento confirmado” e mostra o link do ingresso."),
+            ("Abra o ingresso e leia o QR dele no <b>Portão</b>.",
+             "Entrada liberada, igual ao ingresso de balcão. Para o portão "
+             "não existe diferença entre o que foi vendido na internet e o "
+             "que foi vendido na mão."),
+            ("No painel, veja o pedido na lista.",
+             "Mostra o total, a taxa e o <b>repasse</b> — quanto é seu. "
+             "Pedido de balcão não tem taxa; o da internet tem."),
             ("Entre com um usuário <b>mesário</b> (etapa 1 da sua equipe) e "
              "olhe o menu.",
              "Ele vê <b>Portão</b> e não vê <b>Eventos</b>: opera a entrada sem "

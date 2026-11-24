@@ -536,6 +536,10 @@ apps/portal/       Next.js 16 (App Router) — portal público SSR
   app/e/[slug]/      página pública do evento (RF035); indexável
   app/i/[codigo]/    o ingresso do comprador: QR grande, noindex. Sem e-mail,
                      documento ou valor — quem tem o link abre
+  app/e/[slug]/Comprar.tsx  a compra (RF035 fase 2). NÃO SOMA NADA: pergunta
+                     o total ao /preview, porque a taxa fixa é por pedido
+  app/p/[pedidoId]/  acompanhamento da compra; pergunta de 4 em 4 s se o
+                     pagamento caiu e para assim que o pedido se resolve
   AoVivo.tsx         client component: EventSource no feed SSE + router.refresh()
 ```
 

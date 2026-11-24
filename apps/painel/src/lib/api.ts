@@ -853,8 +853,22 @@ export interface LoteDoPainel {
   restantes: number | null;
 }
 
+/** A taxa em vigor para o evento, e de onde ela veio. */
+export interface TaxaDoEvento {
+  /** Decisão do ORGANIZADOR: quem paga. */
+  modelo: 'comprador' | 'organizador' | 'isento';
+  /** Em vigor — o ajuste do evento, ou o padrão da plataforma. */
+  percentual: number;
+  fixaCentavos: number;
+  /** Verdadeiro quando este evento tem ajuste próprio. */
+  ajustadoNoEvento: boolean;
+  padraoPercentual: number;
+  padraoFixaCentavos: number;
+}
+
 export interface DetalheDoEvento extends ResumoDoEvento {
   descricao: string | null;
+  taxa: TaxaDoEvento;
   lotes: LoteDoPainel[];
   arrecadadoCentavos: number;
 }
@@ -1038,10 +1052,25 @@ export const api = {
         cidade: string | null;
         estado: string | null;
         status: string;
+        taxaModelo: string;
       }>,
     ) =>
       requisitar<ResumoDoEvento>(`/painel/eventos/${eventoId}`, {
         metodo: 'PATCH',
+        corpo: dados,
+      }),
+
+    /**
+     * O ajuste comercial da taxa — só o ADM da plataforma. Quem recusa
+     * é o banco, não a tela: `fn_admin_define_taxa` relê o perfil.
+     * `null` nos dois campos devolve o evento ao padrão.
+     */
+    definirTaxa: (
+      eventoId: string,
+      dados: { percentual: number | null; fixaCentavos: number | null },
+    ) =>
+      requisitar<{ ajustado: boolean }>(`/painel/eventos/${eventoId}/taxa`, {
+        metodo: 'POST',
         corpo: dados,
       }),
 

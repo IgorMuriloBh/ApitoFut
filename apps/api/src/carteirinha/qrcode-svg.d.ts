@@ -13,6 +13,12 @@ declare module 'qrcode-svg' {
     background?: string;
     /** Correção de erro: L (7%) a H (30%). */
     ecl?: 'L' | 'M' | 'Q' | 'H';
+    /**
+     * Tamanho do QR, de 1 a 40. **0 escolhe pelo conteúdo** — e é o que
+     * se quer quase sempre: o padrão da biblioteca é fixo e estoura com
+     * `code length overflow` em conteúdo longo, como o payload do Pix.
+     */
+    typeNumber?: number;
     join?: boolean;
     container?: 'svg' | 'svg-viewbox' | 'g' | 'none';
   }

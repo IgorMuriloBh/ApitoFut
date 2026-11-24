@@ -898,13 +898,61 @@ caminho feliz com cobrança real foi percorrido à mão contra o sandbox em
 webhook, reenvio recusado, estorno cancelando os ingressos, reserva
 expirando e apagando a cobrança.
 
+### As telas da venda on-line
+
+**Portal.** O componente de compra fica na própria página do evento, e só
+aparece quando há gateway configurado — sem ele a página volta a dizer que
+a venda é com a organização. `/p/{pedidoId}` é o acompanhamento: o uuid do
+pedido é a credencial, como o código do ingresso.
+
+**A tela não soma nada.** A cada mudança de quantidade ela pergunta ao
+`/preview` quanto fica, porque a parte fixa da taxa é por PEDIDO e não por
+ingresso — um total somado no navegador divergiria do que o banco grava.
+Mostrar um valor e cobrar outro é o pior defeito possível numa bilheteria.
+A linha "taxa de serviço" só aparece no modelo `comprador`; nos outros ela
+não é assunto de quem compra.
+
+A página do pedido **se atualiza sozinha** de quatro em quatro segundos
+enquanto o pedido aguarda, e para de perguntar assim que ele se resolve.
+Pedir "atualize a página" é empurrar para o usuário um trabalho que o
+sistema sabe fazer.
+
+**Painel.** O cartão "Taxa da venda on-line" tem os três modelos (decisão
+do organizador) e, para o `superadmin`, o ajuste de percentual e valor
+fixo deste evento. O rodapé diz de onde veio a taxa em vigor — padrão da
+plataforma ou ajuste próprio. O que já foi vendido não muda: cada pedido
+guarda a taxa do dia, e isso se vê na lista de pedidos, que mostra total,
+taxa e repasse.
+
+### Quatro defeitos que a tela entregou
+
+Nenhum apareceu em teste automatizado; todos apareceram olhando:
+
+1. **Os botões de `−` e `+` saíam vazios.** O portal estiliza `button`
+   com fundo verde e **texto branco**; trocar só o fundo deixou os sinais
+   brancos sobre branco.
+2. **Os rádios de forma de pagamento saíam soltos acima do rótulo.** O
+   `globals.css` dava `width: 100%` a todo `input` e abria exceção só
+   para `checkbox` — o primeiro rádio do portal apareceu agora. Corrigido
+   na folha, não na tela, porque vale para qualquer rádio futuro.
+3. **O QR do Pix respondia 500.** `qrcode-svg` usa um tamanho fixo de QR
+   por padrão, e o payload do Pix é muito maior que uma URL:
+   `code length overflow`. Passou a escolher o tamanho pelo conteúdo —
+   e o QR do **ingresso** ganhou o mesmo ajuste, porque um `PORTAL_URL`
+   longo o quebraria na porta do evento.
+4. **A reserva nascia "vencida".** `timestamptz` devolvido por função em
+   consulta crua chega ao JavaScript **sem o fuso**: o banco guardava
+   15:32−03 e a API respondia 15:32Z, três horas a menos. A página
+   anunciava "o tempo da reserva acabou" com o Pix recém-gerado na tela.
+   Agora o instante vem do banco em milissegundos — número não tem fuso.
+
 ### O que falta (fases seguintes)
 
 | fase | o que entra | depende de |
 |---|---|---|
 | **2 — feito** | modelo de taxa, reserva com prazo, frestas do checkout e do webhook (migration 24) | — |
 | **2 — feito** | cliente Asaas, checkout Pix e cartão, webhook com segredo e idempotência (migration 25) | — |
-| **2 — falta** | telas: checkout no portal, página do pedido, modelo de taxa no evento e ajuste do ADM | — |
+| **2 — feito** | telas: checkout no portal, página do pedido, taxa no painel | — |
 | 3 | Google Wallet (JWT RS256, sem dependência nova) e PDF do ingresso | conta Google Cloud |
 | 4 | Apple Wallet (`.pkpass`, assinado com `openssl smime` — já está na imagem), Stripe, venda de inscrição, ficha de consumo | certificado Apple Pass Type ID (Apple Developer Program, US$ 99/ano) |
 

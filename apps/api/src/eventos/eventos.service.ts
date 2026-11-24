@@ -189,9 +189,25 @@ export class EventosService {
         };
       });
 
+      // a taxa que vale HOJE para este evento: o ajuste do evento quando
+      // existe, o padrão da plataforma quando não. As duas pontas vão
+      // juntas para a tela poder dizer "ajustado" em vez de só mostrar
+      // um número que ninguém sabe de onde veio
+      const padrao = await tx.configuracao_plataforma.findFirst();
+      const taxa = {
+        modelo: evento.taxa_modelo,
+        percentual: Number(evento.taxa_percentual ?? padrao?.taxa_percentual ?? 0),
+        fixaCentavos: evento.taxa_fixa_centavos ?? padrao?.taxa_fixa_centavos ?? 0,
+        ajustadoNoEvento:
+          evento.taxa_percentual !== null || evento.taxa_fixa_centavos !== null,
+        padraoPercentual: Number(padrao?.taxa_percentual ?? 0),
+        padraoFixaCentavos: padrao?.taxa_fixa_centavos ?? 0,
+      };
+
       return {
         ...this.resumoDoEvento(evento),
         descricao: evento.descricao,
+        taxa,
         lotes,
         arrecadadoCentavos: lotes.reduce(
           (soma, l) => soma + l.precoCentavos * l.vendidos,
@@ -218,6 +234,18 @@ export class EventosService {
       if ('localNome' in dados) data.local_nome = (dados.localNome as string)?.trim() || null;
       if ('cidade' in dados) data.cidade = (dados.cidade as string)?.trim() || null;
       if ('estado' in dados) data.estado = (dados.estado as string)?.toUpperCase() || null;
+
+      // QUEM paga a taxa é decisão do organizador, por evento. QUANTO é
+      // ela não entra aqui: isso é contrato comercial, e muda por
+      // `fn_admin_define_taxa`, que confere o perfil no banco
+      if ('taxaModelo' in dados) {
+        const modelo = dados.taxaModelo as string;
+        exigir(
+          ['comprador', 'organizador', 'isento'].includes(modelo),
+          'Modelo de taxa inválido.',
+        );
+        data.taxa_modelo = modelo as never;
+      }
 
       if ('status' in dados) {
         const status = dados.status as string;
@@ -537,6 +565,37 @@ export class EventosService {
       });
       return { cancelado: true, ingressosCancelados: cancelados };
     });
+  }
+
+  /**
+   * O ajuste comercial da taxa — percentual e valor fixo.
+   *
+   * Não há guard de superadmin nesta rota de propósito: quem recusa é
+   * `fn_admin_define_taxa`, que relê o perfil do ator NO BANCO. Guard de
+   * controller protege a rota; a função protege o dado, inclusive de um
+   * caminho futuro que esqueça o guard. `null` nos dois campos devolve o
+   * evento ao padrão da plataforma.
+   */
+  definirTaxa(
+    organizacaoId: string,
+    usuarioId: string | undefined,
+    eventoId: string,
+    dados: { percentual?: number | null; fixaCentavos?: number | null },
+  ) {
+    return this.prisma
+      .comOrganizacao(organizacaoId, async (tx) => {
+        const evento = await tx.eventos.findUnique({ where: { id: eventoId } });
+        if (!evento || evento.excluido_em) {
+          throw new NotFoundException('Evento não encontrado.');
+        }
+
+        await tx.$executeRaw`
+          SELECT fn_admin_define_taxa(
+            ${usuarioId}::uuid, ${eventoId}::uuid,
+            ${dados.percentual ?? null}::numeric, ${dados.fixaCentavos ?? null}::int)`;
+        return { ajustado: true };
+      })
+      .catch(traduzirErroDoBanco);
   }
 
   // ------------------------------------------------------------ comuns

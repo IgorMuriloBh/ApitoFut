@@ -59,6 +59,24 @@ export class EventosController {
     return this.eventos.atualizar(req.sessao.org, eventoId, corpo ?? {});
   }
 
+  /**
+   * O ajuste comercial da taxa. Só o ADM da plataforma — e quem recusa é
+   * o banco, não este controller (ver `definirTaxa`).
+   */
+  @Post(':eventoId/taxa')
+  definirTaxa(
+    @Req() req: RequestAutenticado,
+    @Param('eventoId', ParseUUIDPipe) eventoId: string,
+    @Body() corpo: { percentual?: number | null; fixaCentavos?: number | null },
+  ) {
+    return this.eventos.definirTaxa(
+      req.sessao.org,
+      req.sessao.sub,
+      eventoId,
+      corpo ?? {},
+    );
+  }
+
   /** Cria ou altera um lote — o `id` no corpo decide qual dos dois. */
   @Post(':eventoId/lotes')
   salvarLote(

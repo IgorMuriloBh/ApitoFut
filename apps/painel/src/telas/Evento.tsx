@@ -23,7 +23,7 @@ import {
   moeda,
   textoDeCentavos,
 } from '../lib/dominio';
-import { podeEscrever } from '../lib/permissoes';
+import { perfilAtual, podeEscrever } from '../lib/permissoes';
 
 /**
  * Um evento: lotes, bilheteria de balcão e pedidos (RF035).
@@ -39,6 +39,46 @@ import { podeEscrever } from '../lib/permissoes';
  * A tela manda qual lote e quantos. Quanto custa é lido do banco pela API.
  * Fosse diferente, bastaria o DevTools aberto para comprar a R$ 0,01.
  */
+
+/** Como a taxa em vigor é dita em uma linha. */
+function descreverTaxa(t: { percentual: number; fixaCentavos: number }): string {
+  const partes: string[] = [];
+  // `7.5%` é como o JavaScript escreve; em português é `7,5%`
+  if (t.percentual > 0) {
+    partes.push(`${t.percentual.toLocaleString('pt-BR')}%`);
+  }
+  if (t.fixaCentavos > 0) partes.push(`${moeda(t.fixaCentavos)} por pedido`);
+  return partes.join(' + ') || 'sem taxa';
+}
+
+/**
+ * Os três modelos, com a frase que explica cada um.
+ *
+ * Nenhuma delas calcula nada: a conta de verdade mora no banco
+ * (`fn_precifica_pedido`), e repeti-la aqui criaria uma terceira versão
+ * da mesma fórmula para divergir das outras duas.
+ */
+const MODELOS: [
+  'comprador' | 'organizador' | 'isento',
+  string,
+  (taxa: string) => string,
+][] = [
+  [
+    'comprador',
+    'O comprador paga a taxa',
+    (t) => `O comprador paga o preço mais ${t}. Você recebe o preço cheio.`,
+  ],
+  [
+    'organizador',
+    'Eu absorvo a taxa',
+    (t) => `O comprador paga o preço de tabela. Você recebe o preço menos ${t}.`,
+  ],
+  [
+    'isento',
+    'Sem taxa neste evento',
+    () => 'A plataforma não cobra nada nesta venda.',
+  ],
+];
 
 const vazioDoLote = {
   id: '' as string | undefined,
@@ -115,6 +155,10 @@ export function Evento({
   >(null);
 
   const podeMexer = podeEscrever('evento');
+  // o ajuste comercial da taxa é do ADM da plataforma; o banco confere
+  // de novo, então isto aqui só evita oferecer um botão que dá 403
+  const ehAdm = perfilAtual() === 'superadmin';
+  const [ajuste, setAjuste] = useState({ percentual: '', fixa: '' });
 
   const carregar = useCallback(async () => {
     setErro(null);
@@ -507,6 +551,143 @@ export function Evento({
           </div>
         )}
       </Cartao>
+
+      {/* ------------------------------------------------------- taxa */}
+      {podeMexer && (
+        <Cartao
+          titulo="💳 Taxa da venda on-line"
+          sub="Só vale para a compra pela internet. No balcão não há taxa — a plataforma não intermediou nada."
+        >
+          <div className="p-5">
+            <p className="text-sm font-medium mb-2">Quem paga a taxa?</p>
+            <div className="space-y-2 mb-4">
+              {MODELOS.map(([valor, rotulo, explica]) => (
+                <label
+                  key={valor}
+                  className={`flex gap-3 items-start p-3 rounded-lg border cursor-pointer ${
+                    evento.taxa.modelo === valor
+                      ? 'border-marca bg-green-50'
+                      : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    className="mt-1"
+                    checked={evento.taxa.modelo === valor}
+                    disabled={ocupado}
+                    onChange={() =>
+                      agir(
+                        () => api.eventos.atualizar(eventoId, { taxaModelo: valor }),
+                        'Modelo de taxa alterado.',
+                      )
+                    }
+                  />
+                  <span>
+                    <span className="font-medium block">{rotulo}</span>
+                    <span className="text-xs text-slate-500">
+                      {explica(descreverTaxa(evento.taxa))}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Taxa em vigor: <b>{descreverTaxa(evento.taxa)}</b>
+              {evento.taxa.ajustadoNoEvento
+                ? ' — ajustada para este evento'
+                : ' — padrão da plataforma'}
+              .
+            </p>
+
+            {/* O quanto é contrato comercial: só o ADM mexe. O banco
+                recusa de qualquer forma (fn_admin_define_taxa relê o
+                perfil), então esconder aqui é cortesia, não defesa. */}
+            {ehAdm && (
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <p className="text-sm font-medium mb-2">
+                  🛡 Ajuste da plataforma (só ADM)
+                </p>
+                <div className="grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                  <Campo rotulo="Percentual (%)">
+                    <input
+                      className={classeEntrada}
+                      value={ajuste.percentual}
+                      onChange={(e) =>
+                        setAjuste({ ...ajuste, percentual: e.target.value })
+                      }
+                      placeholder={String(evento.taxa.padraoPercentual)}
+                      inputMode="decimal"
+                    />
+                  </Campo>
+                  <Campo rotulo="Valor fixo por pedido">
+                    <input
+                      className={classeEntrada}
+                      value={ajuste.fixa}
+                      onChange={(e) => setAjuste({ ...ajuste, fixa: e.target.value })}
+                      placeholder={textoDeCentavos(evento.taxa.padraoFixaCentavos)}
+                      inputMode="decimal"
+                    />
+                  </Campo>
+                  <div className="flex gap-2 mb-4">
+                    <Botao
+                      disabled={ocupado}
+                      onClick={() => {
+                        const p = ajuste.percentual.trim()
+                          ? Number(ajuste.percentual.replace(',', '.'))
+                          : null;
+                        const f = ajuste.fixa.trim()
+                          ? centavosDeTexto(ajuste.fixa)
+                          : null;
+                        if (p !== null && (Number.isNaN(p) || p < 0 || p > 100)) {
+                          setErro('Percentual deve ficar entre 0 e 100.');
+                          return;
+                        }
+                        if (ajuste.fixa.trim() && f === null) {
+                          setErro('Valor fixo inválido. Use o formato 1,00.');
+                          return;
+                        }
+                        void agir(
+                          () => api.eventos.definirTaxa(eventoId, {
+                            percentual: p,
+                            fixaCentavos: f,
+                          }),
+                          'Taxa deste evento ajustada.',
+                        );
+                      }}
+                    >
+                      Aplicar
+                    </Botao>
+                    {evento.taxa.ajustadoNoEvento && (
+                      <Botao
+                        variante="neutro"
+                        disabled={ocupado}
+                        onClick={() => {
+                          setAjuste({ percentual: '', fixa: '' });
+                          void agir(
+                            () => api.eventos.definirTaxa(eventoId, {
+                              percentual: null,
+                              fixaCentavos: null,
+                            }),
+                            'Evento voltou ao padrão da plataforma.',
+                          );
+                        }}
+                      >
+                        Usar o padrão
+                      </Botao>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Campos vazios significam “seguir o padrão da plataforma”.
+                  O que já foi vendido não muda: cada pedido guarda a taxa
+                  que valia no dia.
+                </p>
+              </div>
+            )}
+          </div>
+        </Cartao>
+      )}
 
       {/* --------------------------------------------------- bilheteria */}
       {podeMexer && (
