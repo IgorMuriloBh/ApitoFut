@@ -653,7 +653,7 @@ classificação. Decisões que valem a pena conhecer antes de mexer:
 - **Jogo que já saiu do agendado não é tocado** — trocar a equipe deixaria a
   súmula falando de quem não entrou em campo.
 
-## Eventos e ingressos (RF035) — fases 1 e 1b
+## Eventos e ingressos (RF035) — fases 1, 1b e 2 (em curso)
 
 Primeiro módulo que movimenta dinheiro, e o primeiro escopo inteiramente
 fora da especificação: ela vai de RF001 a RF034 e não cita evento,
@@ -782,11 +782,77 @@ O `proxy.ts` ganhou uma lista de caminhos globais (`/api`, `/ajuda`, `/c`,
 `next.config` — defeito que já valia para o feed ao vivo, a área da equipe
 e a carteirinha, e que as rotas novas herdariam.
 
+### A taxa da plataforma (fase 2, migration 24)
+
+Decidido com o cliente em 24/11/2026, e o desenho tem **duas autoridades
+diferentes de propósito**:
+
+| decide | quem | onde |
+|---|---|---|
+| **quem paga** a taxa | o organizador, por evento | `eventos.taxa_modelo`: `comprador` (preço + taxa), `organizador` (absorve), `isento` |
+| **quanto é** a taxa | a plataforma | `configuracao_plataforma` (padrão 10%), com ajuste por evento que só o `superadmin` altera |
+
+O ajuste passa por `fn_admin_define_taxa`, SECURITY DEFINER que reconfere
+o perfil no banco — é contrato comercial, não configuração de tela. Passar
+`NULL` limpa o ajuste e devolve o evento ao padrão.
+
+**A conta mora no banco** (`fn_precifica_pedido`) porque o mesmo número
+aparece em três lugares: na tela do comprador antes da compra, no pedido
+gravado e no relatório de repasse. `eventos/taxa.ts` repete a conta só
+para a tela mostrar o valor antes de o pedido existir, e um teste e2e roda
+os dois lados sobre os mesmos casos e falha se discordarem. Divergência em
+dinheiro só se descobre quando alguém reclama do extrato.
+
+Três regras que não são óbvias e estão testadas dos dois lados:
+
+- **ingresso gratuito nunca paga taxa**, nem a parte fixa — cobrar R$ 1,00
+  de taxa sobre entrada franca seria cobrar pelo nada;
+- no modelo `organizador`, a taxa é **limitada ao subtotal**: repasse
+  negativo não é representável, e `ck_pedido_taxa` recusaria a linha;
+- o arredondamento é o do `numeric` do Postgres. O TypeScript faz a conta
+  em inteiro (`subtotal × percentual_em_centésimos ÷ 10.000`) porque
+  `subtotal * 7.5 / 100` em ponto flutuante dá `1049.2499999999998` onde o
+  banco dá `1049,25` — e os dois arredondam para lados diferentes.
+
+### A reserva: o que segura o ingresso até o Pix cair
+
+O pedido online nasce `aguardando` **com os ingressos já emitidos**. Isso
+não é descuido: `trg_estoque_do_lote` conta ingresso, então a emissão já
+segura a vaga, e `portaria.service` já recusa ingresso cujo pedido não
+esteja pago. A reserva funcionou sem nenhum conceito novo.
+
+O que faltava era o reverso — carrinho abandonado não pode tirar o
+ingresso do mercado para sempre. Entrou `pedidos.expira_em`, e a contagem
+de estoque passou a **ignorar reserva vencida**. Fica na contagem, e não
+numa rotina que apaga pedidos, porque rotina agendada é algo que pode não
+estar rodando — e aí o estoque mente em silêncio. `fn_expira_pedidos()`
+existe só para a lista do organizador ficar honesta.
+
+### O checkout público não ganha contexto de organização
+
+Quem compra não está logado, e `pedidos` não tem ramo público no RLS
+(guarda nome, e-mail e documento). A saída **não** é a API assumir a
+organização do evento numa requisição anônima — isso daria a um caminho
+público o poder inteiro da organização. São frestas estreitas, cada uma
+fazendo uma coisa só:
+
+| função | o que faz |
+|---|---|
+| `fn_criar_pedido_online` | grava pedido `aguardando` com preço lido do banco e reserva os ingressos |
+| `fn_vincula_cobranca` | prende a cobrança do gateway ao pedido, depois de criada |
+| `fn_aplica_pagamento` | o que o webhook pode mudar: pago, cancelado, estornado |
+| `fn_registra_notificacao` | idempotência: `false` quando a notificação já foi processada |
+
+Reserva primeiro, cobrança depois. Na ordem inversa, um lote esgotado
+deixaria uma cobrança no gateway sem ingresso do outro lado — dinheiro
+pedido por algo que não há. Falhando o vínculo, a reserva expira sozinha.
+
 ### O que falta (fases seguintes)
 
 | fase | o que entra | depende de |
 |---|---|---|
-| 2 | checkout Asaas (Pix/boleto), webhook idempotente com verificação de assinatura, modelo de taxa, repasse | chave sandbox do Asaas |
+| **2 — feito** | modelo de taxa, reserva com prazo, frestas do checkout e do webhook (migration 24) | — |
+| **2 — falta** | cliente Asaas, checkout Pix e cartão no portal, endpoint do webhook com verificação de assinatura, telas de taxa no painel | chave sandbox: **recebida em 24/11/2026** |
 | 3 | Google Wallet (JWT RS256, sem dependência nova) e PDF do ingresso | conta Google Cloud |
 | 4 | Apple Wallet (`.pkpass`, assinado com `openssl smime` — já está na imagem), Stripe, venda de inscrição, ficha de consumo | certificado Apple Pass Type ID (Apple Developer Program, US$ 99/ano) |
 

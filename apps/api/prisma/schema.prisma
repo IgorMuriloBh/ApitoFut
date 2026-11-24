@@ -481,30 +481,31 @@ model times {
 }
 
 model usuarios {
-  id                                              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizacao_id                                  String?             @db.Uuid
+  id                                              String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacao_id                                  String?                   @db.Uuid
   nome                                            String
-  email                                           String              @unique @db.Citext
+  email                                           String                    @unique @db.Citext
   senha_hash                                      String
-  perfil                                          perfil_usuario      @default(organizador)
-  situacao                                        situacao_usuario    @default(pendente)
-  ultimo_acesso                                   DateTime?           @db.Timestamptz(6)
-  liberado_por                                    String?             @db.Uuid
-  liberado_em                                     DateTime?           @db.Timestamptz(6)
-  criado_em                                       DateTime            @default(now()) @db.Timestamptz(6)
-  atualizado_em                                   DateTime            @default(now()) @db.Timestamptz(6)
-  senha_provisoria                                Boolean             @default(false)
-  convidado_por                                   String?             @db.Uuid
+  perfil                                          perfil_usuario            @default(organizador)
+  situacao                                        situacao_usuario          @default(pendente)
+  ultimo_acesso                                   DateTime?                 @db.Timestamptz(6)
+  liberado_por                                    String?                   @db.Uuid
+  liberado_em                                     DateTime?                 @db.Timestamptz(6)
+  criado_em                                       DateTime                  @default(now()) @db.Timestamptz(6)
+  atualizado_em                                   DateTime                  @default(now()) @db.Timestamptz(6)
+  senha_provisoria                                Boolean                   @default(false)
+  convidado_por                                   String?                   @db.Uuid
   competicoes                                     competicoes[]
+  configuracao_plataforma                         configuracao_plataforma[]
   eventos                                         eventos[]
   ingresso_checkins                               ingresso_checkins[]
   jogo_eventos                                    jogo_eventos[]
   pedidos                                         pedidos[]
-  usuarios_usuarios_convidado_porTousuarios       usuarios?           @relation("usuarios_convidado_porTousuarios", fields: [convidado_por], references: [id], onUpdate: NoAction)
-  other_usuarios_usuarios_convidado_porTousuarios usuarios[]          @relation("usuarios_convidado_porTousuarios")
-  usuarios                                        usuarios?           @relation("usuariosTousuarios", fields: [liberado_por], references: [id], onUpdate: NoAction)
-  other_usuarios                                  usuarios[]          @relation("usuariosTousuarios")
-  organizacoes                                    organizacoes?       @relation(fields: [organizacao_id], references: [id], onUpdate: NoAction)
+  usuarios_usuarios_convidado_porTousuarios       usuarios?                 @relation("usuarios_convidado_porTousuarios", fields: [convidado_por], references: [id], onUpdate: NoAction)
+  other_usuarios_usuarios_convidado_porTousuarios usuarios[]                @relation("usuarios_convidado_porTousuarios")
+  usuarios                                        usuarios?                 @relation("usuariosTousuarios", fields: [liberado_por], references: [id], onUpdate: NoAction)
+  other_usuarios                                  usuarios[]                @relation("usuariosTousuarios")
+  organizacoes                                    organizacoes?             @relation(fields: [organizacao_id], references: [id], onUpdate: NoAction)
 
   @@index([organizacao_id], map: "idx_usuarios_organizacao")
   @@index([situacao], map: "idx_usuarios_situacao", where: raw("(situacao = 'pendente'::situacao_usuario)"))
@@ -554,32 +555,35 @@ model migracoes {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model eventos {
-  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizacao_id   String        @db.Uuid
-  competicao_id    String?       @db.Uuid
-  criado_por       String?       @db.Uuid
-  nome             String
-  slug             String
-  descricao        String?
-  campo_id         String?       @db.Uuid
-  local_nome       String?
-  estado           String?       @db.Char(2)
-  cidade           String?
-  data_inicio      DateTime      @db.Date
-  data_fim         DateTime      @db.Date
-  abertura_portoes DateTime?     @db.Time(6)
-  imagem_url       String?
-  status           status_evento @default(rascunho)
-  publicado_em     DateTime?     @db.Timestamptz(6)
-  excluido_em      DateTime?     @db.Timestamptz(6)
-  criado_em        DateTime      @default(now()) @db.Timestamptz(6)
-  atualizado_em    DateTime      @default(now()) @db.Timestamptz(6)
-  campos           campos?       @relation(fields: [campo_id], references: [id], onUpdate: NoAction)
-  competicoes      competicoes?  @relation(fields: [competicao_id], references: [id], onUpdate: NoAction)
-  usuarios         usuarios?     @relation(fields: [criado_por], references: [id], onUpdate: NoAction)
-  organizacoes     organizacoes  @relation(fields: [organizacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  lotes            lotes[]
-  pedidos          pedidos[]
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacao_id     String         @db.Uuid
+  competicao_id      String?        @db.Uuid
+  criado_por         String?        @db.Uuid
+  nome               String
+  slug               String
+  descricao          String?
+  campo_id           String?        @db.Uuid
+  local_nome         String?
+  estado             String?        @db.Char(2)
+  cidade             String?
+  data_inicio        DateTime       @db.Date
+  data_fim           DateTime       @db.Date
+  abertura_portoes   DateTime?      @db.Time(6)
+  imagem_url         String?
+  status             status_evento  @default(rascunho)
+  publicado_em       DateTime?      @db.Timestamptz(6)
+  excluido_em        DateTime?      @db.Timestamptz(6)
+  criado_em          DateTime       @default(now()) @db.Timestamptz(6)
+  atualizado_em      DateTime       @default(now()) @db.Timestamptz(6)
+  taxa_modelo        modelo_de_taxa @default(comprador)
+  taxa_percentual    Decimal?       @db.Decimal(5, 2)
+  taxa_fixa_centavos Int?
+  campos             campos?        @relation(fields: [campo_id], references: [id], onUpdate: NoAction)
+  competicoes        competicoes?   @relation(fields: [competicao_id], references: [id], onUpdate: NoAction)
+  usuarios           usuarios?      @relation(fields: [criado_por], references: [id], onUpdate: NoAction)
+  organizacoes       organizacoes   @relation(fields: [organizacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lotes              lotes[]
+  pedidos            pedidos[]
 
   @@index([organizacao_id], map: "idx_eventos_org", where: raw("(excluido_em IS NULL)"))
 }
@@ -661,12 +665,42 @@ model pedidos {
   observacoes         String?
   criado_em           DateTime      @default(now()) @db.Timestamptz(6)
   atualizado_em       DateTime      @default(now()) @db.Timestamptz(6)
+  expira_em           DateTime?     @db.Timestamptz(6)
+  metodo              String?
+  asaas_cobranca_id   String?       @unique(map: "uq_pedido_cobranca", where: raw("(asaas_cobranca_id IS NOT NULL)"))
+  pix_payload         String?
+  link_pagamento      String?
   ingressos           ingressos[]
   eventos             eventos       @relation(fields: [evento_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   usuarios            usuarios?     @relation(fields: [registrado_por], references: [id], onUpdate: NoAction)
 
   @@index([comprador_email], map: "idx_pedidos_email")
   @@index([evento_id, criado_em(sort: Desc)], map: "idx_pedidos_evento")
+  @@index([expira_em], map: "idx_pedidos_expiram", where: raw("(status = 'aguardando'::status_pedido)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model configuracao_plataforma {
+  id                 Boolean   @id @default(true)
+  taxa_percentual    Decimal   @default(10) @db.Decimal(5, 2)
+  taxa_fixa_centavos Int       @default(0)
+  reserva_minutos    Int       @default(30)
+  atualizado_em      DateTime  @default(now()) @db.Timestamptz(6)
+  atualizado_por     String?   @db.Uuid
+  usuarios           usuarios? @relation(fields: [atualizado_por], references: [id], onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model gateway_notificacoes {
+  id          String   @id
+  gateway     String   @default("asaas")
+  tipo        String
+  cobranca_id String?
+  recebido_em DateTime @default(now()) @db.Timestamptz(6)
+  payload     Json?
+
+  @@index([cobranca_id], map: "idx_gateway_notificacoes_cobranca")
 }
 
 enum campo_atleta {
@@ -832,4 +866,10 @@ enum status_pedido {
   pago
   cancelado
   estornado
+}
+
+enum modelo_de_taxa {
+  comprador
+  organizador
+  isento
 }

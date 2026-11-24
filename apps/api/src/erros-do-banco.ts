@@ -70,6 +70,21 @@ export function traduzirErroDoBanco(erro: unknown): never {
       throw new ConflictException(
         mensagem('O evento tem ingressos emitidos e não pode ser apagado.'),
       );
+
+    // migration 24 — taxa e venda online
+    case 'AF033':
+      throw new NotFoundException(mensagem('Evento não encontrado.'));
+    case 'AF034':
+      // mexer na taxa é contrato comercial: só o ADM da plataforma
+      throw new ForbiddenException(
+        mensagem('Somente o administrador do sistema altera a taxa.'),
+      );
+    case 'AF035':
+      // recusa de checkout: lote fora de venda, quantidade inválida,
+      // evento não publicado. Quem pediu errou o pedido, não o sistema —
+      // a mensagem do banco já é escrita para o comprador ler
+      throw new BadRequestException(mensagem('Não foi possível concluir a compra.'));
+
     default:
       throw erro;
   }

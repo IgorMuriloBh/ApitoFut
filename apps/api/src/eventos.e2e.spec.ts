@@ -5,6 +5,7 @@ import type { INestApplication } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { AppModule } from './app.module';
+import { precificar, type ModeloDeTaxa } from './eventos/taxa';
 
 /**
  * Eventos, ingressos e portão (RF035). Exige docker compose up -d.
@@ -434,5 +435,67 @@ describe('quem pode o quê', () => {
       doMesario,
     );
     assert.equal(lote.code, 403, 'mesário mexeu em preço');
+  });
+});
+
+/**
+ * A conta da taxa existe em dois lugares: `fn_precifica_pedido` (que é a
+ * fonte da verdade, e grava) e `taxa.ts` (que só mostra o valor na tela
+ * antes de o pedido existir). Este bloco é o que impede os dois de
+ * divergirem — e divergência em dinheiro só se descobre quando alguém
+ * reclama do extrato.
+ */
+describe('a taxa: o TypeScript concorda com o banco', () => {
+  const casos: { modelo: ModeloDeTaxa; percentual: number; fixa: number; subtotal: number }[] = [
+    { modelo: 'comprador',   percentual: 10,   fixa: 0,     subtotal: 10_000 },
+    { modelo: 'organizador', percentual: 10,   fixa: 0,     subtotal: 10_000 },
+    { modelo: 'isento',      percentual: 10,   fixa: 500,   subtotal: 10_000 },
+    { modelo: 'comprador',   percentual: 10,   fixa: 100,   subtotal: 999 },
+    { modelo: 'comprador',   percentual: 7.5,  fixa: 0,     subtotal: 13_990 },
+    { modelo: 'comprador',   percentual: 10,   fixa: 0,     subtotal: 2_105 },
+    // ingresso gratuito, com taxa fixa configurada
+    { modelo: 'comprador',   percentual: 10,   fixa: 100,   subtotal: 0 },
+    // taxa fixa maior que o preço, absorvida pelo organizador
+    { modelo: 'organizador', percentual: 10,   fixa: 50_000, subtotal: 500 },
+    { modelo: 'comprador',   percentual: 0,    fixa: 0,     subtotal: 10_000 },
+    { modelo: 'comprador',   percentual: 12.34, fixa: 237,  subtotal: 7_777 },
+  ];
+
+  for (const c of casos) {
+    test(`${c.modelo} · ${c.percentual}% + ${c.fixa} sobre ${c.subtotal}`, async () => {
+      await admin.$executeRaw`
+        UPDATE eventos
+           SET taxa_modelo = ${c.modelo}::modelo_de_taxa,
+               taxa_percentual = ${c.percentual}::numeric,
+               taxa_fixa_centavos = ${c.fixa}
+         WHERE id = ${eventoId}::uuid`;
+
+      const [doBanco] = await admin.$queryRaw<
+        { total_centavos: number; taxa_centavos: number }[]
+      >`SELECT * FROM fn_precifica_pedido(${eventoId}::uuid, ${c.subtotal})`;
+
+      const meu = precificar(c.subtotal, {
+        modelo: c.modelo,
+        percentual: c.percentual,
+        fixaCentavos: c.fixa,
+      });
+
+      assert.equal(meu.totalCentavos, doBanco.total_centavos, 'total');
+      assert.equal(meu.taxaCentavos, doBanco.taxa_centavos, 'taxa');
+    });
+  }
+
+  test('o evento volta ao padrão da plataforma', async () => {
+    // `NULL` nas duas colunas é o que faz o evento seguir o padrão; é
+    // também como o ADM "limpa" um ajuste que não vale mais
+    await admin.$executeRaw`
+      UPDATE eventos
+         SET taxa_modelo = 'comprador', taxa_percentual = NULL, taxa_fixa_centavos = NULL
+       WHERE id = ${eventoId}::uuid`;
+
+    const [doBanco] = await admin.$queryRaw<{ taxa_centavos: number }[]>`
+      SELECT * FROM fn_precifica_pedido(${eventoId}::uuid, 10000)`;
+    // o padrão de fábrica da plataforma é 10% sem valor fixo
+    assert.equal(doBanco.taxa_centavos, 1_000);
   });
 });

@@ -60,6 +60,8 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
 - `db/21-perfis-equipe.sql` — perfis `gestor`, `secretaria` e `mesario` no enum
 - `db/22-equipe-da-organizacao.sql` — o dono convida a própria equipe (RF031)
 - `db/23-eventos-ingressos.sql` — eventos, venda de ingresso e baixa no portão (RF035)
+- `db/24-taxa-e-venda-online.sql` — modelo de taxa, reserva com prazo e as
+  frestas do checkout público e do webhook (RF035 fase 2)
 
 ## Banco de dados
 
@@ -310,6 +312,37 @@ do código — é o único lugar que resiste a duas requisições simultâneas:
   Horizonte já é o dia seguinte em UTC, e o portão passaria a recusar
   ingresso válido no meio do evento. Aceitar a data do aparelho seria
   pior — relógio mexido reabriria ingresso queimado ontem
+- **Quem paga a taxa é decisão do organizador; quanto é, da
+  plataforma.** `eventos.taxa_modelo` (`comprador` / `organizador` /
+  `isento`) é do organizador, por evento. O percentual e o valor fixo
+  saem de `configuracao_plataforma` (padrão 10%), com ajuste por evento
+  que **só o superadmin** altera — `fn_admin_define_taxa` reconfere o
+  perfil no banco
+- **A conta da taxa mora no banco** (`fn_precifica_pedido`). O mesmo
+  número aparece na tela do comprador, no pedido gravado e no relatório
+  de repasse; com a fórmula no código, bastaria um deles calcular noutro
+  ponto para divergirem. `eventos/taxa.ts` espelha para a tela mostrar
+  antes de o pedido existir, e um teste e2e falha se os dois discordarem
+- **Ingresso gratuito nunca paga taxa**, nem a parte fixa. E no modelo
+  `organizador` a taxa é limitada ao subtotal: repasse negativo não é
+  representável, e `ck_pedido_taxa` recusaria a linha
+- **A reserva é o próprio ingresso.** O pedido online nasce
+  `aguardando` com os ingressos emitidos — `trg_estoque_do_lote` conta
+  ingresso, então isso já segura a vaga, e a portaria já recusa
+  ingresso de pedido não pago. O que faltava era o reverso:
+  `pedidos.expira_em`, e a contagem de estoque **ignora reserva
+  vencida**. A vaga volta sozinha, sem depender de rotina agendada que
+  pode não estar rodando
+- **O checkout público e o webhook não ganham contexto de organização.**
+  Os dois chegam sem sessão, e `pedidos` não tem ramo público no RLS. A
+  saída não é a API assumir a organização do evento numa requisição
+  anônima — são frestas estreitas (`fn_criar_pedido_online`,
+  `fn_vincula_cobranca`, `fn_aplica_pagamento`), cada uma fazendo uma
+  coisa só
+- **Notificação de gateway é registrada antes de agir**
+  (`fn_registra_notificacao`). O Asaas reenvia até receber 200; a chave
+  primária é o id do evento no gateway, e o reenvio perde a corrida e
+  recebe `false` em vez de refazer o pagamento
 - **Na venda de balcão a taxa é zero.** A plataforma recebe e repassa
   (decisão do cliente), mas isso vale para a venda online, que passa por
   gateway. No balcão o organizador recebeu em dinheiro e a plataforma não
