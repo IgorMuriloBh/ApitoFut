@@ -45,35 +45,49 @@ export function MenuLateral({
     >
       {topo && <div className="p-4 border-b border-slate-200">{topo}</div>}
 
-      {/* Em telas estreitas o menu vira uma faixa rolável no topo: o
-          organizador usa o painel no tablet, na beira do campo, e uma
-          coluna fixa de 240px comeria metade da tela. */}
-      <div className="flex lg:block overflow-x-auto lg:overflow-visible p-2 gap-1">
+      {/* Em telas estreitas o menu vira uma grade no topo: o organizador
+          usa o painel no tablet, na beira do campo, e uma coluna fixa de
+          240px comeria metade da tela.
+
+          ERA UMA FAIXA ROLÁVEL NA HORIZONTAL, e isso escondia item.
+          Com onze itens (conta + eventos + ADM) os últimos caíam fora da
+          tela sem nenhum sinal de que havia mais — o próprio dono do
+          sistema abriu o painel, procurou "Eventos" e concluiu que a
+          funcionalidade não tinha subido. Menu que exige descobrir um
+          arrasto lateral é menu que esconde.
+
+          Quebrar linha custa altura e devolve o que importa: todo item
+          visível de uma vez. Por isso o título da seção também aparece
+          aqui, e não só a partir do `lg` — sem ele os três grupos viram
+          uma sopa de onze botões iguais. */}
+      <div className="p-2">
         {secoes.map((secao) => (
-          <div key={secao.titulo} className="lg:mb-3 flex lg:block gap-1">
-            <p className="hidden lg:block px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <div key={secao.titulo} className="mb-2 lg:mb-3">
+            <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
               {secao.titulo}
             </p>
-            {secao.itens.map((item) => (
-              <button
-                key={item.chave}
-                onClick={() => aoEscolher(item.chave)}
-                aria-current={atual === item.chave ? 'page' : undefined}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm whitespace-nowrap transition ${
-                  atual === item.chave
-                    ? 'bg-green-50 text-marca font-semibold'
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <span className="text-base leading-none">{item.icone}</span>
-                <span className="flex-1 text-left">{item.rotulo}</span>
-                {item.aviso ? (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                    {item.aviso}
-                  </span>
-                ) : null}
-              </button>
-            ))}
+            <div className="flex flex-wrap lg:block gap-1">
+              {secao.itens.map((item) => (
+                <button
+                  key={item.chave}
+                  onClick={() => aoEscolher(item.chave)}
+                  aria-current={atual === item.chave ? 'page' : undefined}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm whitespace-nowrap transition lg:w-full ${
+                    atual === item.chave
+                      ? 'bg-green-50 text-marca font-semibold'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="text-base leading-none">{item.icone}</span>
+                  <span className="flex-1 text-left">{item.rotulo}</span>
+                  {item.aviso ? (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                      {item.aviso}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
           </div>
         ))}
       </div>

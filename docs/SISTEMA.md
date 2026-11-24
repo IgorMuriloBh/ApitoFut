@@ -1102,8 +1102,24 @@ não vê **Eventos**. A **da competição**
 A global some quando uma competição está aberta: duas laterais competiriam
 entre si, e voltar é um clique em "Meus campeonatos". Era uma fila de abas no topo;
 com nove itens ela transbordava e perdia o agrupamento — cadastro, operação e
-estrutura são três momentos diferentes do trabalho. Em tela estreita o menu vira
-faixa rolável: o painel é usado em tablet na beira do campo.
+estrutura são três momentos diferentes do trabalho.
+
+**Duas correções que vieram de alguém não achar a tela** (o próprio dono do
+sistema procurou "Eventos" no painel em produção e concluiu que não tinha subido):
+
+- **Em tela estreita o menu quebra linha, não rola na horizontal.** Era uma faixa
+  rolável — o painel é usado em tablet na beira do campo, e uma coluna fixa de
+  240px comeria metade da tela. Só que com onze itens (conta + eventos + ADM) os
+  últimos caíam fora da tela **sem nenhum sinal de que havia mais**. Quebrar linha
+  custa altura e devolve o que importa: todo item visível de uma vez. O título da
+  seção passou a aparecer também aí, senão os três grupos viram uma sopa de botões.
+- **Eventos e Portão aparecem também no menu da competição**, numa seção própria,
+  embora sejam telas da conta. A lateral global some lá dentro, e é lá que o
+  organizador passa o dia: sem isso, chegar ao portão exigia sair por "← Meus
+  campeonatos" primeiro — caminho que ninguém adivinha, e que deixaria o mesário
+  preso justamente no dia do evento. Clicar sai da competição, como o próprio
+  "← Meus campeonatos" já fazia. Os demais itens da conta (base de atletas,
+  ranking, equipe) ficaram de fora de propósito: são consulta, não operação do dia.
 
 **Token em `sessionStorage`, não `localStorage`** — some ao fechar a aba, que é
 o certo num painel usado em máquina compartilhada de secretaria ou federação.

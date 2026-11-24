@@ -68,6 +68,38 @@ const SECOES: SecaoDoMenu[] = [
   },
 ];
 
+/**
+ * Eventos e Portão (RF035) **também** dentro da competição.
+ *
+ * São telas da conta, não da competição — mas a lateral global some
+ * enquanto uma competição está aberta, e quem está trabalhando passa o
+ * dia aí dentro. Sem estes dois itens, chegar ao portão exigia sair da
+ * competição por "← Meus campeonatos" primeiro: um caminho que ninguém
+ * adivinha, e que deixaria o mesário preso justamente no dia do evento.
+ *
+ * O prefixo `conta:` é o que diz ao `aoEscolher` que isto não é uma aba
+ * da competição: sai para a tela da conta, como o "← Meus campeonatos".
+ */
+const SECAO_DA_CONTA: SecaoDoMenu = {
+  titulo: 'Eventos e ingressos',
+  itens: [
+    { chave: 'conta:eventos', icone: '🎟', rotulo: 'Eventos' },
+    { chave: 'conta:portao', icone: '🚪', rotulo: 'Portão' },
+  ],
+};
+
+/** O menu da competição, mais o que o perfil alcança fora dela. */
+function menuDaCompeticao(): SecaoDoMenu[] {
+  const daConta = SECAO_DA_CONTA.itens.filter((i) =>
+    i.chave === 'conta:eventos'
+      ? podeEscrever('evento')
+      : podeEscrever('portaria'),
+  );
+  return daConta.length
+    ? [...SECOES, { ...SECAO_DA_CONTA, itens: daConta }]
+    : SECOES;
+}
+
 
 export function Competicao({
   competicao,
@@ -158,9 +190,13 @@ export function Competicao({
   return (
     <div className="flex flex-col lg:flex-row">
       <MenuLateral
-        secoes={SECOES}
+        secoes={menuDaCompeticao()}
         atual={aba}
-        aoEscolher={(chave) => setAba(chave as Aba)}
+        aoEscolher={(chave) => {
+          // `conta:` sai da competição; o resto é aba daqui de dentro
+          if (chave.startsWith('conta:')) aoVoltar(chave.slice(6));
+          else setAba(chave as Aba);
+        }}
         topo={
           <>
             <button

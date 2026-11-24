@@ -453,7 +453,10 @@ apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/componentes/Escudo.tsx       escudo + nome; sem imagem, iniciais coloridas
   src/componentes/Timeline.tsx     cronologia da súmula, com correção de lance
   src/componentes/MenuLateral.tsx  navegação por seções, como o protótipo
-                     (duas: a global da conta e a da competição aberta)
+                     (duas: a global da conta e a da competição aberta).
+                     Em tela estreita QUEBRA LINHA — rolar na horizontal
+                     escondia item, e Eventos/Portão repetem no menu da
+                     competição porque a global some lá dentro
   src/telas/         Login · Painel · Wizard · Competicao (menu lateral) · Admin
                      Equipes · Atletas · Tabela · Sumula · Classificacao ·
                      Estatisticas · Suspensoes · Estrutura · Configuracao ·
