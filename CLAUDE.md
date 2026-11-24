@@ -62,6 +62,8 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
 - `db/23-eventos-ingressos.sql` — eventos, venda de ingresso e baixa no portão (RF035)
 - `db/24-taxa-e-venda-online.sql` — modelo de taxa, reserva com prazo e as
   frestas do checkout público e do webhook (RF035 fase 2)
+- `db/25-checkout-pix.sql` — página do pedido, expiração que devolve as
+  cobranças e pagamento fora de hora
 
 ## Banco de dados
 
@@ -343,6 +345,25 @@ do código — é o único lugar que resiste a duas requisições simultâneas:
   (`fn_registra_notificacao`). O Asaas reenvia até receber 200; a chave
   primária é o id do evento no gateway, e o reenvio perde a corrida e
   recebe `false` em vez de refazer o pagamento
+- **Número de cartão nunca passa pelo servidor nem pela nossa página.**
+  Quem paga no cartão vai à página de cobrança do próprio Asaas
+  (`invoiceUrl`). Receber PAN é entrar no escopo de PCI-DSS, com
+  auditoria e responsabilidade por vazamento — não cabe aqui. O Pix é
+  diferente: o "copia e cola" é texto público, e esse a gente mostra
+- **CPF é conferido ANTES de reservar**, com dígito verificador
+  (`documento.ts`). O Asaas recusa cobrança sem documento válido, e
+  recusaria com o ingresso já fora do estoque — preso por 30 minutos
+  por causa de um campo. Descoberto testando contra o gateway de verdade
+- **O webhook responde 200 quase sempre.** O Asaas reenvia até receber
+  200 e **segura os avisos seguintes** enquanto isso; responder erro
+  para um aviso que não nos diz respeito travaria a fila inteira da
+  conta. A única exceção é o segredo errado, que é 401
+- **Reserva vencida tem a cobrança apagada no gateway.** O Pix continua
+  pagável até o vencimento, muito depois dos 30 minutos da reserva — a
+  faxina do checkout apaga a cobrança (`DELETE /v3/payments/{id}`). E se
+  o dinheiro entrar assim mesmo, `fn_aplica_pagamento` **não finge que
+  está tudo bem**: escreve no pedido que houve pagamento após a
+  expiração e que precisa de estorno
 - **Na venda de balcão a taxa é zero.** A plataforma recebe e repassa
   (decisão do cliente), mas isso vale para a venda online, que passa por
   gateway. No balcão o organizador recebeu em dinheiro e a plataforma não
@@ -475,6 +496,11 @@ apps/api/          NestJS — a única app existente hoje
                                  — quem rasteriza para PNG é o painel
   src/eventos/       eventos e ingressos (RF035): venda, QR e portão
     codigo.ts        o código do ingresso; alfabeto sem caractere ambíguo
+    taxa.ts          espelho de fn_precifica_pedido, só para a tela; puro
+    documento.ts     CPF/CNPJ com dígito verificador; o gateway exige
+    asaas.ts         cliente do gateway. CARTÃO NUNCA PASSA POR AQUI:
+                     quem paga no cartão vai à página do próprio Asaas
+    checkout.ts(.service/.controller)  compra on-line e webhook
     dia-do-evento.ts que dia é hoje NO FUSO DO EVENTO — o servidor é UTC
     portaria.service.ts  a leitura do portão; responde sempre o mesmo formato
 apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador

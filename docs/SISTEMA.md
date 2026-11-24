@@ -847,12 +847,64 @@ Reserva primeiro, cobrança depois. Na ordem inversa, um lote esgotado
 deixaria uma cobrança no gateway sem ingresso do outro lado — dinheiro
 pedido por algo que não há. Falhando o vínculo, a reserva expira sozinha.
 
+### A compra pela internet (migration 25 e `checkout.service`)
+
+A ordem dos passos é a regra, não detalhe: **reserva primeiro, cobra
+depois**. Na ordem inversa, lote esgotado deixaria cobrança no gateway sem
+ingresso do outro lado — dinheiro pedido por algo que não há. Falhando a
+cobrança depois da reserva, o pior caso é um ingresso preso por 30
+minutos, que volta sozinho.
+
+**Cartão nunca passa por aqui.** Pix é mostrado na nossa página (o "copia
+e cola" é texto público); cartão vai para a página de cobrança do próprio
+Asaas. Receber número de cartão é entrar no escopo de PCI-DSS, com
+auditoria, segregação de rede e responsabilidade por vazamento — nada
+disso cabe num sistema de campeonato de várzea.
+
+Três coisas que **só apareceram testando contra o sandbox de verdade**:
+
+1. **O Asaas exige CPF ou CNPJ** para emitir a cobrança. Como documento
+   era opcional, a sequência era a pior possível: reserva gravada,
+   ingresso fora do estoque, e só então o gateway recusava. Agora o
+   documento é conferido antes de reservar, **com dígito verificador** —
+   `11111111111` passa em qualquer checagem de formato e é recusado pelo
+   gateway do mesmo jeito (`eventos/documento.ts`).
+2. **O Pix continua pagável até o vencimento**, muito depois dos 30
+   minutos da reserva. Duas defesas: ao expirar, a cobrança é apagada no
+   gateway (`DELETE /v3/payments/{id}`, verificado); e se o dinheiro
+   entrar assim mesmo, o pedido recebe por escrito que houve pagamento
+   após a expiração e precisa de estorno. Silenciar seria deixar alguém
+   pagar por ingresso que não existe mais.
+3. **`fn_expira_pedidos` precisava ser SECURITY DEFINER.** Quem a chama é
+   o checkout público, que roda sem contexto de organização: o RLS
+   escondia `pedidos` do próprio UPDATE, que afetava zero linhas **sem
+   reclamar**. A reserva nunca expirava, a cobrança nunca era apagada, e
+   nada no log dizia por quê. Achado rodando o fluxo, não lendo o código.
+
+**O webhook responde 200 quase sempre.** O Asaas reenvia até receber 200 e
+segura os avisos seguintes na fila enquanto isso; responder erro para um
+aviso que não nos diz respeito travaria a fila inteira da conta. A exceção
+é o segredo errado, que é 401 — e sem `ASAAS_WEBHOOK_TOKEN` no ambiente
+**nada é aceito**, porque webhook aberto deixa qualquer um marcar pedido
+como pago. A idempotência é do banco: o id do aviso é chave primária, e o
+reenvio perde a corrida na unicidade.
+
+**A suíte não fala com o Asaas.** A chave é removida do ambiente antes de
+a aplicação subir no teste, e o que se verifica é tudo o que acontece
+antes do gateway mais o webhook inteiro — inclusive que a ausência de
+chave responde "indisponível" em vez de derrubar a venda de balcão. O
+caminho feliz com cobrança real foi percorrido à mão contra o sandbox em
+24/11/2026: Pix gerado com copia-e-cola e QR, pagamento confirmado por
+webhook, reenvio recusado, estorno cancelando os ingressos, reserva
+expirando e apagando a cobrança.
+
 ### O que falta (fases seguintes)
 
 | fase | o que entra | depende de |
 |---|---|---|
 | **2 — feito** | modelo de taxa, reserva com prazo, frestas do checkout e do webhook (migration 24) | — |
-| **2 — falta** | cliente Asaas, checkout Pix e cartão no portal, endpoint do webhook com verificação de assinatura, telas de taxa no painel | chave sandbox: **recebida em 24/11/2026** |
+| **2 — feito** | cliente Asaas, checkout Pix e cartão, webhook com segredo e idempotência (migration 25) | — |
+| **2 — falta** | telas: checkout no portal, página do pedido, modelo de taxa no evento e ajuste do ADM | — |
 | 3 | Google Wallet (JWT RS256, sem dependência nova) e PDF do ingresso | conta Google Cloud |
 | 4 | Apple Wallet (`.pkpass`, assinado com `openssl smime` — já está na imagem), Stripe, venda de inscrição, ficha de consumo | certificado Apple Pass Type ID (Apple Developer Program, US$ 99/ano) |
 

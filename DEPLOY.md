@@ -82,6 +82,29 @@ ARQUIVOS_BASE_URL  = https://<dominio-da-api>
 PORTAL_URL         = https://<dominio-do-portal>
 ```
 
+**Pagamento on-line (RF035 fase 2), opcional:**
+
+```
+ASAAS_BASE_URL      = https://api.asaas.com/v3
+ASAAS_API_KEY       = <chave de produção, começa com $aact_prod_>
+ASAAS_WEBHOOK_TOKEN = <segredo que você define no painel do Asaas>
+```
+
+Sem as três, a venda pela internet não é oferecida — o portal não mostra o
+botão de comprar e a API responde "indisponível". **A venda de balcão e o
+portão continuam funcionando**, que é o caminho que não depende de gateway.
+
+Duas coisas que não podem ser esquecidas:
+
+- cadastre o webhook no painel do Asaas apontando para
+  `https://<dominio-da-api>/webhooks/asaas`, com o mesmo
+  `ASAAS_WEBHOOK_TOKEN`. **Sem o token configurado, nenhum aviso é
+  aceito** — falhar desligado é a única opção, porque um webhook aberto
+  deixa qualquer um marcar pedido como pago;
+- o Asaas **reenvia o aviso até receber 200 e segura os seguintes** na
+  fila enquanto isso. Se o endpoint estiver fora, os pagamentos param de
+  ser confirmados em ordem — e voltam sozinhos quando ele responder.
+
 **Não defina `DATABASE_URL`.** A aplicação a deriva sozinha da
 `DATABASE_URL_ADMIN`, trocando usuário e senha pelo papel `apitofut_app`.
 

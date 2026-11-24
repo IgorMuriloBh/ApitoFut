@@ -1,0 +1,279 @@
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { traduzirErroDoBanco } from '../erros-do-banco';
+import { AsaasService } from './asaas';
+import { formatar, gerarCodigo } from './codigo';
+import { documentoValido, normalizarDocumento } from './documento';
+
+/**
+ * A compra pela internet (RF035, fase 2).
+ *
+ * ── A ORDEM DOS PASSOS É A REGRA, NÃO DETALHE ────────────────────────
+ * Reserva primeiro, cobra depois. Se fosse ao contrário e o lote
+ * estivesse esgotado, existiria cobrança no gateway sem ingresso do
+ * outro lado — dinheiro pedido por algo que não há. Falhando a cobrança
+ * depois da reserva, o pior caso é um ingresso preso por 30 minutos,
+ * que volta ao estoque sozinho.
+ *
+ * ── O PREÇO NÃO VEM DO CLIENTE ───────────────────────────────────────
+ * O corpo diz qual lote e quantos. Quanto custa, quanto é de taxa e
+ * quanto o comprador paga saem de `fn_criar_pedido_online`, no banco.
+ * Com o DevTools aberto não há como comprar a R$ 0,01.
+ *
+ * ── FAXINA NA ENTRADA ────────────────────────────────────────────────
+ * Toda compra começa expirando as reservas vencidas do sistema e
+ * apagando as cobranças delas no gateway. É varrer na porta em vez de
+ * depender de rotina agendada: quem chega para comprar é exatamente
+ * quem precisa que a vaga abandonada já tenha voltado.
+ */
+
+/** Quantas vezes tentar de novo quando o código sorteado já existe. */
+const TENTATIVAS = 5;
+
+export interface ItemDaCompra {
+  loteId: string;
+  quantidade: number;
+  titulares?: (string | null)[];
+}
+
+export interface Compra {
+  itens: ItemDaCompra[];
+  compradorNome: string;
+  compradorEmail: string;
+  compradorTelefone?: string | null;
+  compradorDocumento?: string | null;
+  metodo: 'pix' | 'cartao';
+}
+
+interface LinhaDoPedido {
+  pedido_id: string;
+  total_centavos: number;
+  taxa_centavos: number;
+  expira_em: Date;
+  codigos: string[];
+}
+
+interface LinhaDaSituacao {
+  status: string;
+  total_centavos: number;
+  taxa_centavos: number;
+  metodo: string | null;
+  pix_payload: string | null;
+  link_pagamento: string | null;
+  expira_em: Date | null;
+  evento_nome: string;
+  evento_slug: string;
+  codigos: string[] | null;
+}
+
+@Injectable()
+export class CheckoutService {
+  private readonly log = new Logger('Checkout');
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly asaas: AsaasService,
+  ) {}
+
+  /** Há venda on-line configurada? O portal pergunta antes de oferecer. */
+  disponivel(): boolean {
+    return this.asaas.disponivel();
+  }
+
+  async comprar(slug: string, compra: Compra) {
+    exigir(compra?.compradorNome?.trim(), 'Informe o seu nome.');
+    exigir(
+      /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(compra.compradorEmail ?? ''),
+      'Informe um e-mail válido — é por ele que o ingresso é reenviado.',
+    );
+    exigir(compra.itens?.length, 'Escolha ao menos um ingresso.');
+    exigir(
+      compra.metodo === 'pix' || compra.metodo === 'cartao',
+      'Forma de pagamento inválida.',
+    );
+    // ANTES de reservar, e não depois. O gateway recusa cobrança sem
+    // documento válido — e recusaria com o ingresso já fora do estoque,
+    // preso por 30 minutos por causa de um campo. Descoberto testando
+    // contra o Asaas de verdade; ver `documento.ts`
+    exigir(
+      documentoValido(compra.compradorDocumento),
+      'Informe um CPF ou CNPJ válido — o meio de pagamento exige.',
+    );
+
+    await this.varrerReservasVencidas();
+
+    const evento = await this.prisma.eventos.findFirst({
+      where: { slug, excluido_em: null },
+      select: { id: true, nome: true, status: true },
+    });
+    // o RLS sem contexto já esconde rascunho e cancelado
+    if (!evento) throw new NotFoundException('Evento não encontrado.');
+
+    const quantidade = compra.itens.reduce(
+      (soma, i) => soma + (Number(i.quantidade) || 0),
+      0,
+    );
+    exigir(quantidade > 0, 'Escolha ao menos um ingresso.');
+
+    const pedido = await this.reservar(evento.id, compra, quantidade);
+
+    // ---- daqui para baixo, qualquer falha deixa a reserva expirar ----
+    const clienteId = await this.asaas.garantirCliente({
+      nome: compra.compradorNome,
+      email: compra.compradorEmail,
+      documento: compra.compradorDocumento,
+      telefone: compra.compradorTelefone,
+    });
+
+    const cobranca = await this.asaas.criarCobranca({
+      clienteId,
+      metodo: compra.metodo,
+      valorCentavos: pedido.total_centavos,
+      descricao: `${evento.nome} — ${quantidade} ingresso(s)`,
+      referencia: pedido.pedido_id,
+      vencimento: hoje(),
+    });
+
+    let pix: { payload: string; imagemBase64: string } | null = null;
+    if (compra.metodo === 'pix') {
+      pix = await this.asaas.qrCodePix(cobranca.id);
+    }
+
+    await this.prisma.$executeRaw`
+      SELECT fn_vincula_cobranca(
+        ${pedido.pedido_id}::uuid, ${cobranca.id}, ${compra.metodo},
+        ${cobranca.invoiceUrl}, ${pix?.payload ?? null})`;
+
+    return {
+      pedidoId: pedido.pedido_id,
+      totalCentavos: pedido.total_centavos,
+      taxaCentavos: pedido.taxa_centavos,
+      expiraEm: pedido.expira_em.toISOString(),
+      metodo: compra.metodo,
+      // o cartão é pago na página do Asaas: número de cartão não passa
+      // por aqui nem pela nossa página (ver `asaas.ts`)
+      linkPagamento: cobranca.invoiceUrl,
+      pix: pix ? { copiaECola: pix.payload, imagemBase64: pix.imagemBase64 } : null,
+    };
+  }
+
+  /** A página de acompanhamento de quem comprou. */
+  async situacao(pedidoId: string) {
+    const [linha] = await this.prisma.$queryRaw<LinhaDaSituacao[]>`
+      SELECT * FROM fn_situacao_do_pedido(${pedidoId}::uuid)`;
+    if (!linha) throw new NotFoundException('Pedido não encontrado.');
+
+    return {
+      status: linha.status,
+      totalCentavos: linha.total_centavos,
+      taxaCentavos: linha.taxa_centavos,
+      metodo: linha.metodo,
+      linkPagamento: linha.link_pagamento,
+      pixCopiaECola: linha.pix_payload,
+      expiraEm: linha.expira_em?.toISOString() ?? null,
+      evento: { nome: linha.evento_nome, slug: linha.evento_slug },
+      // só depois de pago: antes disso o ingresso existe como reserva,
+      // mas não é de ninguém até o dinheiro entrar
+      ingressos: (linha.codigos ?? []).map((c) => ({
+        codigo: c,
+        exibicao: formatar(c),
+      })),
+    };
+  }
+
+  // ------------------------------------------------------------ interno
+
+  /**
+   * Grava a reserva. Os códigos nascem aqui porque o alfabeto do
+   * ingresso mora em `codigo.ts` — tê-lo também no banco criaria duas
+   * verdades sobre o que é um código válido.
+   */
+  private async reservar(
+    eventoId: string,
+    compra: Compra,
+    quantidade: number,
+  ): Promise<LinhaDoPedido> {
+    const itens = compra.itens.map((i) => ({
+      loteId: i.loteId,
+      quantidade: Number(i.quantidade),
+      titulares: i.titulares ?? [],
+    }));
+
+    for (let tentativa = 1; tentativa <= TENTATIVAS; tentativa++) {
+      const codigos = Array.from({ length: quantidade }, () => gerarCodigo());
+      try {
+        const [linha] = await this.prisma.$queryRaw<LinhaDoPedido[]>`
+          SELECT * FROM fn_criar_pedido_online(
+            ${eventoId}::uuid,
+            ${JSON.stringify(itens)}::jsonb,
+            ${codigos}::text[],
+            ${compra.compradorNome.trim()},
+            ${compra.compradorEmail.trim().toLowerCase()},
+            ${compra.compradorTelefone?.trim() || null},
+            ${normalizarDocumento(compra.compradorDocumento) || null})`;
+        return linha;
+      } catch (e) {
+        const colisao =
+          e instanceof Error && /unique|duplicate/i.test(e.message) &&
+          /codigo/i.test(e.message);
+        if (!colisao || tentativa === TENTATIVAS) {
+          // lote esgotado (AF030) e recusa de checkout (AF035) viram
+          // mensagem de negócio, não erro de driver
+          return traduzirErroDoBanco(e);
+        }
+      }
+    }
+    /* istanbul ignore next — o laço só sai por return ou throw */
+    throw new BadRequestException('Não foi possível reservar o ingresso.');
+  }
+
+  /**
+   * Cancela reservas vencidas e apaga as cobranças delas no gateway.
+   *
+   * O estoque já ignora reserva vencida (migration 24), então isto não é
+   * o que libera a vaga — é o que impede o comprador atrasado de pagar
+   * um Pix que não vale mais. Falha aqui não derruba a compra de quem
+   * chegou agora: a segunda defesa é o aviso de estorno no pedido.
+   */
+  private async varrerReservasVencidas(): Promise<void> {
+    try {
+      const vencidas = await this.prisma.$queryRaw<
+        { pedido_id: string; cobranca: string | null }[]
+      >`SELECT * FROM fn_expira_pedidos()`;
+
+      for (const v of vencidas) {
+        if (v.cobranca && this.asaas.disponivel()) {
+          await this.asaas.apagarCobranca(v.cobranca);
+        }
+      }
+      if (vencidas.length) {
+        this.log.log(`${vencidas.length} reserva(s) vencida(s) liberada(s)`);
+      }
+    } catch (e) {
+      this.log.warn(
+        `falha ao varrer reservas vencidas: ${
+          e instanceof Error ? e.message : 'erro desconhecido'
+        }`,
+      );
+    }
+  }
+}
+
+function exigir(cond: unknown, mensagem: string): asserts cond {
+  if (!cond) throw new BadRequestException(mensagem);
+}
+
+/** Data de hoje em São Paulo — o vencimento que o gateway recebe. */
+function hoje(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
