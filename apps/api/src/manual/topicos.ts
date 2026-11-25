@@ -680,6 +680,25 @@ export const TOPICOS: TopicoDoManual[] = [
     acao: 'Ir para Produtos',
   },
 
+  {
+    id: 'ficha-consumo',
+    titulo: 'Vender ficha e entregar no balcão',
+    resumo: 'O cliente compra a cerveja antes e retira com o QR.',
+    corpo: [
+      'No evento, crie um lote marcando **Ficha de consumo** e escolha o produto do seu cardápio. O nome e o preço nascem do cardápio e podem ser ajustados ali — eles são a fotografia do produto no dia da venda.',
+      'A ficha aparece na página do evento numa seção separada da entrada: comprar ingresso e comprar cerveja são decisões diferentes.',
+      'No balcão, abra a tela **Balcão** e leia o QR. Ela mostra em letra grande O QUE entregar, com a foto do produto.',
+      'Cada ficha vale **uma entrega, e acabou** — diferente do ingresso, que entra uma vez por dia. Num evento de dois dias a ficha não volta a valer no segundo.',
+      'Ingresso não passa pelo balcão e ficha não passa pelo portão: cada tela recusa o código da outra e diz para onde ir. É o que impede alguém perder a entrada por engano de fila.',
+      'Ficha não tem dia: vale enquanto o evento acontece.',
+    ],
+    palavras:
+      'ficha consumo bar balcao cerveja comida retirar produto entregar qr bebida ficha digital como vendo cerveja',
+    onde: ['painel'],
+    destino: { painel: { tela: 'balcao' } },
+    acao: 'Ir para o Balcão',
+  },
+
   // ── Operação ───────────────────────────────────────────────────────
   {
     id: 'exportar',

@@ -42,6 +42,8 @@ export const RECURSOS = [
   'evento',
   /** ler o QR no portão e dar baixa no ingresso do dia (RF035) */
   'portaria',
+  /** entregar o produto da ficha de consumo no balcão (RF035) */
+  'balcao',
 ] as const;
 
 export type Recurso = (typeof RECURSOS)[number];
@@ -75,6 +77,13 @@ export const PERMISSOES: Record<Recurso, readonly string[]> = {
   // no enum do banco e na tela de equipe.
   evento: [...TODOS_OS_DONOS, 'gestor'],
   portaria: [...TODOS_OS_DONOS, 'gestor', 'mesario'],
+
+  // Recurso próprio, e não "portaria": quem fica no bar e quem fica na
+  // entrada são turnos diferentes, e a tela de cada um recusa o código
+  // do outro. Hoje a lista de perfis é a mesma — o que separa de fato é
+  // a tela. Quando houver gente contratada só para o bar, um perfil
+  // `balcao` entra aqui sem mexer em mais nada.
+  balcao: [...TODOS_OS_DONOS, 'gestor', 'mesario'],
 };
 
 /** Perfis que o dono pode distribuir. Nem `organizador`, nem `superadmin`. */
@@ -95,7 +104,7 @@ export const DESCRICAO_DO_PERFIL: Record<PerfilDaEquipe, string> = {
   secretaria:
     'Cadastra e edita equipes, atletas e comissão técnica. Não opera jogos nem altera a configuração da competição.',
   mesario:
-    'Opera a partida: inicia, lança os acontecimentos, corrige e encerra. Imprime súmula e lê o QR no portão do evento. Não cadastra, não configura e não mexe em preço.',
+    'Opera a partida: inicia, lança os acontecimentos, corrige e encerra. Imprime súmula, lê o QR no portão e entrega ficha no balcão. Não cadastra, não configura e não mexe em preço.',
 };
 
 export function podeEscrever(perfil: string | undefined, recurso: Recurso) {

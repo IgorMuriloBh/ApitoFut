@@ -20,11 +20,14 @@ import { useRouter } from 'next/navigation';
 
 interface Lote {
   id: string;
+  especie: string;
   nome: string;
   descricao: string | null;
   precoCentavos: number;
   dia: string | null;
   maxPorPedido: number;
+  grupo: string | null;
+  imagemUrl: string | null;
 }
 
 interface Previa {
@@ -173,49 +176,91 @@ export function Comprar({ slug, lotes }: { slug: string; lotes: Lote[] }) {
     <div className="cartao">
       <h2>Comprar ingresso</h2>
 
-      <table>
-        <tbody>
-          {lotes.map((l) => (
-            <tr key={l.id}>
-              <td>
-                <b>{l.nome}</b>
-                {l.descricao && (
-                  <span style={{ display: 'block', fontSize: 13, color: 'var(--tinta2)' }}>
-                    {l.descricao}
-                  </span>
-                )}
-                <span style={{ display: 'block', fontSize: 13, color: 'var(--tinta2)' }}>
-                  {moeda(l.precoCentavos)}
-                  {l.dia ? ` · ${l.dia.split('-').reverse().join('/')}` : ''}
-                </span>
-              </td>
-              <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                <button
-                  type="button"
-                  aria-label={`Tirar um ${l.nome}`}
-                  onClick={() => mudar(l.id, -1, l.maxPorPedido)}
-                  style={botaoPasso}
-                >
-                  −
-                </button>
-                <span
-                  style={{ display: 'inline-block', minWidth: 28, fontWeight: 700 }}
-                >
-                  {quantidades[l.id] ?? 0}
-                </span>
-                <button
-                  type="button"
-                  aria-label={`Somar um ${l.nome}`}
-                  onClick={() => mudar(l.id, 1, l.maxPorPedido)}
-                  style={botaoPasso}
-                >
-                  +
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* Entrada e consumo são duas decisões diferentes: uma é "eu vou
+          ao evento", a outra é "eu vou beber lá". Misturadas na mesma
+          lista, a pessoa some com a entrada no meio das cervejas. */}
+      {(
+        [
+          ['ingresso', 'Entrada'],
+          ['ficha', 'Consumo no local'],
+        ] as const
+      ).map(([especie, titulo]) => {
+        const doTipo = lotes.filter((l) => l.especie === especie);
+        if (doTipo.length === 0) return null;
+
+        return (
+          <div key={especie} style={{ marginBottom: 10 }}>
+            <p
+              style={{
+                margin: '10px 0 2px',
+                fontSize: 12,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                color: 'var(--tinta2)',
+              }}
+            >
+              {titulo}
+            </p>
+            <table>
+              <tbody>
+                {doTipo.map((l) => (
+                  <tr key={l.id}>
+                    <td>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        {l.imagemUrl && (
+                          <img
+                            src={l.imagemUrl}
+                            alt=""
+                            width={44}
+                            height={44}
+                            style={{ borderRadius: 8, objectFit: 'cover' }}
+                          />
+                        )}
+                        <div>
+                          <b>{l.nome}</b>
+                          {l.descricao && (
+                            <span style={{ display: 'block', fontSize: 13, color: 'var(--tinta2)' }}>
+                              {l.descricao}
+                            </span>
+                          )}
+                          <span style={{ display: 'block', fontSize: 13, color: 'var(--tinta2)' }}>
+                            {moeda(l.precoCentavos)}
+                            {l.dia ? ` · ${l.dia.split('-').reverse().join('/')}` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button
+                        type="button"
+                        aria-label={`Tirar um ${l.nome}`}
+                        onClick={() => mudar(l.id, -1, l.maxPorPedido)}
+                        style={botaoPasso}
+                      >
+                        −
+                      </button>
+                      <span
+                        style={{ display: 'inline-block', minWidth: 28, fontWeight: 700 }}
+                      >
+                        {quantidades[l.id] ?? 0}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Somar um ${l.nome}`}
+                        onClick={() => mudar(l.id, 1, l.maxPorPedido)}
+                        style={botaoPasso}
+                      >
+                        +
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
 
       {total > 0 && (
         <div

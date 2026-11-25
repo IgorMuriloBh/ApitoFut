@@ -561,6 +561,26 @@ ETAPAS = [
              "<b>não</b> aparece — não levou ingresso nenhum."),
             ("Clique em <b>Exportar CSV</b> e abra no Excel.",
              "Abre com acento certo e uma coluna por campo."),
+            ("Em <b>Ficha e consumo › Produtos</b>, cadastre uma cerveja "
+             "com preço e foto. Depois, no evento, crie um lote marcando "
+             "<b>Ficha de consumo</b> e escolha esse produto.",
+             "O nome e o preço vêm do cardápio e podem ser ajustados ali. "
+             "O campo de dia some: ficha vale o evento inteiro."),
+            ("Abra a página pública do evento.",
+             "A ficha aparece em <b>Consumo no local</b>, separada da "
+             "entrada — com a foto do produto."),
+            ("Emita uma ficha pelo balcão e abra a tela <b>Balcão</b>. Leia "
+             "o QR dela.",
+             "A tela mostra em letra grande <b>o que entregar</b>, com a "
+             "foto. Não diz \"pode entrar\" — a pergunta do bar é outra."),
+            ("Leia a mesma ficha de novo.",
+             "<b>JÁ FOI ENTREGUE</b>, com a hora. Cada ficha vale uma "
+             "entrega e acabou — diferente do ingresso, que entra uma vez "
+             "por dia."),
+            ("Tente ler a ficha no <b>Portão</b>, e o ingresso no "
+             "<b>Balcão</b>.",
+             "Cada tela recusa o código da outra e diz para onde ir. É o "
+             "que impede alguém perder a entrada por engano de fila."),
             ("Entre com um usuário <b>mesário</b> (etapa 1 da sua equipe) e "
              "olhe o menu.",
              "Ele vê <b>Portão</b> e não vê <b>Eventos</b>: opera a entrada sem "

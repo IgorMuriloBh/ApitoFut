@@ -7,6 +7,8 @@ import { ClientesService } from './clientes.service';
 import { EmailService } from './email';
 import { ProdutosService } from './produtos.service';
 import { ProdutosController } from './produtos.controller';
+import { BalcaoService } from './balcao.service';
+import { BalcaoController } from './balcao.controller';
 import { AsaasService } from './asaas';
 import { CheckoutService } from './checkout.service';
 import { CheckoutController, WebhookController } from './checkout.controller';
@@ -22,6 +24,7 @@ import { PortariaService } from './portaria.service';
     CheckoutController,
     WebhookController,
     ProdutosController,
+    BalcaoController,
   ],
   providers: [
     EventosService,
@@ -31,6 +34,7 @@ import { PortariaService } from './portaria.service';
     ClientesService,
     EmailService,
     ProdutosService,
+    BalcaoService,
   ],
 })
 export class EventosModule {}

@@ -22,7 +22,8 @@ export type Recurso =
   | 'sumula'
   | 'disciplina'
   | 'evento'
-  | 'portaria';
+  | 'portaria'
+  | 'balcao';
 
 const DONOS = ['organizador', 'superadmin'];
 
@@ -37,6 +38,7 @@ const PERMISSOES: Record<Recurso, string[]> = {
   // lendo QR é outro — por isso o mesário alcança `portaria` e não `evento`
   evento: [...DONOS, 'gestor'],
   portaria: [...DONOS, 'gestor', 'mesario'],
+  balcao: [...DONOS, 'gestor', 'mesario'],
 };
 
 /** Perfil da sessão atual; `undefined` quando ninguém está logado. */

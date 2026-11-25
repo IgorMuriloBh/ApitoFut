@@ -160,7 +160,12 @@ export class EventosService {
         include: {
           competicoes: { select: { id: true, nome: true } },
           campos: { select: { id: true, nome: true } },
-          lotes: { orderBy: [{ ordem: 'asc' }, { criado_em: 'asc' }] },
+          lotes: {
+            orderBy: [{ ordem: 'asc' }, { criado_em: 'asc' }],
+            include: {
+              produtos: { select: { id: true, nome: true, grupo: true, imagem_url: true } },
+            },
+          },
         },
       });
       if (!evento || evento.excluido_em) {
@@ -179,6 +184,14 @@ export class EventosService {
         return {
           id: l.id,
           especie: l.especie,
+          produto: l.produtos
+            ? {
+                id: l.produtos.id,
+                nome: l.produtos.nome,
+                grupo: l.produtos.grupo,
+                imagemUrl: urlPublica(l.produtos.imagem_url),
+              }
+            : null,
           nome: l.nome,
           descricao: l.descricao,
           precoCentavos: l.preco_centavos,
@@ -286,6 +299,8 @@ export class EventosService {
     eventoId: string,
     dados: {
       id?: string;
+      especie?: 'ingresso' | 'ficha';
+      produtoId?: string | null;
       nome: string;
       descricao?: string | null;
       precoCentavos: number;
@@ -301,17 +316,41 @@ export class EventosService {
       Number.isInteger(dados.precoCentavos) && dados.precoCentavos >= 0,
       'Preço deve ser um número inteiro de centavos, zero ou mais.',
     );
-    // Ou é de graça, ou passa do mínimo do gateway. O meio-termo é um
-    // lote que o organizador consegue criar e ninguém consegue comprar:
-    // o erro só apareceria no fim do checkout, para o comprador, com a
-    // vaga já reservada. Aconteceu em produção — ver migration 26.
+    const especie = dados.especie ?? 'ingresso';
     exigir(
-      dados.precoCentavos === 0 ||
+      especie === 'ingresso' || especie === 'ficha',
+      'Espécie de lote inválida.',
+    );
+
+    /*
+     * O mínimo do gateway vale para INGRESSO, não para ficha.
+     *
+     * Ingresso costuma ser comprado um a um, então um lote de R$ 1,00
+     * seria impossível de vender — foi o que aconteceu em produção
+     * (migration 26). Ficha é o contrário: ninguém compra uma cerveja
+     * só, e uma água de R$ 3,00 é um item perfeitamente legítimo do
+     * cardápio. O que o gateway cobra é o PEDIDO, não o item, e o
+     * checkout já recusa carrinho abaixo do mínimo.
+     */
+    exigir(
+      especie === 'ficha' ||
+        dados.precoCentavos === 0 ||
         dados.precoCentavos >= MINIMO_COBRANCA_CENTAVOS,
-      `Um lote pago precisa custar pelo menos R$ ${(MINIMO_COBRANCA_CENTAVOS / 100)
+      `Um ingresso pago precisa custar pelo menos R$ ${(MINIMO_COBRANCA_CENTAVOS / 100)
         .toFixed(2)
         .replace('.', ',')} — é o mínimo que o meio de pagamento aceita cobrar. Para entrada gratuita, use R$ 0,00.`,
     );
+
+    if (especie === 'ficha') {
+      exigir(
+        dados.produtoId,
+        'Escolha o produto que esta ficha entrega. Cadastre em Ficha e consumo › Produtos.',
+      );
+      exigir(
+        !dados.dia,
+        'Ficha de consumo não tem dia: ela vale enquanto o evento acontece.',
+      );
+    }
     exigir(
       dados.quantidade == null ||
         (Number.isInteger(dados.quantidade) && dados.quantidade > 0),
@@ -336,7 +375,20 @@ export class EventosService {
         );
       }
 
+      // o RLS já recorta por organização, mas um id inexistente entraria
+      // como vínculo quebrado e o balcão ficaria sem saber o que entregar
+      if (especie === 'ficha') {
+        const produto = await tx.produtos.findUnique({
+          where: { id: dados.produtoId as string },
+        });
+        if (!produto) {
+          throw new BadRequestException('Produto não encontrado no seu cardápio.');
+        }
+      }
+
       const comum = {
+        especie: especie as never,
+        produto_id: especie === 'ficha' ? (dados.produtoId as string) : null,
         nome: dados.nome.trim(),
         descricao: dados.descricao?.trim() || null,
         preco_centavos: dados.precoCentavos,

@@ -838,6 +838,13 @@ export interface EventoDoPainel extends ResumoDoEvento {
 export interface LoteDoPainel {
   id: string;
   especie: string;
+  /** O item do cardápio que esta ficha entrega. `null` em ingresso. */
+  produto: {
+    id: string;
+    nome: string;
+    grupo: string;
+    imagemUrl: string | null;
+  } | null;
   nome: string;
   descricao: string | null;
   precoCentavos: number;
@@ -919,6 +926,28 @@ export interface PedidoDoPainel {
   criadoEm: string;
   observacoes: string | null;
   ingressos: IngressoDoPedido[];
+}
+
+/** A resposta do balcão: a pergunta é "o que eu entrego?". */
+export interface LeituraDoBalcao {
+  resultado: 'liberado' | 'recusado' | 'ja_utilizado';
+  motivo: string;
+  ficha?: {
+    codigo: string;
+    produto: string;
+    grupo: string | null;
+    imagemUrl: string | null;
+    evento: string;
+    comprador: string;
+    titular: string | null;
+  };
+  usadoEm?: string;
+}
+
+export interface MovimentoDoBalcao {
+  vendidas: number;
+  entregues: number;
+  pendentes: number;
 }
 
 /**
@@ -1103,6 +1132,8 @@ export const api = {
       eventoId: string,
       lote: {
         id?: string;
+        especie?: 'ingresso' | 'ficha';
+        produtoId?: string | null;
         nome: string;
         descricao?: string | null;
         precoCentavos: number;
@@ -1192,6 +1223,22 @@ export const api = {
       requisitar<{ removido: boolean }>(`/painel/produtos/${id}`, {
         metodo: 'DELETE',
       }),
+  },
+
+  balcao: {
+    conferir: (codigo: string) =>
+      requisitar<LeituraDoBalcao>(
+        `/painel/balcao/conferir?codigo=${encodeURIComponent(codigo)}`,
+      ),
+
+    entregar: (codigo: string) =>
+      requisitar<LeituraDoBalcao>('/painel/balcao/entregar', {
+        metodo: 'POST',
+        corpo: { codigo },
+      }),
+
+    movimento: (eventoId: string) =>
+      requisitar<MovimentoDoBalcao>(`/painel/balcao/${eventoId}/movimento`),
   },
 
   portao: {

@@ -20,6 +20,7 @@ import { Eventos } from './telas/Eventos';
 import { Portao } from './telas/Portao';
 import { Clientes } from './telas/Clientes';
 import { Produtos } from './telas/Produtos';
+import { Balcao } from './telas/Balcao';
 import { podeEscrever } from './lib/permissoes';
 import { TrocarSenha } from './telas/TrocarSenha';
 
@@ -35,6 +36,7 @@ type Tela =
   | { nome: 'portao' }
   | { nome: 'clientes' }
   | { nome: 'produtos' }
+  | { nome: 'balcao' }
   | { nome: 'admin'; aba: AbaDoAdm };
 
 /**
@@ -94,11 +96,18 @@ function navGlobal(ehDono: boolean): SecaoDoMenu[] {
      * vez; o ingresso é do evento e muda a cada edição. São dois
      * momentos diferentes do trabalho, e o menu diz isso.
      */
-    ...(podeEscrever('evento')
+    ...(podeEscrever('evento') || podeEscrever('balcao')
       ? [
           {
             titulo: 'Ficha e consumo',
-            itens: [{ chave: 'produtos', icone: '🍺', rotulo: 'Produtos' }],
+            itens: [
+              ...(podeEscrever('evento')
+                ? [{ chave: 'produtos', icone: '🍺', rotulo: 'Produtos' }]
+                : []),
+              ...(podeEscrever('balcao')
+                ? [{ chave: 'balcao', icone: '🧾', rotulo: 'Balcão' }]
+                : []),
+            ],
           },
         ]
       : []),
@@ -294,7 +303,8 @@ export function App() {
                     | 'eventos'
                     | 'portao'
                     | 'clientes'
-                    | 'produtos',
+                    | 'produtos'
+                    | 'balcao',
                 });
               }
             }}
@@ -339,6 +349,7 @@ export function App() {
                   | 'portao'
                   | 'clientes'
                   | 'produtos'
+                  | 'balcao'
                   | 'wizard',
               });
               return;
@@ -373,7 +384,8 @@ export function App() {
                   | 'eventos'
                   | 'portao'
                   | 'clientes'
-                  | 'produtos',
+                  | 'produtos'
+                  | 'balcao',
               });
             }
           }}
@@ -385,6 +397,7 @@ export function App() {
       {tela.nome === 'portao' && <Portao />}
       {tela.nome === 'clientes' && <Clientes />}
       {tela.nome === 'produtos' && <Produtos />}
+      {tela.nome === 'balcao' && <Balcao />}
       {tela.nome === 'base' && <BaseDeAtletas />}
       {tela.nome === 'ranking' && <RankingGeral />}
 

@@ -15,6 +15,7 @@ import {
   type Estado,
   type LoteDoPainel,
   type PedidoDoPainel,
+  type ProdutoDoCatalogo,
 } from '../lib/api';
 import {
   STATUS_DO_EVENTO,
@@ -82,6 +83,8 @@ const MODELOS: [
 
 const vazioDoLote = {
   id: '' as string | undefined,
+  especie: 'ingresso' as 'ingresso' | 'ficha',
+  produtoId: '',
   nome: '',
   descricao: '',
   preco: '0,00',
@@ -96,6 +99,8 @@ type FormularioDeLote = typeof vazioDoLote;
 function doLote(l: LoteDoPainel): FormularioDeLote {
   return {
     id: l.id,
+    especie: (l.especie === 'ficha' ? 'ficha' : 'ingresso') as 'ingresso' | 'ficha',
+    produtoId: l.produto?.id ?? '',
     nome: l.nome,
     descricao: l.descricao ?? '',
     preco: textoDeCentavos(l.precoCentavos),
@@ -130,6 +135,7 @@ export function Evento({
   });
 
   const [lote, setLote] = useState<FormularioDeLote | null>(null);
+  const [produtos, setProdutos] = useState<ProdutoDoCatalogo[]>([]);
 
   const [venda, setVenda] = useState<{
     aberta: boolean;
@@ -184,6 +190,12 @@ export function Evento({
   useEffect(() => {
     void carregar();
     void api.estados().then(setEstados).catch(() => undefined);
+    // o cardápio é da conta: serve a qualquer evento, e é o que permite
+    // vender ficha sem redigitar produto
+    void api.produtos
+      .listar()
+      .then((p) => setProdutos(p.filter((x) => x.ativo)))
+      .catch(() => setProdutos([]));
   }, [carregar]);
 
   /** Toda escrita passa por aqui: mesmo tratamento de erro e recarga. */
@@ -204,6 +216,10 @@ export function Evento({
 
   function salvarLote() {
     if (!lote) return;
+    if (lote.especie === 'ficha' && !lote.produtoId) {
+      setErro('Escolha o produto que esta ficha entrega.');
+      return;
+    }
     const centavos = centavosDeTexto(lote.preco);
     if (centavos === null) {
       setErro('Preço inválido. Use o formato 25,00 — ou 0 para cortesia.');
@@ -220,6 +236,8 @@ export function Evento({
     void agir(async () => {
       await api.eventos.salvarLote(eventoId, {
         id: lote.id || undefined,
+        especie: lote.especie,
+        produtoId: lote.especie === 'ficha' ? lote.produtoId : null,
         nome: lote.nome,
         descricao: lote.descricao || null,
         precoCentavos: centavos,
@@ -411,6 +429,18 @@ export function Evento({
         <div className="divide-y divide-slate-100">
           {evento.lotes.map((l) => (
             <div key={l.id} className="px-5 py-3 flex items-center gap-3 flex-wrap">
+              {l.especie === 'ficha' &&
+                (l.produto?.imagemUrl ? (
+                  <img
+                    src={l.produto.imagemUrl}
+                    alt=""
+                    className="w-10 h-10 rounded-lg object-cover border border-slate-200"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-slate-100 grid place-items-center">
+                    🍺
+                  </div>
+                ))}
               <div className="flex-1 min-w-[180px]">
                 <p className="font-medium">
                   {l.nome}
@@ -421,7 +451,11 @@ export function Evento({
                   )}
                 </p>
                 <p className="text-xs text-slate-500">
-                  {l.dia ? `Dia ${formataData(l.dia)}` : 'Vale qualquer dia do evento'}
+                  {l.especie === 'ficha'
+                    ? `Ficha · entrega ${l.produto?.nome ?? 'produto removido do cardápio'}`
+                    : l.dia
+                      ? `Dia ${formataData(l.dia)}`
+                      : 'Vale qualquer dia do evento'}
                   {' · até '}
                   {l.maxPorPedido} por pedido
                   {l.descricao ? ` · ${l.descricao}` : ''}
@@ -472,6 +506,64 @@ export function Evento({
 
         {lote && (
           <div className="p-5 border-t border-slate-200 bg-slate-50">
+            {/* A espécie vem primeiro porque muda o resto do formulário:
+                ficha entrega produto e não tem dia; ingresso tem dia e
+                obedece ao mínimo do gateway. */}
+            <div className="flex gap-2 mb-4">
+              {(['ingresso', 'ficha'] as const).map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => setLote({ ...lote, especie: e })}
+                  className={`px-4 py-2 rounded-lg text-sm border ${
+                    lote.especie === e
+                      ? 'bg-marca text-white border-marca font-semibold'
+                      : 'bg-white border-slate-300 text-slate-600'
+                  }`}
+                >
+                  {e === 'ingresso' ? '🎟 Ingresso' : '🍺 Ficha de consumo'}
+                </button>
+              ))}
+            </div>
+
+            {lote.especie === 'ficha' && (
+              <Campo
+                rotulo="Produto que esta ficha entrega"
+                obrigatorio
+                dica="Sai do cardápio da conta, em Ficha e consumo › Produtos."
+              >
+                <select
+                  className={classeEntrada}
+                  value={lote.produtoId}
+                  onChange={(e) => {
+                    const p = produtos.find((x) => x.id === e.target.value);
+                    // o nome e o preço do lote são a FOTOGRAFIA do
+                    // produto no dia da venda: nascem do cardápio e
+                    // podem ser ajustados aqui sem mexer no catálogo
+                    setLote({
+                      ...lote,
+                      produtoId: e.target.value,
+                      nome: p ? p.nome : lote.nome,
+                      preco: p ? textoDeCentavos(p.precoCentavos) : lote.preco,
+                    });
+                  }}
+                >
+                  <option value="">Selecione…</option>
+                  {produtos.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.grupo} · {p.nome} — {moeda(p.precoCentavos)}
+                    </option>
+                  ))}
+                </select>
+                {produtos.length === 0 && (
+                  <span className="block text-xs text-amber-700 mt-1">
+                    Nenhum produto ativo no cardápio. Cadastre em Ficha e
+                    consumo › Produtos.
+                  </span>
+                )}
+              </Campo>
+            )}
+
             <div className="grid sm:grid-cols-2 gap-3">
               <Campo rotulo="Nome do lote" obrigatorio>
                 <input
@@ -510,19 +602,23 @@ export function Evento({
                   inputMode="numeric"
                 />
               </Campo>
-              <Campo
-                rotulo="Dia do evento"
-                dica="Deixe vazio para passe que vale todos os dias (uma entrada por dia)."
-              >
-                <input
-                  type="date"
-                  className={classeEntrada}
-                  min={evento.dataInicio}
-                  max={evento.dataFim}
-                  value={lote.dia}
-                  onChange={(e) => setLote({ ...lote, dia: e.target.value })}
-                />
-              </Campo>
+              {/* ficha não tem dia: vale enquanto o evento acontece, e
+                  é entregue uma vez só */}
+              {lote.especie === 'ingresso' && (
+                <Campo
+                  rotulo="Dia do evento"
+                  dica="Deixe vazio para passe que vale todos os dias (uma entrada por dia)."
+                >
+                  <input
+                    type="date"
+                    className={classeEntrada}
+                    min={evento.dataInicio}
+                    max={evento.dataFim}
+                    value={lote.dia}
+                    onChange={(e) => setLote({ ...lote, dia: e.target.value })}
+                  />
+                </Campo>
+              )}
               <Campo rotulo="Descrição">
                 <input
                   className={classeEntrada}

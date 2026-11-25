@@ -1084,8 +1084,33 @@ cargos); aqui a taxonomia é de cada organizador — "bebida", "brinde",
 produto duas vezes no mesmo grupo, sem acento e sem caixa, que é o que
 de fato estraga um cardápio.
 
-Falta a venda (lote de ficha apontando para o produto) e a tela de
-Balcão. O portão já está preparado para elas.
+**A venda** é um lote com `especie = 'ficha'` apontando para um produto
+(migration 31). O lote continua guardando nome e preço: eles são a
+**fotografia do produto no dia da venda**. Se a cerveja subir para
+R$ 10, quem comprou a R$ 8 comprou a R$ 8, e o relatório daquele evento
+precisa continuar dizendo R$ 8 — ler o preço do cardápio na hora de
+exibir reescreveria o passado toda vez que o menu mudasse. `produto_id`
+serve ao presente: a foto que o atendente vê e o vínculo para
+relatório. Apagar o item do cardápio é decisão de cardápio, não de
+contabilidade — a FK é `ON DELETE SET NULL`.
+
+**O mínimo de R$ 5,00 passou a valer só para ingresso.** Ingresso é
+comprado um a um, então um lote de R$ 1,00 seria invendável — foi o
+defeito da migration 26. Ficha é o contrário: ninguém compra uma cerveja
+só, e uma água de R$ 3,00 é item legítimo do cardápio. O gateway cobra o
+PEDIDO, não o item, e o checkout já recusa carrinho abaixo do mínimo.
+
+**A tela de Balcão é irmã da do Portão, com outra pergunta.** O portão
+responde "pode entrar?" e por isso é um semáforo; o balcão responde "o
+que eu entrego?", então o PRODUTO vem primeiro, grande, com foto. As
+decisões de operação são as mesmas e pelas mesmas razões: o resultado
+rola para a tela sozinho, a digitação manual fica sempre visível e
+aceita o link colado, e o mesmo código é ignorado por 15 s para a câmera
+não ler duas vezes a mesma ficha.
+
+**No portal, entrada e consumo aparecem separados.** Misturados na mesma
+lista, o ingresso some no meio das cervejas — e são duas decisões
+diferentes: "eu vou ao evento" e "eu vou beber lá".
 
 ### O que falta (fases seguintes)
 

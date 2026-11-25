@@ -29,11 +29,11 @@ describe('matriz de permissões', () => {
     }
   });
 
-  test('mesário opera a partida e o portão, nada além', () => {
+  test('mesário opera a partida, o portão e o balcão, nada além', () => {
     // `portaria` entrou com os eventos (RF035): quem fica no portão lendo
     // QR é o mesmo plantão operacional. Continua sem alcançar preço,
     // cadastro ou configuração — é o que o teste seguinte fixa
-    assert.deepEqual(recursosDoPerfil('mesario'), ['sumula', 'portaria']);
+    assert.deepEqual(recursosDoPerfil('mesario'), ['sumula', 'portaria', 'balcao']);
   });
 
   test('secretaria só mexe em elenco', () => {

@@ -22,11 +22,14 @@ const API = process.env.API_URL ?? 'http://localhost:3000';
 
 interface Lote {
   id: string;
+  especie: string;
   nome: string;
   descricao: string | null;
   precoCentavos: number;
   dia: string | null;
   maxPorPedido: number;
+  grupo: string | null;
+  imagemUrl: string | null;
 }
 
 interface EventoPublico {

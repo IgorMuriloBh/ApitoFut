@@ -338,7 +338,7 @@ describe('gestão pelo dono', () => {
     );
     const mesario = r.corpo.perfis.find((p: any) => p.chave === 'mesario');
     // 'portaria' entrou com os eventos (RF035) — ver permissoes.ts
-    assert.deepEqual(mesario.podeEscrever, ['sumula', 'portaria']);
+    assert.deepEqual(mesario.podeEscrever, ['sumula', 'portaria', 'balcao']);
   });
 });
 

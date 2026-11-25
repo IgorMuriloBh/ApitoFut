@@ -69,6 +69,7 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
 - `db/28-email-sabe-o-valor.sql` — entrada franca não anuncia "pagamento confirmado"
 - `db/29-ficha-de-consumo.sql` — ficha é usada UMA vez, não uma por dia
 - `db/30-produtos.sql` — catálogo de produtos da conta (cardápio)
+- `db/31-lote-de-ficha.sql` — o lote de ficha aponta para um produto
 
 ## Banco de dados
 
@@ -99,7 +100,7 @@ perfis de trabalho:
 | `superadmin` | ADM do sistema: enxerga todos os usuários e todas as competições |
 | `gestor` | equiparado ao dono **dentro da competição**; não mexe em quem entra na conta |
 | `secretaria` | equipes, atletas e comissão técnica; não opera jogo nem configura |
-| `mesario` | opera a partida, imprime súmula **e lê o QR no portão**; não cadastra nem configura |
+| `mesario` | opera a partida, imprime súmula, **lê o QR no portão e entrega ficha no balcão**; não cadastra nem configura |
 
 **Leitura é livre dentro da organização; escrita é por recurso.** A matriz vive em
 `apps/api/src/auth/permissoes.ts` e é aplicada pelo `PermissaoGuard`, pendurado no
@@ -404,7 +405,17 @@ do código — é o único lugar que resiste a duas requisições simultâneas:
   `NULLS NOT DISTINCT` (migration 29) — o banco aceita uma única linha
   nula por ingresso. Não é truque: check-in de ingresso consome um DIA
   do evento, ficha consome a si mesma
-- **O portão recusa ficha, e o balcão recusará ingresso.** Quem está na
+- **O mínimo de R$ 5,00 vale para ingresso, não para ficha.** Ingresso
+  é comprado um a um, então um lote de R$ 1,00 seria invendável. Ficha
+  é o contrário: ninguém compra uma cerveja só, e água de R$ 3,00 é
+  item legítimo. O gateway cobra o PEDIDO, e o checkout já recusa
+  carrinho abaixo do mínimo
+- **O lote de ficha guarda nome e preço mesmo apontando para o
+  produto.** Eles são a fotografia do produto no dia da venda: se a
+  cerveja subir para R$ 10, quem comprou a R$ 8 comprou a R$ 8, e o
+  relatório daquele evento precisa continuar dizendo R$ 8. Apagar o
+  produto do cardápio não apaga a venda (`ON DELETE SET NULL`)
+- **O portão recusa ficha, e o balcão recusa ingresso.** Quem está na
   entrada responde "pode entrar?"; quem está no bar, "o que eu
   entrego?". Deixar o portão queimar uma ficha é o cliente perder a
   cerveja para entrar num evento em que já estava
@@ -557,6 +568,7 @@ apps/api/          NestJS — a única app existente hoje
     produtos.service.ts  o cardápio da conta (ficha de consumo)
     dia-do-evento.ts que dia é hoje NO FUSO DO EVENTO — o servidor é UTC
     portaria.service.ts  a leitura do portão; responde sempre o mesmo formato
+    balcao.service.ts    a leitura do balcão; responde O QUE entregar
 apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
   src/lib/api.ts     cliente autenticado; token em sessionStorage
   src/lib/dominio.ts vocabulário do protótipo (STATUS, CORES, FASES…)

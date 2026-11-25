@@ -57,6 +57,9 @@ export class EventosPublicoController {
         lotes: {
           where: { ativo: true },
           orderBy: [{ ordem: 'asc' }, { criado_em: 'asc' }],
+          include: {
+            produtos: { select: { grupo: true, imagem_url: true } },
+          },
         },
       },
     });
@@ -97,11 +100,16 @@ export class EventosPublicoController {
         )
         .map((l) => ({
           id: l.id,
+          // a tela separa ingresso de consumo: comprar entrada e
+          // comprar cerveja são duas decisões diferentes
+          especie: l.especie,
           nome: l.nome,
           descricao: l.descricao,
           precoCentavos: l.preco_centavos,
           dia: l.dia ? l.dia.toISOString().slice(0, 10) : null,
           maxPorPedido: l.max_por_pedido,
+          grupo: l.produtos?.grupo ?? null,
+          imagemUrl: urlPublica(l.produtos?.imagem_url ?? null),
         })),
     };
   }
