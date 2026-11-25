@@ -137,6 +137,17 @@ export class BalcaoService {
     const { lotes: lote, pedidos: pedido } = ingresso;
     const evento = pedido.eventos;
 
+    /*
+     * Pedido sem evento é pedido de INSCRIÇÃO (migration 32), que não
+     * emite ficha. Recusa com frase, como todo o resto desta tela.
+     */
+    if (!evento) {
+      return {
+        resultado: 'recusado',
+        motivo: 'Este código não é de uma ficha de consumo.',
+      };
+    }
+
     if (lote.especie !== 'ficha') {
       return {
         resultado: 'recusado',

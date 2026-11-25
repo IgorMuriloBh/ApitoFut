@@ -94,6 +94,28 @@ export class TabelaService {
         'Vincule ao menos 2 equipes à categoria antes de gerar a tabela.',
       );
 
+      /*
+       * Inscrição pendente TRAVA a tabela, e não é silenciosamente
+       * excluída dela (RF035).
+       *
+       * Sortear sem a equipe pendente pareceria funcionar: a tabela
+       * sai, os jogos existem, e o organizador só descobre o problema
+       * quando a equipe aparece no campo sem jogo marcado. Travar com
+       * os nomes na tela custa um clique — liberar ou receber — e
+       * nunca produz uma tabela errada.
+       */
+      const pendentes = categoria.categoria_times
+        .filter((v) => v.situacao === 'pendente')
+        .map((v) => v.times.nome)
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+      if (pendentes.length > 0) {
+        throw new ConflictException(
+          `Inscrição pendente: ${pendentes.join(', ')}. ` +
+            `Confirme o pagamento ou libere a equipe antes de gerar a tabela.`,
+        );
+      }
+
       // Refazer a tabela apaga os jogos — e com eles os lances já lançados.
       const existentes = await tx.jogos.count({ where: { categoria_id: categoriaId } });
       if (existentes > 0) {

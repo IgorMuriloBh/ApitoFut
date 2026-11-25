@@ -136,6 +136,19 @@ export class PortariaService {
 
     const { lotes: lote, pedidos: pedido } = ingresso;
     const evento = pedido.eventos;
+
+    /*
+     * Pedido sem evento é pedido de INSCRIÇÃO (migration 32), e
+     * inscrição não emite ingresso — esta linha não deveria existir. O
+     * portão responde como responde a tudo: uma frase, nunca uma
+     * exceção na cara de quem está na fila.
+     */
+    if (!evento) {
+      return {
+        resultado: 'recusado',
+        motivo: 'Este código não é de um ingresso de evento.',
+      };
+    }
     const identificacao = {
       codigo: formatarCodigo(ingresso.codigo),
       titular: ingresso.titular_nome,

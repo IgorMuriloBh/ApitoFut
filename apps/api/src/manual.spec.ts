@@ -21,6 +21,7 @@ const TELAS = new Set(['painel', 'wizard', 'base', 'ranking', 'ajuda',
   'competicao',
   'admin:plataforma', 'admin:usuarios', 'admin:competicoes']);
 const SECOES = new Set(['visao', 'categorias', 'equipes', 'atletas', 'tabela',
+  'inscricoes',
   'aovivo', 'classificacao', 'estatisticas', 'suspensoes', 'estrutura',
   'config', 'ajuda']);
 

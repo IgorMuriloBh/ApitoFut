@@ -587,6 +587,59 @@ export interface FaseParaSalvar {
   numJogos?: number;
 }
 
+// ------------------------------------------------- inscrição paga (RF035)
+
+export interface EquipeDaInscricao {
+  timeId: string;
+  nome: string;
+  escudoUrl: string | null;
+  situacao: 'pendente' | 'confirmada';
+  liberadoEm: string | null;
+  liberadoPor: string | null;
+  liberacaoMotivo: string | null;
+  atletas: number;
+  pedido: {
+    id: string;
+    status: string;
+    totalCentavos: number;
+    metodo: string | null;
+    linkPagamento: string | null;
+    pixCopiaECola: string | null;
+    criadoEm: string;
+  } | null;
+}
+
+export interface InscricaoDaCategoria {
+  categoria: { id: string; nome: string };
+  cobranca: {
+    precoCentavos: number;
+    por: 'equipe' | 'atleta';
+    minimoCentavos: number;
+    gatewayDisponivel: boolean;
+  };
+  equipes: EquipeDaInscricao[];
+  pendentes: number;
+}
+
+export interface PreviaDaInscricao {
+  unitarioCentavos: number;
+  quantidade: number;
+  por: string;
+  subtotalCentavos: number;
+  taxaCentavos: number;
+  totalCentavos: number;
+  minimoCentavos: number;
+}
+
+export interface CobrancaDaInscricao {
+  pedidoId: string;
+  totalCentavos: number;
+  taxaCentavos: number;
+  metodo: string;
+  linkPagamento: string | null;
+  pix: { copiaECola: string; imagemBase64: string } | null;
+}
+
 // ------------------------------------------- classificação e disciplina
 
 export interface LinhaDaClassificacao {
@@ -1478,6 +1531,55 @@ export const api = {
   disciplina: (categoriaId: string) =>
     requisitar<SituacaoDisciplinar>(
       `/painel/categorias/${categoriaId}/disciplina`,
+    ),
+
+  // ------------------------------------------- inscrição paga (RF035)
+
+  inscricao: (categoriaId: string) =>
+    requisitar<InscricaoDaCategoria>(
+      `/painel/categorias/${categoriaId}/inscricao`,
+    ),
+
+  configurarInscricao: (
+    categoriaId: string,
+    dados: { precoCentavos: number; por: 'equipe' | 'atleta' },
+  ) =>
+    requisitar(`/painel/categorias/${categoriaId}/inscricao`, {
+      metodo: 'PUT',
+      corpo: dados,
+    }),
+
+  previaDaInscricao: (categoriaId: string, timeId: string) =>
+    requisitar<PreviaDaInscricao>(
+      `/painel/categorias/${categoriaId}/inscricao/${timeId}/previa`,
+    ),
+
+  cobrarInscricao: (
+    categoriaId: string,
+    timeId: string,
+    dados: Record<string, unknown>,
+  ) =>
+    requisitar<CobrancaDaInscricao>(
+      `/painel/categorias/${categoriaId}/inscricao/${timeId}/cobranca`,
+      { metodo: 'POST', corpo: dados },
+    ),
+
+  cancelarCobrancaDaInscricao: (categoriaId: string, timeId: string) =>
+    requisitar(
+      `/painel/categorias/${categoriaId}/inscricao/${timeId}/cobranca`,
+      { metodo: 'DELETE' },
+    ),
+
+  liberarInscricao: (categoriaId: string, timeId: string, motivo: string) =>
+    requisitar(
+      `/painel/categorias/${categoriaId}/inscricao/${timeId}/liberar`,
+      { metodo: 'POST', corpo: { motivo } },
+    ),
+
+  retomarInscricao: (categoriaId: string, timeId: string) =>
+    requisitar(
+      `/painel/categorias/${categoriaId}/inscricao/${timeId}/retomar`,
+      { metodo: 'POST' },
     ),
 
   campos: (competicaoId: string) =>

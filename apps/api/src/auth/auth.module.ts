@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { DisciplinaController } from '../painel/disciplina.controller';
 import { DisciplinaService } from '../painel/disciplina.service';
+import { InscricaoPagaController } from '../painel/inscricao-paga.controller';
+import { InscricaoPagaService } from '../painel/inscricao-paga.service';
+import { AsaasService } from '../eventos/asaas';
 import { ElencoController } from '../painel/elenco.controller';
 import { ElencoService } from '../painel/elenco.service';
 import { EquipesService } from '../painel/equipes.service';
@@ -35,6 +38,7 @@ import { AuthService } from './auth.service';
     ElencoController,
     TabelaController,
     DisciplinaController,
+    InscricaoPagaController,
     EstruturaController,
     EquipeController,
     MinhaContaController,
@@ -59,6 +63,9 @@ import { AuthService } from './auth.service';
     TabelaService,
     ArteService,
     DisciplinaService,
+    InscricaoPagaService,
+    // o gateway é o mesmo do ingresso: uma chave, um cliente
+    AsaasService,
   ],
 })
 export class AuthModule {}

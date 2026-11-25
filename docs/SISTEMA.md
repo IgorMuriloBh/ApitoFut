@@ -1112,6 +1112,110 @@ não ler duas vezes a mesma ficha.
 lista, o ingresso some no meio das cervejas — e são duas decisões
 diferentes: "eu vou ao evento" e "eu vou beber lá".
 
+### Inscrição paga da equipe (migration 32)
+
+Primeiro ponto em que o módulo de dinheiro encosta no que já existia:
+categoria, equipe e tabela de jogos. Decidido com o cliente: o
+pagamento **trava a entrada**, mas o organizador pode **liberar na
+mão** — na várzea a inscrição é acertada em dinheiro, permuta ou
+patrocínio, e o sistema não pode ser a razão de uma equipe não entrar
+em campo.
+
+**O pagamento vai no mesmo `pedidos` dos ingressos.** A tentação era
+uma tabela de cobrança só para inscrição — mais barato hoje e mais caro
+para sempre: dinheiro recebido em dois lugares significa duas contas de
+taxa, dois relatórios de repasse, dois caminhos de webhook e duas bases
+de cliente, e um dos dois sempre fica para trás quando a regra muda.
+`pedidos` passou a ser o que já era na prática: um **pagamento feito à
+organização**. `evento_id` virou nulável e entraram `categoria_id` +
+`time_id`, com `ck_pedido_ancora` exigindo **exatamente uma** âncora —
+sem âncora o pedido não apareceria em relatório nenhum; com as duas,
+apareceria em dois.
+
+O custo dessa mudança veio na hora, e foi o compilador quem cobrou:
+`portaria.service` e `balcao.service` liam `pedido.eventos.nome` sem
+possibilidade de nulo. Os dois ganharam a recusa explícita — um código
+cujo pedido não tem evento não é ingresso nem ficha —, respondida como
+tudo nessas telas: uma frase, nunca uma exceção na cara de quem está na
+fila.
+
+**Equipe nasce pendente onde há cobrança**, por gatilho
+(`trg_situacao_inicial_da_equipe`) e não por validação de rota: há três
+portas para uma equipe entrar numa categoria — o painel, a área da
+equipe e a replicação — e esquecer a regra numa delas seria inscrição de
+graça sem ninguém notar. O gatilho **ignora** o `situacao` que o cliente
+mandar. Dinheiro falha fechado.
+
+**Pendente trava a geração da tabela, e os nomes vão na mensagem.**
+Excluir a equipe pendente do sorteio pareceria funcionar: a tabela sai,
+os jogos existem, e o problema só aparece com a equipe no campo sem jogo
+marcado. Travar custa um clique — liberar ou confirmar o pagamento — e
+nunca produz uma tabela errada.
+
+**Quem confirma a inscrição é gatilho.** O pagamento chega por três
+caminhos (webhook do gateway, pedido gratuito, lançamento do
+organizador) e nenhum deles precisa saber que existe inscrição: todos
+mudam `pedidos.status`, e `trg_inscricao_segue_o_pedido` faz o resto. O
+reverso também vale — estorno devolve a equipe para pendente —, **menos
+para quem foi liberado na mão** (`liberado_em IS NULL` na condição):
+aquilo foi decisão do organizador, não consequência de uma cobrança.
+
+**Liberar não cria pedido.** Nada passou pela plataforma; inventar um
+pedido pago poria no relatório de repasse um valor que ela nunca
+recebeu e teria de repassar. Grava autor, data e **motivo obrigatório**
+— sem ele, meses depois ninguém sabe por que aquela equipe entrou sem
+pagar.
+
+**Mexer no preço não revisita quem já está dentro.** Passar a cobrar
+numa categoria com dez equipes jogando viraria dez pendentes e uma
+tabela travada. O gatilho age na entrada: a regra nova vale para quem
+chegar depois dela.
+
+**A taxa é a mesma fórmula do ingresso.** O miolo de
+`fn_precifica_pedido` saiu para `fn_aplica_taxa`, pura, que a inscrição
+reusa — duas cópias de uma conta de dinheiro é como se chega a dois
+valores diferentes para a mesma venda. A inscrição cobra sempre do
+**comprador**, e isso não é configurável como no evento: quem paga é a
+equipe, e a liga não tem por que absorver taxa de quem entra no
+campeonato dela.
+
+**O pedido de inscrição não tem `expira_em`.** Reserva existe para
+devolver vaga ao estoque; inscrição não tem estoque, e a equipe continua
+devendo depois de meia hora. Por isso também o Pix vence em **7 dias**,
+e não hoje como o do ingresso — um Pix que morre à meia-noite obrigaria
+o organizador a gerar outro todo dia. Em compensação, falha no gateway
+**apaga o pedido**: o órfão ocuparia `uq_pedido_da_inscricao` para
+sempre e a equipe nunca conseguiria tentar de novo.
+
+**`inscricao` é recurso próprio na matriz de permissões**, e não
+`elenco`. A secretaria cadastra equipe e atleta; dispensar o pagamento
+de uma inscrição é decisão de dinheiro.
+
+#### Dois defeitos que só a tela entregou
+
+1. **A lista mostrava escudo sem nome.** `Escudo` desenha o brasão e só
+   — o nome é texto ao lado, como em Equipes. Na primeira abertura a
+   tela tinha seis círculos com iniciais e nenhuma equipe identificável.
+2. **"Copiar Pix" falhava em silêncio.** `navigator.clipboard.writeText`
+   rejeitou com `NotAllowedError`, a promessa não era tratada, e o botão
+   não mudava: o organizador clicaria, não veria nada e colaria no
+   WhatsApp o que já estava na área de transferência. Agora o "copia e
+   cola" fica num campo **selecionável, sempre visível**; o botão é
+   conveniência e, quando falha, diz "Copie à mão" em vez de fingir.
+
+Também daí veio uma correção de texto: o cartão de confirmadas dizia
+"Pagaram ou foram liberadas pela organização", o que é mentira para as
+equipes que já estavam na categoria antes de a cobrança existir.
+
+#### O que ainda não tem
+
+A equipe **não paga sozinha** pela área da equipe: hoje quem gera a
+cobrança é o organizador, que manda o Pix. É o próximo passo natural —
+a área da equipe já tem credencial própria (o código de 6 caracteres) e
+o pedido já existe no mesmo lugar. Também não há e-mail de cobrança de
+inscrição: `fn_pedido_para_email` é do ingresso e tem `JOIN eventos`,
+então pedido de inscrição simplesmente não produz e-mail (sem erro).
+
 ### O que falta (fases seguintes)
 
 | fase | o que entra | depende de |
@@ -1120,7 +1224,8 @@ diferentes: "eu vou ao evento" e "eu vou beber lá".
 | **2 — feito** | cliente Asaas, checkout Pix e cartão, webhook com segredo e idempotência (migration 25) | — |
 | **2 — feito** | telas: checkout no portal, página do pedido, taxa no painel | — |
 | 3 | Google Wallet (JWT RS256, sem dependência nova) e PDF do ingresso | conta Google Cloud |
-| 4 | Apple Wallet (`.pkpass`, assinado com `openssl smime` — já está na imagem), Stripe, venda de inscrição, ficha de consumo | certificado Apple Pass Type ID (Apple Developer Program, US$ 99/ano) |
+| 4 | Apple Wallet (`.pkpass`, assinado com `openssl smime` — já está na imagem), Stripe | certificado Apple Pass Type ID (Apple Developer Program, US$ 99/ano) |
+| — | **venda de inscrição** (migration 32) e **ficha de consumo** (29–31) saíram da fila: foram entregues fora da ordem, a pedido do cliente | — |
 
 Também fora: emissão fiscal e chargeback. Não são decisão de código — mas
 com a plataforma como lojista, a responsabilidade é dela.

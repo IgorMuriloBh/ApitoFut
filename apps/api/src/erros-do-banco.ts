@@ -85,6 +85,16 @@ export function traduzirErroDoBanco(erro: unknown): never {
       // a mensagem do banco já é escrita para o comprador ler
       throw new BadRequestException(mensagem('Não foi possível concluir a compra.'));
 
+    // migration 32 — inscrição paga
+    case 'AF040':
+      throw new BadRequestException(
+        mensagem('Categoria sem configuração de inscrição.'),
+      );
+    case 'AF041':
+      throw new BadRequestException(
+        mensagem('A equipe não está inscrita nesta categoria.'),
+      );
+
     default:
       throw erro;
   }

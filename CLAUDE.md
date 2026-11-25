@@ -70,6 +70,7 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
 - `db/29-ficha-de-consumo.sql` — ficha é usada UMA vez, não uma por dia
 - `db/30-produtos.sql` — catálogo de produtos da conta (cardápio)
 - `db/31-lote-de-ficha.sql` — o lote de ficha aponta para um produto
+- `db/32-inscricao-paga.sql` — inscrição cobrada da equipe; `pedidos` ganha a âncora de categoria (RF035)
 
 ## Banco de dados
 
@@ -99,7 +100,7 @@ perfis de trabalho:
 | `organizador` | dono da conta: administra as próprias competições e **é o único que convida e gerencia a equipe** |
 | `superadmin` | ADM do sistema: enxerga todos os usuários e todas as competições |
 | `gestor` | equiparado ao dono **dentro da competição**; não mexe em quem entra na conta |
-| `secretaria` | equipes, atletas e comissão técnica; não opera jogo nem configura |
+| `secretaria` | equipes, atletas e comissão técnica; não opera jogo, não configura e **não libera inscrição** |
 | `mesario` | opera a partida, imprime súmula, **lê o QR no portão e entrega ficha no balcão**; não cadastra nem configura |
 
 **Leitura é livre dentro da organização; escrita é por recurso.** A matriz vive em
@@ -288,6 +289,57 @@ Estas foram validadas no protótipo e várias estão garantidas por constraint/t
   produzia quatro grafias do mesmo cargo na mesma súmula impressa
 - **Rotas administrativas são exclusivas do superadmin** — 403 no `SuperadminGuard`
   e reconferência no banco; idem competição de outro dono
+
+### Inscrição paga da equipe (RF035, migration 32)
+
+Primeiro ponto em que o módulo de dinheiro encosta no que já existia:
+categoria, equipe e tabela de jogos.
+
+- **O pagamento da inscrição vai no mesmo `pedidos` dos ingressos.** Uma
+  tabela de cobrança paralela significaria duas contas de taxa, dois
+  relatórios de repasse e dois caminhos de webhook — e um dos dois
+  sempre fica para trás. `ck_pedido_ancora` exige **exatamente uma**
+  âncora: evento (ingresso/ficha) ou categoria + equipe (inscrição)
+- **Equipe de categoria que cobra nasce `pendente`** —
+  `trg_situacao_inicial_da_equipe`. No banco porque são três portas
+  (painel, área da equipe, replicação de categoria) e esquecer numa
+  delas seria inscrição de graça sem ninguém notar. O gatilho **ignora**
+  o que o cliente mandar em `situacao`: dinheiro falha fechado
+- **Pendente trava a geração da tabela, com os nomes na mensagem.**
+  Sortear sem a equipe pareceria funcionar — o erro só apareceria com a
+  equipe em campo sem jogo marcado
+- **Quem confirma a inscrição é gatilho, não código.** O pagamento chega
+  por webhook, por pedido gratuito e por lançamento do organizador;
+  depender de cada caminho lembrar de confirmar é como se perde um deles
+- **Liberação manual não cria pedido.** Dinheiro na mão, permuta ou
+  patrocínio não passaram pela plataforma: inventar um pedido pago poria
+  no relatório de repasse um valor que a plataforma nunca recebeu. Grava
+  autor, data e **motivo obrigatório**
+- **Estorno devolve a equipe para pendente, mas não derruba liberação
+  manual** (`liberado_em IS NULL` na condição). A liberação foi decisão
+  do organizador, não consequência de uma cobrança
+- **Mudar o preço não revisita quem já está dentro.** Passar a cobrar
+  numa categoria com dez equipes jogando viraria dez pendentes e uma
+  tabela travada. A regra nova vale para quem chegar depois dela
+- **A inscrição cobra a taxa do comprador, sempre** — não é
+  configurável como no evento. Quem paga é a equipe, e a liga não tem
+  por que absorver taxa de quem entra no campeonato dela. A fórmula é a
+  mesma do ingresso: `fn_aplica_taxa`, extraída de
+  `fn_precifica_pedido` para não existir em duas cópias
+- **O pedido de inscrição não tem `expira_em`.** Reserva existe para
+  devolver vaga ao estoque; inscrição não tem estoque, e a equipe
+  continua devendo depois de meia hora. O Pix vence em 7 dias, não hoje
+- **Falha no gateway apaga o pedido.** Diferente do ingresso, onde a
+  reserva vencida se resolve sozinha, aqui o pedido órfão ocuparia
+  `uq_pedido_da_inscricao` para sempre e a equipe nunca tentaria de novo
+- **O "copia e cola" do Pix fica num campo visível, não atrás de
+  "Copiar".** `navigator.clipboard` é negado em mais situações do que
+  parece e a promessa rejeita calada: o organizador clicava, nada mudava
+  na tela, e ele colava no WhatsApp o que já estava na área de
+  transferência. Visto na primeira vez que a tela rodou
+- **`inscricao` é recurso próprio na matriz de permissões**, não
+  `elenco`: a secretaria cadastra equipe e atleta, e dispensar o
+  pagamento de uma inscrição é decisão de dinheiro
 
 ### Eventos e ingressos (RF035, migration 23)
 
@@ -550,6 +602,8 @@ apps/api/          NestJS — a única app existente hoje
   src/painel/ficha-atleta.ts  campos que a categoria pede; puro, sem Prisma
   src/carteirinha/   credencial da arbitragem por QR; nunca devolve documento
   src/painel/sumula-impressa.ts  HTML da súmula em branco; não conhece Prisma
+  src/painel/inscricao-paga.ts(.service/.controller)  inscrição cobrada da
+                     equipe (RF035). Mesmo `pedidos` dos ingressos
   src/painel/premiacoes.ts       RF024, puro; empate volta como empate
   src/painel/csv.ts              exportações; BOM e `;` por causa do Excel pt-BR
   src/painel/arte.ts             artes de divulgação (RF033); puro, devolve SVG
@@ -587,6 +641,7 @@ apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
                      Estatisticas · Suspensoes · Estrutura · Configuracao ·
                      Categorias · AoVivo · BaseDeAtletas · RankingGeral ·
                      ConfigurarFases (modal da tabela de jogos) ·
+                     Inscricoes (RF035 — cobrança da equipe, por categoria) ·
                      Eventos/Evento, Portao, Clientes e Produtos (RF035) —
                      telas da CONTA, fora do menu da competição
 apps/portal/       Next.js 16 (App Router) — portal público SSR

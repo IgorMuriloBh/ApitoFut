@@ -13,6 +13,7 @@ import { AoVivo } from './AoVivo';
 import { Categorias } from './Categorias';
 import { Classificacao } from './Classificacao';
 import { Suspensoes } from './Suspensoes';
+import { Inscricoes } from './Inscricoes';
 import { Equipes } from './Equipes';
 import { Sumula } from './Sumula';
 import { Tabela } from './Tabela';
@@ -23,6 +24,7 @@ type Aba =
   | 'categorias'
   | 'equipes'
   | 'atletas'
+  | 'inscricoes'
   | 'tabela'
   | 'aovivo'
   | 'classificacao'
@@ -46,6 +48,7 @@ const SECOES: SecaoDoMenu[] = [
       { chave: 'categorias', icone: '🗂', rotulo: 'Categorias' },
       { chave: 'equipes', icone: '🛡', rotulo: 'Equipes' },
       { chave: 'atletas', icone: '🎽', rotulo: 'Atletas' },
+      { chave: 'inscricoes', icone: '💳', rotulo: 'Inscrições' },
     ],
   },
   {
@@ -303,6 +306,7 @@ export function Competicao({
         {aba === 'estatisticas' && <Estatisticas competicao={competicao} />}
         {aba === 'classificacao' && <Classificacao competicao={competicao} />}
         {aba === 'suspensoes' && <Suspensoes competicao={competicao} />}
+        {aba === 'inscricoes' && <Inscricoes competicao={competicao} />}
         {aba === 'config' && <Configuracao competicao={competicao} />}
         {aba === 'tabela' && (
           <Tabela

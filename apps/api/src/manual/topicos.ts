@@ -215,6 +215,24 @@ export const TOPICOS: TopicoDoManual[] = [
     acao: 'Ir para Equipes',
   },
   {
+    id: 'inscricao-paga',
+    titulo: 'Cobrar a inscrição da equipe',
+    resumo: 'A equipe só entra depois de acertar — e você pode liberar na mão.',
+    corpo: [
+      'Em Inscrições você define quanto custa inscrever naquela categoria. O valor é por categoria, como todo o resto da configuração: a Sub-11 pode ser gratuita e a adulta cobrada.',
+      'Pode cobrar **por equipe** (um valor só) ou **por atleta inscrito** (o valor multiplicado pelo elenco no momento de gerar a cobrança).',
+      'Com valor definido, equipe nova entra como **pendente**: ela aparece na sua lista, mas a tabela de jogos não é gerada enquanto houver pendente — e a mensagem diz quais são.',
+      'Duas saídas para cada pendente. **Cobrar** gera um Pix: você manda o código para o responsável e a inscrição confirma sozinha quando o pagamento cai. **Liberar** é o acerto por fora — dinheiro, permuta, patrocínio —, não gera cobrança nenhuma e pede o motivo, que fica registrado com o seu nome e a data.',
+      'Mudar o valor não mexe em quem já está dentro: a regra nova vale para quem chegar depois dela. Equipes que já estavam na categoria antes de você começar a cobrar continuam confirmadas.',
+      'Inscrição liberada na mão não entra no relatório de repasse — a plataforma não recebeu nada.',
+    ],
+    palavras:
+      'inscricao paga cobrar inscricao taxa de inscricao valor da inscricao equipe pendente liberar equipe pagamento da equipe pix da equipe quanto custa inscrever a equipe cobranca por jogador cobrar por equipe tabela nao gera equipe pendente isentar equipe dispensar pagamento',
+    onde: ['painel'],
+    destino: { painel: { tela: 'competicao', secao: 'inscricoes' } },
+    acao: 'Ir para Inscrições',
+  },
+  {
     id: 'link-convite',
     titulo: 'Link de convite para as equipes',
     resumo: 'A equipe se cadastra e monta o próprio elenco.',
@@ -338,9 +356,10 @@ export const TOPICOS: TopicoDoManual[] = [
       'A ordem das fases decide o chaveamento: é por ela que o vencedor sabe para onde subir.',
       'Os jogos do mata-mata nascem com o rótulo da vaga. Quem os preenche é "Definir classificados", depois que a fase de grupos acabar.',
       'Encolher um mata-mata corta só jogo ainda não disputado. Remover fase que já tem resultado exige confirmação explícita.',
+      'Se a categoria cobra inscrição, a tabela só é gerada depois que ninguém estiver pendente. A recusa diz quais equipes faltam: confirme o pagamento ou libere em Inscrições.',
     ],
     palavras:
-      'gerar tabela jogos confrontos rodadas turno returno chaveamento fases mata mata grupos sortear',
+      'gerar tabela jogos confrontos rodadas turno returno chaveamento fases mata mata grupos sortear nao gera tabela equipe pendente inscricao pendente trava',
     onde: ['painel'],
     destino: { painel: { tela: 'competicao', secao: 'tabela' } },
     acao: 'Ir para Tabela de jogos',

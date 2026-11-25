@@ -23,7 +23,8 @@ export type Recurso =
   | 'disciplina'
   | 'evento'
   | 'portaria'
-  | 'balcao';
+  | 'balcao'
+  | 'inscricao';
 
 const DONOS = ['organizador', 'superadmin'];
 
@@ -39,6 +40,9 @@ const PERMISSOES: Record<Recurso, string[]> = {
   evento: [...DONOS, 'gestor'],
   portaria: [...DONOS, 'gestor', 'mesario'],
   balcao: [...DONOS, 'gestor', 'mesario'],
+  // dispensar o pagamento de uma inscrição é decisão de dinheiro, e não
+  // de cadastro: a secretaria cadastra equipe e não libera ninguém
+  inscricao: [...DONOS, 'gestor'],
 };
 
 /** Perfil da sessão atual; `undefined` quando ninguém está logado. */

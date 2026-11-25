@@ -133,14 +133,16 @@ model categoria_criterio_desempate {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model categoria_inscricao_config {
-  categoria_id       String     @id @db.Uuid
-  max_atletas        Int        @default(20)
-  max_comissao       Int        @default(3)
-  permite_inscrever  Boolean    @default(true)
-  permite_editar     Boolean    @default(true)
-  permite_remover    Boolean    @default(false)
-  inscricoes_abertas Boolean    @default(true)
-  categorias         categorias @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categoria_id             String     @id @db.Uuid
+  max_atletas              Int        @default(20)
+  max_comissao             Int        @default(3)
+  permite_inscrever        Boolean    @default(true)
+  permite_editar           Boolean    @default(true)
+  permite_remover          Boolean    @default(false)
+  inscricoes_abertas       Boolean    @default(true)
+  inscricao_preco_centavos Int        @default(0)
+  inscricao_por            String     @default("equipe")
+  categorias               categorias @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -164,9 +166,14 @@ model categoria_times {
   time_id                String                  @db.Uuid
   grupo_id               String?                 @db.Uuid
   vinculado_em           DateTime                @default(now()) @db.Timestamptz(6)
+  situacao               String                  @default("confirmada")
+  liberado_por           String?                 @db.Uuid
+  liberado_em            DateTime?               @db.Timestamptz(6)
+  liberacao_motivo       String?
   categoria_coluna_extra categoria_coluna_extra?
   categorias             categorias              @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   grupos                 grupos?                 @relation(fields: [grupo_id], references: [id], onUpdate: NoAction)
+  usuarios               usuarios?               @relation(fields: [liberado_por], references: [id], onUpdate: NoAction)
   times                  times                   @relation(fields: [time_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([categoria_id, time_id])
@@ -202,6 +209,7 @@ model categorias {
   grupos                         grupos[]
   inscricoes                     inscricoes[]
   jogos                          jogos[]
+  pedidos                        pedidos[]
   suspensoes                     suspensoes[]
 
   @@unique([competicao_id, nome], map: "uq_categoria_nome")
@@ -474,6 +482,7 @@ model times {
   jogo_eventos                    jogo_eventos[]
   jogos_jogos_mandante_idTotimes  jogos[]            @relation("jogos_mandante_idTotimes")
   jogos_jogos_visitante_idTotimes jogos[]            @relation("jogos_visitante_idTotimes")
+  pedidos                         pedidos[]
   competicoes                     competicoes        @relation(fields: [competicao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([competicao_id, codigo_acesso], map: "uq_time_codigo")
@@ -496,6 +505,7 @@ model usuarios {
   atualizado_em                                   DateTime                  @default(now()) @db.Timestamptz(6)
   senha_provisoria                                Boolean                   @default(false)
   convidado_por                                   String?                   @db.Uuid
+  categoria_times                                 categoria_times[]
   competicoes                                     competicoes[]
   configuracao_plataforma                         configuracao_plataforma[]
   eventos                                         eventos[]
@@ -653,7 +663,7 @@ model lotes {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model pedidos {
   id                  String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  evento_id           String        @db.Uuid
+  evento_id           String?       @db.Uuid
   comprador_nome      String
   comprador_email     String        @db.Citext
   comprador_telefone  String?
@@ -674,13 +684,19 @@ model pedidos {
   asaas_cobranca_id   String?       @unique(map: "uq_pedido_cobranca", where: raw("(asaas_cobranca_id IS NOT NULL)"))
   pix_payload         String?
   link_pagamento      String?
+  categoria_id        String?       @db.Uuid
+  time_id             String?       @db.Uuid
   ingressos           ingressos[]
-  eventos             eventos       @relation(fields: [evento_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categorias          categorias?   @relation(fields: [categoria_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  eventos             eventos?      @relation(fields: [evento_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   usuarios            usuarios?     @relation(fields: [registrado_por], references: [id], onUpdate: NoAction)
+  times               times?        @relation(fields: [time_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@unique([categoria_id, time_id], map: "uq_pedido_da_inscricao", where: raw("((categoria_id IS NOT NULL) AND (status = ANY (ARRAY['aguardando'::status_pedido, 'pago'::status_pedido])))"))
   @@index([comprador_email], map: "idx_pedidos_email")
   @@index([evento_id, criado_em(sort: Desc)], map: "idx_pedidos_evento")
   @@index([expira_em], map: "idx_pedidos_expiram", where: raw("(status = 'aguardando'::status_pedido)"))
+  @@index([categoria_id, time_id], map: "idx_pedidos_inscricao", where: raw("(categoria_id IS NOT NULL)"))
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

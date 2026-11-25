@@ -44,6 +44,8 @@ export const RECURSOS = [
   'portaria',
   /** entregar o produto da ficha de consumo no balcão (RF035) */
   'balcao',
+  /** cobrar a inscrição da equipe e liberá-la na mão (RF035) */
+  'inscricao',
 ] as const;
 
 export type Recurso = (typeof RECURSOS)[number];
@@ -84,6 +86,12 @@ export const PERMISSOES: Record<Recurso, readonly string[]> = {
   // a tela. Quando houver gente contratada só para o bar, um perfil
   // `balcao` entra aqui sem mexer em mais nada.
   balcao: [...TODOS_OS_DONOS, 'gestor', 'mesario'],
+
+  // Não é `elenco`, apesar de falar de equipe na categoria: quem
+  // cadastra equipe e atleta é a secretaria, e dispensar o pagamento de
+  // uma inscrição é decisão de dinheiro. Com o recurso `elenco`, a
+  // secretaria liberaria quem quisesse.
+  inscricao: [...TODOS_OS_DONOS, 'gestor'],
 };
 
 /** Perfis que o dono pode distribuir. Nem `organizador`, nem `superadmin`. */

@@ -17,7 +17,7 @@ INTRO = [
     ("O que anotar quando algo der errado",
      "Três coisas, nesta ordem: (1) em que passo você estava; (2) o que você fez, "
      "exatamente; (3) o que apareceu na tela, de preferência com print. "
-     "\"Não funcionou\" não é reportável; \"no passo 7.3, cliquei em Gerar tabela e "
+     "\"Não funcionou\" não é reportável; \"no passo 8.3, cliquei em Gerar tabela e "
      "apareceu erro 500\" é."),
 ]
 
@@ -199,6 +199,59 @@ ETAPAS = [
     },
     {
         "n": 7,
+        "titulo": "Cobrar a inscrição das equipes",
+        "objetivo": "A equipe só entra depois de acertar — e você pode liberar na mão.",
+        "passos": [
+            ("Vá em <b>Inscrições</b>, escolha a <b>Sub-13</b> e repare na lista.",
+             "Todas as equipes aparecem como <b>confirmadas</b>: a categoria ainda "
+             "não cobra nada, que é como o sistema sempre funcionou."),
+            ("Em <b>Valor da inscrição</b>, digite <b>3,00</b> e salve.",
+             "<b>Recusado</b>, dizendo que o meio de pagamento não cobra menos de "
+             "R$ 5,00. A recusa acontece aqui e não na hora de cobrar — descobrir "
+             "depois deixaria a equipe com um erro de gateway na tela."),
+            ("Agora digite <b>150,00</b>, deixe <i>Cobrar por: equipe</i> e salve.",
+             "Salvo, com um aviso de que <b>quem já está confirmado continua "
+             "confirmado</b>. Mudar o preço não revisita quem já entrou."),
+            ("Cadastre uma equipe nova nesta categoria (pelo painel ou pelo link "
+             "de convite).",
+             "Ela entra em <b>Inscrição pendente</b>, não em confirmadas."),
+            ("Vá em <b>Tabela de jogos</b> e tente gerar a tabela da Sub-13.",
+             "<b>Recusado</b>, e a mensagem <b>diz o nome</b> da equipe pendente. "
+             "Gerar sem ela pareceria funcionar — o erro só apareceria com a equipe "
+             "no campo, sem jogo marcado."),
+            ("Volte a Inscrições e clique em <b>Cobrar</b> na equipe pendente. "
+             "Confira a conta antes de preencher.",
+             "Mostra <b>R$ 150,00 + R$ 15,00 de taxa = R$ 165,00</b>. A taxa é da "
+             "plataforma e vai por cima: a liga recebe o valor cheio."),
+            ("Preencha nome, e-mail e um <b>CPF inválido</b> (ex.: 111.111.111-11) "
+             "e gere a cobrança.",
+             "<b>Recusado</b> antes de criar qualquer coisa. O documento é "
+             "conferido com dígito verificador."),
+            ("Corrija para um CPF válido e gere a cobrança Pix.",
+             "A linha passa a mostrar <b>aguardando R$ 165,00</b>, o código "
+             "<b>copia e cola</b> num campo que dá para selecionar, e um link para "
+             "a página de pagamento. É isso que você manda para o responsável."),
+            ("Clique em <b>Cancelar cobrança</b>.",
+             "A cobrança some e a equipe volta a oferecer <b>Cobrar</b> e "
+             "<b>Liberar</b>. O Pix é apagado também no banco — ninguém paga uma "
+             "cobrança cancelada."),
+            ("Clique em <b>Liberar</b>, escolha <i>Pagou em dinheiro</i> e confirme.",
+             "A equipe passa para <b>confirmadas</b> com a etiqueta do motivo. "
+             "O motivo é obrigatório: é ele que explica, meses depois, por que "
+             "aquela equipe entrou sem pagar pelo sistema."),
+            ("Tente a mesma liberação entrando como <b>secretaria</b>.",
+             "Ela <b>não vê</b> a tela de Inscrições. Cadastrar equipe é uma coisa; "
+             "dispensar pagamento é decisão de dinheiro."),
+            ("Volte à <b>Tabela de jogos</b> e gere a tabela.",
+             "Agora passa: não há mais ninguém pendente."),
+        ],
+        "observar": "Liberar na mão <b>não</b> gera pedido nenhum — o dinheiro não "
+                    "passou pela plataforma, então não aparece no relatório de "
+                    "repasse. Já a cobrança por Pix confirma a inscrição sozinha "
+                    "assim que o pagamento cai, sem você precisar voltar aqui.",
+    },
+    {
+        "n": 8,
         "titulo": "Gerar a tabela de jogos",
         "objetivo": "Montar os confrontos e programar as partidas.",
         "passos": [
@@ -242,7 +295,7 @@ ETAPAS = [
         ],
     },
     {
-        "n": 8,
+        "n": 9,
         "titulo": "Publicar e conferir o portal",
         "objetivo": "Ver a diferença entre “publicada” e “em andamento”.",
         "passos": [
@@ -263,7 +316,7 @@ ETAPAS = [
                     "defeito grave — reporte imediatamente.",
     },
     {
-        "n": 9,
+        "n": 10,
         "titulo": "Operar um jogo ao vivo",
         "objetivo": "Lançar os acontecimentos e ver o placar se formar.",
         "passos": [
@@ -294,7 +347,7 @@ ETAPAS = [
         ],
     },
     {
-        "n": 10,
+        "n": 11,
         "titulo": "Corrigir um erro de lançamento",
         "objetivo": "Ver o que pode e o que não pode ser corrigido.",
         "passos": [
@@ -310,7 +363,7 @@ ETAPAS = [
         ],
     },
     {
-        "n": 11,
+        "n": 12,
         "titulo": "Classificação e suspensões",
         "objetivo": "Conferir os cálculos e as travas de configuração.",
         "passos": [
@@ -342,7 +395,7 @@ ETAPAS = [
                     "caso antigo, use a suspensão manual na tela de Suspensões.",
     },
     {
-        "n": 12,
+        "n": 13,
         "titulo": "Fases finais",
         "objetivo": "Levar os classificados ao mata-mata e ver o vencedor avançar "
                     "sozinho.",
@@ -400,7 +453,7 @@ ETAPAS = [
                     "vencedor substitui a escolha — e a tela avisa antes.",
     },
     {
-        "n": 13,
+        "n": 14,
         "titulo": "Estatísticas, premiações e exportação",
         "objetivo": "Conferir os números e levar os dados para planilha.",
         "passos": [
@@ -428,7 +481,7 @@ ETAPAS = [
         ],
     },
     {
-        "n": 14,
+        "n": 15,
         "titulo": "Carteirinha do atleta",
         "objetivo": "Ver a credencial que a arbitragem usa.",
         "passos": [
@@ -446,7 +499,7 @@ ETAPAS = [
         ],
     },
     {
-        "n": 15,
+        "n": 16,
         "titulo": "Encerrar a competição",
         "objetivo": "Fechar o ciclo.",
         "passos": [
@@ -461,7 +514,7 @@ ETAPAS = [
         ],
     },
     {
-        "n": 16,
+        "n": 17,
         "titulo": "Evento, venda de ingresso e pagamento",
         "objetivo": "Vender ingresso pelos dois caminhos (balcão e internet), "
                     "receber por Pix e queimar o QR no portão — provando que o "
@@ -588,7 +641,7 @@ ETAPAS = [
         ],
     },
     {
-        "n": 17,
+        "n": 18,
         "titulo": "A ajuda do sistema",
         "objetivo": "Testar se o manual responde de verdade.",
         "passos": [
