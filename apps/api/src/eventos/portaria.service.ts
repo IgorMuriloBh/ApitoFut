@@ -145,6 +145,22 @@ export class PortariaService {
       comprador: pedido.comprador_nome,
     };
 
+    /*
+     * Ficha de consumo não entra pelo portão.
+     *
+     * Quem está na entrada tem uma pergunta — "pode entrar?" — e quem
+     * está no balcão tem outra — "o que eu entrego?". Deixar o portão
+     * queimar uma ficha significa um cliente perdendo a cerveja que
+     * comprou para poder entrar num evento em que já estava.
+     */
+    if (lote.especie === 'ficha') {
+      return {
+        resultado: 'recusado',
+        motivo: `Isto é uma ficha de consumo (${lote.nome}). Use a tela de Balcão para entregar.`,
+        ingresso: identificacao,
+      };
+    }
+
     if (ingresso.status === 'cancelado') {
       return {
         resultado: 'recusado',
@@ -183,8 +199,11 @@ export class PortariaService {
       };
     }
 
+    // `dia` nulo é baixa de ficha (migration 29), e ficha não entra por
+    // aqui — mas a consulta traz todos os check-ins do ingresso, então
+    // o filtro precisa ser explícito em vez de confiar no caminho
     const jaEntrou = ingresso.ingresso_checkins.find(
-      (c) => c.dia.toISOString().slice(0, 10) === decisao.dia,
+      (c) => c.dia !== null && c.dia.toISOString().slice(0, 10) === decisao.dia,
     );
     if (jaEntrou) {
       const hora = jaEntrou.registrado_em.toLocaleTimeString('pt-BR', {

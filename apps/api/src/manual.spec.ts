@@ -17,7 +17,7 @@ import { TOPICOS } from './manual/topicos';
 
 /** Telas e seções que o painel realmente tem (App.tsx e Competicao.tsx). */
 const TELAS = new Set(['painel', 'wizard', 'base', 'ranking', 'ajuda',
-  'equipe', 'eventos', 'portao', 'clientes', 'competicao',
+  'equipe', 'eventos', 'portao', 'clientes', 'produtos', 'competicao',
   'admin:plataforma', 'admin:usuarios', 'admin:competicoes']);
 const SECOES = new Set(['visao', 'categorias', 'equipes', 'atletas', 'tabela',
   'aovivo', 'classificacao', 'estatisticas', 'suspensoes', 'estrutura',
@@ -104,6 +104,7 @@ describe('busca — a dúvida escrita como o usuário escreve', () => {
     ['comprei ingresso e perdi o link', 'meu-ingresso'],
     ['quem paga a taxa do ingresso', 'evento-ingressos'],
     ['lista de quem comprou ingresso', 'clientes-do-evento'],
+    ['cadastrar bebida para vender', 'produtos-cardapio'],
     // conjugação: quem pergunta escreve "inscrevo", o acervo diz
     // "inscrever". Sem a raiz comum isto caía em "Carteirinha do atleta"
     ['como inscrevo um atleta', 'inscrever-atleta'],

@@ -67,6 +67,8 @@ instanciação do Nest deixa a suíte inteira muda. São tropeços já conhecido
 - `db/26-ingresso-gratuito.sql` — entrada franca não passa por gateway
 - `db/27-pedido-para-email.sql` — a fresta que o envio de e-mail lê
 - `db/28-email-sabe-o-valor.sql` — entrada franca não anuncia "pagamento confirmado"
+- `db/29-ficha-de-consumo.sql` — ficha é usada UMA vez, não uma por dia
+- `db/30-produtos.sql` — catálogo de produtos da conta (cardápio)
 
 ## Banco de dados
 
@@ -396,6 +398,21 @@ do código — é o único lugar que resiste a duas requisições simultâneas:
   uma segunda cópia das mesmas pessoas daria duas verdades sobre quem é
   o cliente. O relatório é consulta, e conta só pedido **pago** — quem
   abandonou o carrinho não comprou
+- **Ficha de consumo é usada uma vez, não uma por dia.** A trava do
+  ingresso é `(ingresso_id, dia)`; numa ficha isso valeria uma cerveja
+  por dia, para sempre. A baixa da ficha tem `dia` NULL e o índice é
+  `NULLS NOT DISTINCT` (migration 29) — o banco aceita uma única linha
+  nula por ingresso. Não é truque: check-in de ingresso consome um DIA
+  do evento, ficha consome a si mesma
+- **O portão recusa ficha, e o balcão recusará ingresso.** Quem está na
+  entrada responde "pode entrar?"; quem está no bar, "o que eu
+  entrego?". Deixar o portão queimar uma ficha é o cliente perder a
+  cerveja para entrar num evento em que já estava
+- **O catálogo de produtos é da ORGANIZAÇÃO, não do evento.** A mesma
+  cerveja aparece no festival de julho e na final de novembro; amarrar
+  ao evento obrigaria a redigitar o cardápio a cada edição. O grupo é
+  texto livre com sugestão — ao contrário do cargo da comissão, aqui a
+  taxonomia é de cada organizador e lista fechada seria camisa de força
 - **Na venda de balcão a taxa é zero.** A plataforma recebe e repassa
   (decisão do cliente), mas isso vale para a venda online, que passa por
   gateway. No balcão o organizador recebeu em dinheiro e a plataforma não
@@ -537,6 +554,7 @@ apps/api/          NestJS — a única app existente hoje
                      renderiza SVG) — leva o código e o link
     clientes.service.ts  a base de clientes; CONSULTA sobre pedidos,
                      não uma tabela nova
+    produtos.service.ts  o cardápio da conta (ficha de consumo)
     dia-do-evento.ts que dia é hoje NO FUSO DO EVENTO — o servidor é UTC
     portaria.service.ts  a leitura do portão; responde sempre o mesmo formato
 apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
@@ -557,8 +575,8 @@ apps/painel/       React 19 + Vite 8 + Tailwind 4 — SPA do organizador
                      Estatisticas · Suspensoes · Estrutura · Configuracao ·
                      Categorias · AoVivo · BaseDeAtletas · RankingGeral ·
                      ConfigurarFases (modal da tabela de jogos) ·
-                     Eventos/Evento e Portao (RF035) — telas da CONTA,
-                     fora do menu da competição
+                     Eventos/Evento, Portao, Clientes e Produtos (RF035) —
+                     telas da CONTA, fora do menu da competição
 apps/portal/       Next.js 16 (App Router) — portal público SSR
   lib/api.ts         cliente dos endpoints públicos (o portal nunca autentica)
   proxy.ts           domínio próprio: host → slug por rewrite (Next 16 renomeou

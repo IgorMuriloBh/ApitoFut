@@ -662,6 +662,24 @@ export const TOPICOS: TopicoDoManual[] = [
     acao: 'Ir para Clientes',
   },
 
+  {
+    id: 'produtos-cardapio',
+    titulo: 'Cadastrar o que se vende no balcão',
+    resumo: 'O cardápio da sua conta: bebida, comida, brinde.',
+    corpo: [
+      'Em Ficha e consumo › Produtos você cadastra o que vende no evento: grupo (Bebida, Comida, Brinde), descrição, preço, foto e se está ativo.',
+      'O cardápio é da sua CONTA, não de um evento: cadastre uma vez e use em todas as edições. Não é preciso redigitar a cada campeonato.',
+      'O grupo é digitado por você, e o campo sugere os que já usa — assim "Bebida" e "bebidas" não viram dois grupos.',
+      'O sistema recusa o mesmo produto duas vezes no mesmo grupo, mesmo com acento ou caixa diferente: "Água" e "agua" são o mesmo item.',
+      'Produto que saiu de linha: desative em vez de excluir. Ele some da venda e o histórico continua de pé.',
+    ],
+    palavras:
+      'produto cardapio bar bebida comida brinde item preco foto balcao ficha consumo o que vendo no evento',
+    onde: ['painel'],
+    destino: { painel: { tela: 'produtos' } },
+    acao: 'Ir para Produtos',
+  },
+
   // ── Operação ───────────────────────────────────────────────────────
   {
     id: 'exportar',

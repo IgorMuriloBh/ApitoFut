@@ -414,6 +414,7 @@ model organizacoes {
   excluida_em   DateTime?     @db.Timestamptz(6)
   competicoes   competicoes[]
   eventos       eventos[]
+  produtos      produtos[]
   usuarios      usuarios[]
 }
 
@@ -592,7 +593,7 @@ model eventos {
 model ingresso_checkins {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   ingresso_id    String    @db.Uuid
-  dia            DateTime  @db.Date
+  dia            DateTime? @db.Date
   registrado_por String?   @db.Uuid
   registrado_em  DateTime  @default(now()) @db.Timestamptz(6)
   ingressos      ingressos @relation(fields: [ingresso_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -701,6 +702,24 @@ model gateway_notificacoes {
   payload     Json?
 
   @@index([cobranca_id], map: "idx_gateway_notificacoes_cobranca")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model produtos {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacao_id String       @db.Uuid
+  grupo          String
+  nome           String
+  preco_centavos Int
+  ativo          Boolean      @default(true)
+  imagem_url     String?
+  criado_em      DateTime     @default(now()) @db.Timestamptz(6)
+  atualizado_em  DateTime     @default(now()) @db.Timestamptz(6)
+  organizacoes   organizacoes @relation(fields: [organizacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizacao_id, grupo, nome], map: "idx_produtos_catalogo")
 }
 
 enum campo_atleta {

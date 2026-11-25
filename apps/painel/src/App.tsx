@@ -19,6 +19,7 @@ import { Equipe } from './telas/Equipe';
 import { Eventos } from './telas/Eventos';
 import { Portao } from './telas/Portao';
 import { Clientes } from './telas/Clientes';
+import { Produtos } from './telas/Produtos';
 import { podeEscrever } from './lib/permissoes';
 import { TrocarSenha } from './telas/TrocarSenha';
 
@@ -33,6 +34,7 @@ type Tela =
   | { nome: 'eventos' }
   | { nome: 'portao' }
   | { nome: 'clientes' }
+  | { nome: 'produtos' }
   | { nome: 'admin'; aba: AbaDoAdm };
 
 /**
@@ -83,6 +85,20 @@ function navGlobal(ehDono: boolean): SecaoDoMenu[] {
                 ? [{ chave: 'portao', icone: '🚪', rotulo: 'Portão' }]
                 : []),
             ],
+          },
+        ]
+      : []),
+    /**
+     * Ficha e consumo é seção própria, e não um item dentro de
+     * "Eventos e ingressos": o cardápio é da CONTA e se cadastra uma
+     * vez; o ingresso é do evento e muda a cada edição. São dois
+     * momentos diferentes do trabalho, e o menu diz isso.
+     */
+    ...(podeEscrever('evento')
+      ? [
+          {
+            titulo: 'Ficha e consumo',
+            itens: [{ chave: 'produtos', icone: '🍺', rotulo: 'Produtos' }],
           },
         ]
       : []),
@@ -277,7 +293,8 @@ export function App() {
                     | 'equipe'
                     | 'eventos'
                     | 'portao'
-                    | 'clientes',
+                    | 'clientes'
+                    | 'produtos',
                 });
               }
             }}
@@ -321,6 +338,7 @@ export function App() {
                   | 'eventos'
                   | 'portao'
                   | 'clientes'
+                  | 'produtos'
                   | 'wizard',
               });
               return;
@@ -354,7 +372,8 @@ export function App() {
                   | 'wizard'
                   | 'eventos'
                   | 'portao'
-                  | 'clientes',
+                  | 'clientes'
+                  | 'produtos',
               });
             }
           }}
@@ -365,6 +384,7 @@ export function App() {
       {tela.nome === 'eventos' && <Eventos />}
       {tela.nome === 'portao' && <Portao />}
       {tela.nome === 'clientes' && <Clientes />}
+      {tela.nome === 'produtos' && <Produtos />}
       {tela.nome === 'base' && <BaseDeAtletas />}
       {tela.nome === 'ranking' && <RankingGeral />}
 

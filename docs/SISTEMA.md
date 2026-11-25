@@ -1043,6 +1043,50 @@ Duas decisões de recorte que o teste fixa:
   inflado na proporção do número de ingressos — erro plausível, que é o
   pior tipo.
 
+### Ficha de consumo: o catálogo e a regra de uso (migrations 29 e 30)
+
+Decidido com o cliente: a ficha vale **um produto específico** (não
+crédito em reais), é usada **uma vez só**, e quem entrega lê numa tela
+de **Balcão** própria — separada do Portão.
+
+**A regra de uso quase passou batido.** A trava do ingresso é
+`uq_checkin_do_dia (ingresso_id, dia)`: uma entrada por dia. Aplicada a
+uma ficha, isso daria uma cerveja por dia, para sempre — num evento de
+dois dias, cada ficha valeria duas. Agora `dia` aceita NULL e o índice é
+`NULLS NOT DISTINCT`, então o banco permite **uma única linha nula por
+ingresso**: a ficha foi usada, e acabou.
+
+Isso não é truque de implementação, é o que o dado significa. Um
+check-in de ingresso consome **um dia** do evento, e por isso tem data.
+Uma ficha não consome um dia — consome a si mesma. `registrado_em`
+continua guardando quando a entrega aconteceu, que é o que a auditoria
+pede. E fica no índice, não num gatilho: índice único não tem corrida, e
+dois atendentes lendo a mesma ficha no mesmo instante é o normal num
+balcão com duas filas.
+
+**O portão recusa ficha** com uma frase que manda para o lugar certo.
+Quem está na entrada tem uma pergunta — "pode entrar?" — e quem está no
+balcão tem outra — "o que eu entrego?". Deixar o portão queimar uma
+ficha significa um cliente perdendo a cerveja que comprou para poder
+entrar num evento em que já estava.
+
+**O catálogo (`produtos`) é da ORGANIZAÇÃO, não do evento.** A mesma
+cerveja aparece no festival de julho e na final de novembro; amarrar ao
+evento obrigaria a redigitar o cardápio a cada edição — e a errar o
+preço numa delas.
+
+O **grupo** é texto livre com sugestão dos que a conta já usa, e isso
+contraria uma decisão anterior deste projeto: o cargo da comissão
+técnica é lista fechada justamente para não ter quatro grafias na mesma
+súmula. A diferença é que lá a lista era conhecida e pequena (quatro
+cargos); aqui a taxonomia é de cada organizador — "bebida", "brinde",
+"camisa" — e lista fechada seria camisa de força. O banco recusa o mesmo
+produto duas vezes no mesmo grupo, sem acento e sem caixa, que é o que
+de fato estraga um cardápio.
+
+Falta a venda (lote de ficha apontando para o produto) e a tela de
+Balcão. O portão já está preparado para elas.
+
 ### O que falta (fases seguintes)
 
 | fase | o que entra | depende de |

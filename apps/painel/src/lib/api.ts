@@ -866,6 +866,16 @@ export interface TaxaDoEvento {
   padraoFixaCentavos: number;
 }
 
+/** Um item do cardápio da conta (RF035 — ficha de consumo). */
+export interface ProdutoDoCatalogo {
+  id: string;
+  grupo: string;
+  nome: string;
+  precoCentavos: number;
+  ativo: boolean;
+  imagemUrl: string | null;
+}
+
 /** Uma linha do relatório da base de clientes (RF035). */
 export interface ClienteDoEvento {
   eventoId: string;
@@ -1154,6 +1164,34 @@ export const api = {
         `/painel/eventos/pedidos/${pedidoId}/cancelar`,
         { metodo: 'POST', corpo: { motivo } },
       ),
+  },
+
+  /**
+   * O cardápio da conta. Fica fora de `eventos` porque é da
+   * ORGANIZAÇÃO: o mesmo produto serve a todo evento.
+   */
+  produtos: {
+    listar: () => requisitar<ProdutoDoCatalogo[]>('/painel/produtos'),
+
+    grupos: () => requisitar<string[]>('/painel/produtos/grupos'),
+
+    salvar: (dados: {
+      id?: string;
+      grupo: string;
+      nome: string;
+      precoCentavos: number;
+      ativo?: boolean;
+      imagemUrl?: string | null;
+    }) =>
+      requisitar<{ id: string }>('/painel/produtos', {
+        metodo: 'POST',
+        corpo: dados,
+      }),
+
+    remover: (id: string) =>
+      requisitar<{ removido: boolean }>(`/painel/produtos/${id}`, {
+        metodo: 'DELETE',
+      }),
   },
 
   portao: {
